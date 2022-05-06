@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{8148cac2-dcee-4849-ad50-6d5eab29dad0}</ProjectGuid>
+    <RootNamespace>filtercore</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)_build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(OutDir)obj\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)_build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(OutDir)obj\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)_build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(OutDir)obj\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)_build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(OutDir)obj\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>Full</Optimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>Full</Optimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="convert_csp.cpp" />
+    <ClCompile Include="convert_csp_avx.cpp">
+      <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">AdvancedVectorExtensions</EnableEnhancedInstructionSet>
+      <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">AdvancedVectorExtensions</EnableEnhancedInstructionSet>
+      <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">AdvancedVectorExtensions</EnableEnhancedInstructionSet>
+      <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AdvancedVectorExtensions</EnableEnhancedInstructionSet>
+    </ClCompile>
+    <ClCompile Include="convert_csp_avx2.cpp">
+      <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+      <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+      <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+      <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+    </ClCompile>
+    <ClCompile Include="convert_csp_func.cpp" />
+    <ClCompile Include="convert_csp_sse2.cpp" />
+    <ClCompile Include="convert_csp_sse41.cpp" />
+    <ClCompile Include="convert_csp_ssse3.cpp" />
+    <ClCompile Include="cpu_info.cpp" />
+    <ClCompile Include="gpuz_info.cpp" />
+    <ClCompile Include="gpu_info.cpp" />
+    <ClCompile Include="rgy_codepage.cpp" />
+    <ClCompile Include="rgy_def.cpp" />
+    <ClCompile Include="rgy_env.cpp" />
+    <ClCompile Include="rgy_err.cpp" />
+    <ClCompile Include="rgy_filesystem.cpp" />
+    <ClCompile Include="rgy_filter.cpp" />
+    <ClCompile Include="rgy_filter_colorspace.cpp" />
+    <ClCompile Include="rgy_filter_crop.cpp" />
+    <ClCompile Include="rgy_filter_deband.cpp" />
+    <ClCompile Include="rgy_filter_denoise_knn.cpp" />
+    <ClCompile Include="rgy_filter_denoise_pmd.cpp" />
+    <ClCompile Include="rgy_filter_edgelevel.cpp" />
+    <ClCompile Include="rgy_filter_nnedi.cpp" />
+    <ClCompile Include="rgy_filter_pad.cpp" />
+    <ClCompile Include="rgy_filter_resize.cpp" />
+    <ClCompile Include="rgy_filter_smooth.cpp" />
+    <ClCompile Include="rgy_filter_transform.cpp" />
+    <ClCompile Include="rgy_filter_tweak.cpp" />
+    <ClCompile Include="rgy_filter_unsharp.cpp" />
+    <ClCompile Include="rgy_filter_warpsharp.cpp" />
+    <ClCompile Include="rgy_frame.cpp" />
+    <ClCompile Include="rgy_hdr10plus.cpp" />
+    <ClCompile Include="rgy_ini.cpp" />
+    <ClCompile Include="rgy_log.cpp" />
+    <ClCompile Include="rgy_opencl.cpp" />
+    <ClCompile Include="rgy_perf_counter.cpp" />
+    <ClCompile Include="rgy_perf_monitor.cpp" />
+    <ClCompile Include="rgy_pipe.cpp" />
+    <ClCompile Include="rgy_prm.cpp" />
+    <ClCompile Include="rgy_resource.cpp" />
+    <ClCompile Include="rgy_simd.cpp" />
+    <ClCompile Include="rgy_status.cpp" />
+    <ClCompile Include="rgy_thread_affinity.cpp" />
+    <ClCompile Include="rgy_util.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="convert_const.h" />
+    <ClInclude Include="convert_csp.h" />
+    <ClInclude Include="convert_csp_func.h" />
+    <ClInclude Include="convert_csp_simd.h" />
+    <ClInclude Include="cpu_info.h" />
+    <ClInclude Include="gpuz_info.h" />
+    <ClInclude Include="gpu_info.h" />
+    <ClInclude Include="rgy_arch.h" />
+    <ClInclude Include="rgy_codepage.h" />
+    <ClInclude Include="rgy_def.h" />
+    <ClInclude Include="rgy_env.h" />
+    <ClInclude Include="rgy_err.h" />
+    <ClInclude Include="rgy_filesystem.h" />
+    <ClInclude Include="rgy_filter.h" />
+    <ClInclude Include="rgy_filter_colorspace.h" />
+    <ClInclude Include="rgy_filter_colorspace_func.h" />
+    <ClInclude Include="rgy_filter_deband.h" />
+    <ClInclude Include="rgy_filter_denoise_knn.h" />
+    <ClInclude Include="rgy_filter_denoise_pmd.h" />
+    <ClInclude Include="rgy_filter_edgelevel.h" />
+    <ClInclude Include="rgy_filter_nnedi.h" />
+    <ClInclude Include="rgy_filter_smooth.h" />
+    <ClInclude Include="rgy_filter_transform.h" />
+    <ClInclude Include="rgy_filter_tweak.h" />
+    <ClInclude Include="rgy_filter_unsharp.h" />
+    <ClInclude Include="rgy_filter_warpsharp.h" />
+    <ClInclude Include="rgy_frame.h" />
+    <ClInclude Include="rgy_hdr10plus.h" />
+    <ClInclude Include="rgy_ini.h" />
+    <ClInclude Include="rgy_log.h" />
+    <ClInclude Include="rgy_opencl.h" />
+    <ClInclude Include="rgy_osdep.h" />
+    <ClInclude Include="rgy_perf_counter.h" />
+    <ClInclude Include="rgy_perf_monitor.h" />
+    <ClInclude Include="rgy_pipe.h" />
+    <ClInclude Include="rgy_prm.h" />
+    <ClInclude Include="rgy_resource.h" />
+    <ClInclude Include="rgy_simd.h" />
+    <ClInclude Include="rgy_status.h" />
+    <ClInclude Include="rgy_tchar.h" />
+    <ClInclude Include="rgy_thread_affinity.h" />
+    <ClInclude Include="rgy_util.h" />
+    <ClInclude Include="rgy_version.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="rgy_filter.cl" />
+    <None Include="rgy_filter_deband.cl" />
+    <None Include="rgy_filter_deband_gen_rand.cl" />
+    <None Include="rgy_filter_denoise_knn.cl" />
+    <None Include="rgy_filter_denoise_pmd.cl" />
+    <None Include="rgy_filter_edgelevel.cl" />
+    <None Include="rgy_filter_nnedi_common.cl" />
+    <None Include="rgy_filter_nnedi_k0.cl" />
+    <None Include="rgy_filter_nnedi_k1.cl" />
+    <None Include="rgy_filter_pad.cl" />
+    <None Include="rgy_filter_resize.cl" />
+    <None Include="rgy_filter_smooth.cl" />
+    <None Include="rgy_filter_transform.cl" />
+    <None Include="rgy_filter_tweak.cl" />
+    <None Include="rgy_filter_unsharp.cl" />
+    <None Include="rgy_filter_warpsharp.cl" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

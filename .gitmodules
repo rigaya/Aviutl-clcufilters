@@ -1,0 +1,3 @@
+[submodule "clRNG"]
+	path = clRNG
+	url = https://github.com/clMathLibraries/clRNG.git
