@@ -39,6 +39,7 @@
 
 enum class clFilter {
     UNKNOWN = 0,
+    COLORSPACE,
     NNEDI,
     KNN,
     PMD,

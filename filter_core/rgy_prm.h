@@ -533,6 +533,50 @@ const CX_DESC list_vpp_ass_shaping[] = {
     { NULL, 0 }
 };
 
+const CX_DESC list_vpp_raduis[] = {
+    { _T("1 - weak"),  1 },
+    { _T("2"),  2 },
+    { _T("3"),  3 },
+    { _T("4"),  4 },
+    { _T("5"),  5 },
+    { _T("6 - strong"),  6 },
+    { NULL, 0 }
+};
+
+const CX_DESC list_vpp_apply_count[] = {
+    { _T("1"),  1 },
+    { _T("2"),  2 },
+    { _T("3"),  3 },
+    { _T("4"),  4 },
+    { _T("5"),  5 },
+    { _T("6"),  6 },
+    { NULL, 0 }
+};
+
+const CX_DESC list_vpp_smooth_quality[] = {
+    { _T("1 - fast"),  1 },
+    { _T("2"),  2 },
+    { _T("3"),  3 },
+    { _T("4"),  4 },
+    { _T("5"),  5 },
+    { _T("6 - high quality"),  6 },
+    { NULL, 0 }
+};
+
+const CX_DESC list_vpp_1_to_10[] = {
+    { _T("1"),  1 },
+    { _T("2"),  2 },
+    { _T("3"),  3 },
+    { _T("4"),  4 },
+    { _T("5"),  5 },
+    { _T("6"),  6 },
+    { _T("7"),  7 },
+    { _T("8"),  8 },
+    { _T("9"),  9 },
+    { _T("10"),  10 },
+    { NULL, 0 }
+};
+
 
 struct ColorspaceConv {
     VideoVUIInfo from, to;

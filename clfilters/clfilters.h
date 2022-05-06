@@ -29,13 +29,7 @@
 #ifndef __CUFILTERS_H__
 #define __CUFILTERS_H__
 
-#define ID_LB_RESIZE_RES     40001
-#define ID_CX_RESIZE_RES     40002
-#define ID_BT_RESIZE_RES_ADD 40003
-#define ID_BT_RESIZE_RES_DEL 40004
-#define ID_CX_RESIZE_ALGO    40005
-
-#define ID_TX_RESIZE_RES_ADD    40020
+#define ID_TX_RESIZE_RES_ADD 40020
 
 BOOL CALLBACK add_res_dlg(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam);
 

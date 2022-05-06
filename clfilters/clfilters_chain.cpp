@@ -28,6 +28,7 @@
 
 #include "clfilters_version.h"
 #include "clfilters_chain.h"
+#include "rgy_filter_colorspace.h"
 #include "rgy_filter_nnedi.h"
 #include "rgy_filter_denoise_knn.h"
 #include "rgy_filter_denoise_pmd.h"
@@ -56,17 +57,18 @@ clFilterChainParam::clFilterChainParam() :
 }
 
 std::vector<clFilter> clFilterChainParam::getFilterChain(const bool resizeRequired) const {
-    std::vector<clFilter> filters;
-    if (nnedi.enable)     filters.push_back(clFilter::NNEDI);
-    if (knn.enable)       filters.push_back(clFilter::KNN);
-    if (pmd.enable)       filters.push_back(clFilter::PMD);
-    if (smooth.enable)    filters.push_back(clFilter::SMOOTH);
-    if (resizeRequired)   filters.push_back(clFilter::RESIZE);
-    if (unsharp.enable)   filters.push_back(clFilter::UNSHARP);
-    if (edgelevel.enable) filters.push_back(clFilter::EDGELEVEL);
-    if (warpsharp.enable) filters.push_back(clFilter::WARPSHARP);
-    if (tweak.enable)     filters.push_back(clFilter::TWEAK);
-    if (deband.enable)    filters.push_back(clFilter::DEBAND);
+    std::vector<clFilter>  filters;
+    if (colorspace.enable) filters.push_back(clFilter::COLORSPACE);
+    if (nnedi.enable)      filters.push_back(clFilter::NNEDI);
+    if (knn.enable)        filters.push_back(clFilter::KNN);
+    if (pmd.enable)        filters.push_back(clFilter::PMD);
+    if (smooth.enable)     filters.push_back(clFilter::SMOOTH);
+    if (resizeRequired)    filters.push_back(clFilter::RESIZE);
+    if (unsharp.enable)    filters.push_back(clFilter::UNSHARP);
+    if (edgelevel.enable)  filters.push_back(clFilter::EDGELEVEL);
+    if (warpsharp.enable)  filters.push_back(clFilter::WARPSHARP);
+    if (tweak.enable)      filters.push_back(clFilter::TWEAK);
+    if (deband.enable)     filters.push_back(clFilter::DEBAND);
     return filters;
 }
 
@@ -216,6 +218,26 @@ RGY_ERR clFilterChain::allocateBuffer(const RGYFrameInfo *pInputFrame, const RGY
 }
 
 RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RGYFrameInfo& inputFrame, const clFilter filterType, const int resizeWidth, const int resizeHeight) {
+    // colorspace
+    if (filterType == clFilter::COLORSPACE) {
+        if (!filter) {
+            //フィルタチェーンに追加
+            filter.reset(new RGYFilterColorspace(m_cl));
+        }
+        std::shared_ptr<RGYFilterParamColorspace> param(new RGYFilterParamColorspace());
+        param->colorspace = m_prm.colorspace;
+        param->hModule = m_prm.hModule;
+        param->frameIn = inputFrame;
+        param->frameOut = inputFrame;
+        param->bOutOverwrite = false;
+        auto sts = filter->init(param, nullptr);
+        if (sts != RGY_ERR_NONE) {
+            PrintMes(RGY_LOG_ERROR, _T("failed to init colorspace.\n"));
+            return sts;
+        }
+        //入力フレーム情報を更新
+        inputFrame = param->frameOut;
+    }
     // nnedi
     if (filterType == clFilter::NNEDI) {
         if (!filter) {
