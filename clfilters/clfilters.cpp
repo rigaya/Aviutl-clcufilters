@@ -1142,7 +1142,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     RECT rc, dialog_rc;
     GetWindowRect(hwnd, &dialog_rc);
 
-    const int columns = 4;
+    const int columns = 2;
     const int col_width = dialog_rc.right - dialog_rc.left;
 
     //clfilterのチェックボックス
@@ -1221,6 +1221,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     set_combo_item(cx_resize_algo, "lanczos4", RGY_VPP_RESIZE_LANCZOS4);
     set_combo_item(cx_resize_algo, "bilinear", RGY_VPP_RESIZE_BILINEAR);
 
+    int y_pos_max = 0;
     // --- 最初の列 -----------------------------------------
     int col = 0;
     int y_pos = cb_resize_y + track_bar_delta_y * 3 + 8;
@@ -1239,11 +1240,6 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     add_combobox(cx_nnedi_errortype, ID_CX_NNEDI_ERRORTYPE, lb_nnedi_errortype, ID_LB_NNEDI_ERRORTYPE, "errortype", col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_error_type);
     y_pos += track_bar_delta_y / 2;
 
-    int y_pos_max = y_pos;
-    // --- 次の列 -----------------------------------------
-
-    col = 1;
-    y_pos = cb_resize_y;
     //knn
     move_group(y_pos, col, col_width, CLFILTER_CHECK_KNN_ENABLE, CLFILTER_CHECK_KNN_MAX, CLFILTER_TRACK_KNN_FIRST, CLFILTER_TRACK_KNN_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
     add_combobox(cx_knn_radius, ID_CX_KNN_RADIUS, lb_knn_radius, ID_LB_KNN_RADIUS, "適用半径", col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_raduis);
@@ -1258,7 +1254,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     y_pos_max = std::max(y_pos_max, y_pos);
     // --- 次の列 -----------------------------------------
 
-    col = 2;
+    col = 1;
     y_pos = cb_resize_y;
     //unsharp
     move_group(y_pos, col, col_width, CLFILTER_CHECK_UNSHARP_ENABLE, CLFILTER_CHECK_UNSHARP_MAX, CLFILTER_TRACK_UNSHARP_FIRST, CLFILTER_TRACK_UNSHARP_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
@@ -1271,11 +1267,6 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     move_group(y_pos, col, col_width, CLFILTER_CHECK_WARPSHARP_ENABLE, CLFILTER_CHECK_WARPSHARP_MAX, CLFILTER_TRACK_WARPSHARP_FIRST, CLFILTER_TRACK_WARPSHARP_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
     add_combobox(cx_warpsharp_blur, ID_CX_WARPSHARP_BLUR, lb_warpsharp_blur, ID_LB_WARPSHARP_BLUR, "ブラー", col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_1_to_10);
 
-    y_pos_max = std::max(y_pos_max, y_pos);
-    // --- 次の列 -----------------------------------------
-
-    col = 3;
-    y_pos = cb_resize_y;
     //バンディング
     move_group(y_pos, col, col_width, CLFILTER_CHECK_DEBAND_ENABLE, CLFILTER_CHECK_DEBAND_MAX, CLFILTER_TRACK_DEBAND_FIRST, CLFILTER_TRACK_DEBAND_MAX, track_bar_delta_y, ADD_CX_AFTER_TRACK, 1, cx_y_pos, checkbox_idx, dialog_rc);
     add_combobox(cx_deband_sample, ID_CX_DEBAND_SAMPLE, lb_deband_sample, ID_LB_DEBAND_SAMPLE, "sample", col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_deband);
