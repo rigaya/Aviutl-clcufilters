@@ -73,12 +73,6 @@ std::vector<clFilter> clFilterChainParam::getFilterChain(const bool resizeRequir
     return filters;
 }
 
-bool clFilterChainParam::filtersEqual(const clFilterChainParam& obj, const bool resizeRequired) const {
-    const auto current = this->getFilterChain(resizeRequired);
-    const auto objchain = obj.getFilterChain(resizeRequired);
-    return current.size() == objchain.size() && std::equal(current.cbegin(), current.cend(), objchain.cbegin());
-}
-
 clFilterChain::clFilterChain() :
     m_log(),
     m_prm(),
@@ -435,20 +429,43 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
     return RGY_ERR_NONE;
 }
 
-RGY_ERR clFilterChain::filterChainCreate(const RGYFrameInfo *pInputFrame, const RGYFrameInfo *pOutputFrame, const bool reset) {
+bool clFilterChain::filterChainEqual(const std::vector<clFilter>& target) const {
+    if (m_filters.size() != target.size()) {
+        return false;
+    }
+    for (size_t ifilter = 0; ifilter < m_filters.size(); ifilter++) {
+        if (m_filters[ifilter].first != target[ifilter]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+RGY_ERR clFilterChain::filterChainCreate(const RGYFrameInfo *pInputFrame, const RGYFrameInfo *pOutputFrame) {
     RGYFrameInfo inputFrame = *pInputFrame;
     for (size_t i = 0; i < _countof(inputFrame.ptr); i++) {
         inputFrame.ptr[i] = nullptr;
     }
 
     const auto filterChain = m_prm.getFilterChain(resizeRequired(pOutputFrame, pInputFrame));
-    if (reset || m_filters.size() != filterChain.size()) {
+    if (!filterChainEqual(filterChain)) {
+        decltype(m_filters) newFilters;
+        newFilters.reserve(filterChain.size());
+        for (const auto filterType : filterChain) {
+            auto filter = std::make_pair(filterType, std::unique_ptr<RGYFilter>());
+            for (auto& oldFilter : m_filters) {
+                if (oldFilter.first == filterType && oldFilter.second) {
+                    filter.second = std::move(oldFilter.second);
+                    break;
+                }
+            }
+            newFilters.push_back(std::move(filter));
+        }
         m_filters.clear();
-        m_filters.resize(filterChain.size());
+        m_filters = std::move(newFilters);
     }
-
-    for (size_t ifilter = 0; ifilter < m_filters.size(); ifilter++) {
-        auto err = configureOneFilter(m_filters[ifilter], inputFrame, filterChain[ifilter], pOutputFrame->width, pOutputFrame->height);
+    for (auto& fitler : m_filters) {
+        auto err = configureOneFilter(fitler.second, inputFrame, fitler.first, pOutputFrame->width, pOutputFrame->height);
         if (err != RGY_ERR_NONE) {
             return err;
         }
@@ -470,8 +487,6 @@ RGY_ERR clFilterChain::proc(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInp
     }
     m_cl->setModuleHandle(prm.hModule);
     m_log->setLogLevel(prm.log_level, RGY_LOGT_ALL);
-
-    const bool recreate_filter_chain = !prm.filtersEqual(m_prm, resizeRequired(pOutputFrame, pInputFrame));
     m_prm = prm;
     if (m_prm.getFilterChain(resizeRequired(pOutputFrame, pInputFrame)).size() == 0) {
         memcpy(pOutputFrame->ptr[0], pInputFrame->ptr[0], pInputFrame->pitch[0] * pInputFrame->height);
@@ -480,7 +495,7 @@ RGY_ERR clFilterChain::proc(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInp
     //フィルタチェーン更新
     auto frameDevIn  = m_dev[0].get();
     auto frameDevOut = m_dev[1].get();
-    if ((err = filterChainCreate(&frameDevIn->frame, &frameDevOut->frame, recreate_filter_chain)) != RGY_ERR_NONE) {
+    if ((err = filterChainCreate(&frameDevIn->frame, &frameDevOut->frame)) != RGY_ERR_NONE) {
         PrintMes(RGY_LOG_ERROR, _T("failed to update filter chain.\n"));
         return err;
     }
@@ -509,15 +524,15 @@ RGY_ERR clFilterChain::proc(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInp
 
     //通常は、最後のひとつ前のフィルタまで実行する
     //上書き型のフィルタが最後の場合は、そのフィルタまで実行する(最後はコピーが必須)
-    const auto filterfin = (m_filters.back()->GetFilterParam()->bOutOverwrite) ? m_filters.size() : m_filters.size() - 1;
+    const auto filterfin = (m_filters.back().second->GetFilterParam()->bOutOverwrite) ? m_filters.size() : m_filters.size() - 1;
     //フィルタチェーン実行
     auto frameInfo = frameDevIn->frame;
     for (size_t ifilter = 0; ifilter < filterfin; ifilter++) {
         int nOutFrames = 0;
         RGYFrameInfo *outInfo[16] = { 0 };
-        err = m_filters[ifilter]->filter(&frameInfo, (RGYFrameInfo **)&outInfo, &nOutFrames);
+        err = m_filters[ifilter].second->filter(&frameInfo, (RGYFrameInfo **)&outInfo, &nOutFrames);
         if (err != RGY_ERR_NONE) {
-            PrintMes(RGY_LOG_ERROR, _T("Error while running filter \"%s\": %s.\n"), m_filters[ifilter]->name().c_str(), get_err_mes(err));
+            PrintMes(RGY_LOG_ERROR, _T("Error while running filter \"%s\": %s.\n"), m_filters[ifilter].second->name().c_str(), get_err_mes(err));
             return err;
         }
         if (nOutFrames > 1) {
@@ -527,7 +542,7 @@ RGY_ERR clFilterChain::proc(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInp
         frameInfo = *(outInfo[0]);
     }
     //最後のフィルタ
-    if (m_filters.back()->GetFilterParam()->bOutOverwrite) {
+    if (m_filters.back().second->GetFilterParam()->bOutOverwrite) {
         if ((err = m_cl->copyFrame(&frameDevOut->frame, &frameInfo)) != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("Error in frame copy: %s.\n"), get_err_mes(err));
             return err;
@@ -537,9 +552,9 @@ RGY_ERR clFilterChain::proc(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInp
         int nOutFrames = 0;
         RGYFrameInfo *outInfo[16] = { 0 };
         outInfo[0] = &frameDevOut->frame;
-        err = lastFilter->filter(&frameInfo, (RGYFrameInfo **)&outInfo, &nOutFrames);
+        err = lastFilter.second->filter(&frameInfo, (RGYFrameInfo **)&outInfo, &nOutFrames);
         if (err != RGY_ERR_NONE) {
-            PrintMes(RGY_LOG_ERROR, _T("Error while running filter \"%s\": %s.\n"), lastFilter->name().c_str(), get_err_mes(err));
+            PrintMes(RGY_LOG_ERROR, _T("Error while running filter \"%s\": %s.\n"), lastFilter.second->name().c_str(), get_err_mes(err));
             return err;
         }
     }

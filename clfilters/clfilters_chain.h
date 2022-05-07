@@ -70,7 +70,6 @@ struct clFilterChainParam {
 
     clFilterChainParam();
     std::vector<clFilter> getFilterChain(const bool resizeRequired) const;
-    bool filtersEqual(const clFilterChainParam& obj, const bool resizeRequired) const;
 };
 
 class clFilterChain {
@@ -88,7 +87,8 @@ private:
     bool resizeRequired(const RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame) const;
     RGY_ERR initOpenCL(const int platformID, const int deviceID, const cl_device_type device_type);
     RGY_ERR allocateBuffer(const RGYFrameInfo *pInputFrame, const RGYFrameInfo *pOutputFrame);
-    RGY_ERR filterChainCreate(const RGYFrameInfo *pInputFrame, const RGYFrameInfo *pOutputFrame, const bool reset);
+    bool filterChainEqual(const std::vector<clFilter>& objchain) const;
+    RGY_ERR filterChainCreate(const RGYFrameInfo *pInputFrame, const RGYFrameInfo *pOutputFrame);
     RGY_ERR configureOneFilter(std::unique_ptr<RGYFilter>& filter, RGYFrameInfo& inputFrame, const clFilter filterType, const int resizeWidth, const int resizeHeight);
     void PrintMes(int logLevel, const TCHAR *format, ...);
 
@@ -99,7 +99,7 @@ private:
     int m_deviceID;
     std::string m_deviceName;
     std::array<std::unique_ptr<RGYCLFrame>, 2> m_dev;
-    std::vector<std::unique_ptr<RGYFilter>> m_filters;
+    std::vector<std::pair<clFilter, std::unique_ptr<RGYFilter>>> m_filters;
     std::unique_ptr<RGYConvertCSP> m_convert_yc48_to_yuv444_16;
     std::unique_ptr<RGYConvertCSP> m_convert_yuv444_16_to_yc48;
 };
