@@ -66,6 +66,7 @@ struct clFilterChainParam {
     VppWarpsharp warpsharp;
     VppDeband deband;
     VppTweak tweak;
+    RGYLogLevel log_level;
 
     clFilterChainParam();
     std::vector<clFilter> getFilterChain(const bool resizeRequired) const;
@@ -77,7 +78,7 @@ public:
     clFilterChain();
     ~clFilterChain();
 
-    RGY_ERR init(const int platformID, const int deviceID, const cl_device_type device_type);
+    RGY_ERR init(const int platformID, const int deviceID, const cl_device_type device_type, const RGYLogLevel log_level);
     std::string getDeviceName() const;
     RGY_ERR proc(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame, const clFilterChainParam& prm);
     int platformID() const { return m_platformID; }

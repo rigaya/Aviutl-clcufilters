@@ -52,7 +52,8 @@ clFilterChainParam::clFilterChainParam() :
     edgelevel(),
     warpsharp(),
     tweak(),
-    deband() {
+    deband(),
+    log_level(RGY_LOG_QUIET) {
 
 }
 
@@ -126,8 +127,8 @@ void clFilterChain::PrintMes(int logLevel, const TCHAR *format, ...) {
     MessageBoxA(NULL, buffer.data(), AUF_FULL_NAME, MB_OK | MB_ICONEXCLAMATION);
 }
 
-RGY_ERR clFilterChain::init(const int platformID, const int deviceID, const cl_device_type device_type) {
-    m_log = std::make_shared<RGYLog>("clfiters.auf.log", RGY_LOG_DEBUG);
+RGY_ERR clFilterChain::init(const int platformID, const int deviceID, const cl_device_type device_type, const RGYLogLevel log_level) {
+    m_log = std::make_shared<RGYLog>("clfiters.auf.log", log_level);
 
     if (auto err = initOpenCL(platformID, deviceID, device_type); err != RGY_ERR_NONE) {
         return err;
@@ -180,7 +181,6 @@ RGY_ERR clFilterChain::initOpenCL(const int platformID, const int deviceID, cons
         PrintMes(RGY_LOG_ERROR, _T("Failed to create OpenCL context.\n"));
         return RGY_ERR_UNKNOWN;
     }
-    m_cl->setModuleHandle(GetModuleHandleA(AUF_NAME));
     const auto devInfo = platform->dev(0).info();
     m_deviceName = devInfo.name;
     m_platformID = platformID;
@@ -199,16 +199,14 @@ bool clFilterChain::resizeRequired(const RGYFrameInfo *pOutputFrame, const RGYFr
 
 RGY_ERR clFilterChain::allocateBuffer(const RGYFrameInfo *pInputFrame, const RGYFrameInfo *pOutputFrame) {
     if (!m_dev[0]
-        || pInputFrame->width  != m_dev[0]->frame.width
-        || pInputFrame->height != m_dev[0]->frame.height) {
+        || cmpFrameInfoCspResolution(pInputFrame, &m_dev[0]->frame)) {
         m_dev[0] = m_cl->createFrameBuffer(pInputFrame->width, pInputFrame->height, RGY_CSP_YUV444_16, 16, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR);
         if (!m_dev[0]) {
             return RGY_ERR_NULL_PTR;
         }
     }
     if (!m_dev[1]
-        || pOutputFrame->width  != m_dev[1]->frame.width
-        || pOutputFrame->height != m_dev[1]->frame.height) {
+        || cmpFrameInfoCspResolution(pOutputFrame, &m_dev[1]->frame)) {
         m_dev[1] = m_cl->createFrameBuffer(pOutputFrame->width, pOutputFrame->height, RGY_CSP_YUV444_16, 16, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR);
         if (!m_dev[1]) {
             return RGY_ERR_NULL_PTR;
@@ -470,6 +468,8 @@ RGY_ERR clFilterChain::proc(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInp
         close();
         return err;
     }
+    m_cl->setModuleHandle(prm.hModule);
+    m_log->setLogLevel(prm.log_level, RGY_LOGT_ALL);
 
     const bool recreate_filter_chain = !prm.filtersEqual(m_prm, resizeRequired(pOutputFrame, pInputFrame));
     m_prm = prm;

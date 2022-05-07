@@ -56,6 +56,9 @@ enum {
     ID_LB_OPENCL_DEVICE,
     ID_CX_OPENCL_DEVICE,
 
+    ID_LB_LOG_LEVEL,
+    ID_CX_LOG_LEVEL,
+
     ID_LB_COLORSPACE_COLORMATRIX_FROM_TO,
     ID_CX_COLORSPACE_COLORMATRIX_FROM,
     ID_CX_COLORSPACE_COLORMATRIX_TO,
@@ -111,6 +114,7 @@ union CL_PLATFORM_DEVICE {
 
 struct CLFILTER_EXDATA {
     CL_PLATFORM_DEVICE cl_dev_id;
+    RGYLogLevel log_level;
 
     int resize_idx;
     int resize_algo;
@@ -132,7 +136,7 @@ struct CLFILTER_EXDATA {
     int warpsharp_blur;
     int deband_sample;
 
-    char reserved[904];
+    char reserved[900];
 };
 # pragma pack()
 static const size_t exdatasize = sizeof(CLFILTER_EXDATA);
@@ -145,6 +149,7 @@ static std::vector<std::shared_ptr<RGYOpenCLPlatform>> clplatforms;
 
 static void cl_exdata_set_default() {
     cl_exdata.cl_dev_id.i = 0;
+    cl_exdata.log_level = RGY_LOG_QUIET;
 
     cl_exdata.resize_idx = 0;
     cl_exdata.resize_algo = RGY_VPP_RESIZE_SPLINE36;
@@ -333,7 +338,7 @@ const TCHAR *check_name[] = {
     "ノイズ除去 (smooth)",
     "unsharp",
     "エッジレベル調整",
-    "warpsharp", "高品質マスク", "色差マスク",
+    "warpsharp", "マスクサイズ off:13x13, on:5x5", "色差マスク",
     "色調補正",
     "バンディング低減", "ブラー処理を先に", "毎フレーム乱数を生成",
     "nnedi"
@@ -486,6 +491,8 @@ static HWND lb_proc_mode;
 static std::vector<std::pair<int, int>> resize_res;
 static HWND lb_opencl_device;
 static HWND cx_opencl_device;
+static HWND lb_log_level;
+static HWND cx_log_level;
 static HWND cx_resize_res;
 static HWND bt_resize_res_add;
 static HWND bt_resize_res_del;
@@ -535,6 +542,8 @@ static HWND cx_deband_sample;
 static void set_cl_exdata(const HWND hwnd, const int value) {
     if (hwnd == cx_opencl_device) {
         cl_exdata.cl_dev_id.i = value;
+    } else if (hwnd == cx_log_level) {
+        cl_exdata.log_level = (RGYLogLevel)value;
     } else if (hwnd == cx_resize_res) {
         cl_exdata.resize_idx = value;
     } else if (hwnd == cx_resize_algo) {
@@ -724,6 +733,7 @@ static void update_cx(FILTER *fp) {
         cl_exdata_set_default();
     }
     select_combo_item(cx_opencl_device,               cl_exdata.cl_dev_id.i);
+    select_combo_item(cx_log_level,                   cl_exdata.log_level);
     select_combo_item(cx_resize_res,                  cl_exdata.resize_idx);
     select_combo_item(cx_resize_algo,                 cl_exdata.resize_algo);
     select_combo_item(cx_colorspace_colormatrix_from, cl_exdata.csp_from.matrix);
@@ -780,6 +790,15 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
             switch (HIWORD(wparam)) {
             case CBN_SELCHANGE: // 選択変更
                 change_cx_param(cx_opencl_device);
+                return TRUE; //TRUEを返すと画像処理が更新される
+            default:
+                break;
+            }
+            break;
+        case ID_CX_LOG_LEVEL: // コンボボックス
+            switch (HIWORD(wparam)) {
+            case CBN_SELCHANGE: // 選択変更
+                change_cx_param(cx_log_level);
                 return TRUE; //TRUEを返すと画像処理が更新される
             default:
                 break;
@@ -1180,15 +1199,28 @@ void init_dialog(HWND hwnd, FILTER *fp) {
         }
     }
 
+    //log_level
+    const int cb_log_level_y = cb_opencl_platform_y+24;
+    lb_log_level = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, 8, cb_log_level_y, 60, 24, hwnd, (HMENU)ID_LB_LOG_LEVEL, hinst, NULL);
+    SendMessage(lb_log_level, WM_SETFONT, (WPARAM)b_font, 0);
+    SendMessage(lb_log_level, WM_SETTEXT, 0, (LPARAM)"ログ出力");
+
+    cx_log_level = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 68, cb_log_level_y, 205, 100, hwnd, (HMENU)ID_CX_LOG_LEVEL, hinst, NULL);
+    SendMessage(cx_log_level, WM_SETFONT, (WPARAM)b_font, 0);
+
+    for (const auto& log_level : RGY_LOG_LEVEL_STR) {
+        set_combo_item(cx_log_level, log_level.second, log_level.first);
+    }
+
     //checkboxの移動
     const int checkbox_idx = 1+5*CLFILTER_TRACK_MAX;
 #if ENABLE_FIELD
     //フィールド処理
-    const int cb_filed_y = cb_opencl_platform_y + 24;
+    const int cb_filed_y = cb_log_level_y + 24;
     GetWindowRect(child_hwnd[checkbox_idx + CLFILTER_CHECK_FIELD], &rc);
     SetWindowPos(child_hwnd[checkbox_idx + CLFILTER_CHECK_FIELD], HWND_TOP, rc.left - dialog_rc.left, cb_filed_y, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
 #else
-    const int cb_filed_y = cb_opencl_platform_y;
+    const int cb_filed_y = cb_log_level_y;
 #endif //#if ENABLE_FIELD
 
     //リサイズ
@@ -1305,7 +1337,7 @@ BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
         clfilter = std::make_unique<clFilterChain>();
         std::string mes = AUF_FULL_NAME;
         mes += ": ";
-        if (clfilter->init(cl_exdata.cl_dev_id.s.platform, cl_exdata.cl_dev_id.s.device, CL_DEVICE_TYPE_GPU)) {
+        if (clfilter->init(cl_exdata.cl_dev_id.s.platform, cl_exdata.cl_dev_id.s.device, CL_DEVICE_TYPE_GPU, cl_exdata.log_level)) {
             mes += "フィルタは無効です: OpenCLを使用できません。";
             SendMessage(fp->hwnd, WM_SETTEXT, 0, (LPARAM)mes.c_str());
             return FALSE;
@@ -1317,6 +1349,7 @@ BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
     clFilterChainParam prm;
     //dllのモジュールハンドル
     prm.hModule = fp->dll_hinst;
+    prm.log_level = cl_exdata.log_level;
 
     //リサイズ
     prm.resize_algo        = (RGY_VPP_RESIZE_ALGO)cl_exdata.resize_algo;
