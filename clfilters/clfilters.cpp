@@ -1355,24 +1355,16 @@ BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
     prm.resize_algo        = (RGY_VPP_RESIZE_ALGO)cl_exdata.resize_algo;
 
     //colorspace
-    prm.colorspace.enable  = fp->check[CLFILTER_CHECK_COLORSPACE_ENABLE] != 0;
     ColorspaceConv conv;
-    if (fp->check[CLFILTER_CHECK_COLORSPACE_MATRIX_ENABLE]) {
-        conv.from.matrix   = cl_exdata.csp_from.matrix;
-        conv.to.matrix     = cl_exdata.csp_to.matrix;
-    }
-    if (fp->check[CLFILTER_CHECK_COLORSPACE_COLORPRIM_ENABLE]) {
-        conv.from.colorprim = cl_exdata.csp_from.colorprim;
-        conv.to.colorprim   = cl_exdata.csp_to.colorprim;
-    }
-    if (fp->check[CLFILTER_CHECK_COLORSPACE_TRANSFER_ENABLE]) {
-        conv.from.transfer = cl_exdata.csp_from.transfer;
-        conv.to.transfer   = cl_exdata.csp_to.transfer;
-    }
-    if (fp->check[CLFILTER_CHECK_COLORSPACE_RANGE_ENABLE]) {
-        conv.from.colorrange = cl_exdata.csp_from.colorrange;
-        conv.to.colorrange   = cl_exdata.csp_to.colorrange;
-    }
+    conv.from.matrix     = cl_exdata.csp_from.matrix;
+    conv.from.colorprim  = cl_exdata.csp_from.colorprim;
+    conv.from.transfer   = cl_exdata.csp_from.transfer;
+    conv.from.colorrange = cl_exdata.csp_from.colorrange;
+    conv.to.matrix       = (fp->check[CLFILTER_CHECK_COLORSPACE_MATRIX_ENABLE])    ? cl_exdata.csp_to.matrix     : cl_exdata.csp_from.matrix;
+    conv.to.colorprim    = (fp->check[CLFILTER_CHECK_COLORSPACE_COLORPRIM_ENABLE]) ? cl_exdata.csp_to.colorprim  : cl_exdata.csp_from.colorprim;
+    conv.to.transfer     = (fp->check[CLFILTER_CHECK_COLORSPACE_TRANSFER_ENABLE])  ? cl_exdata.csp_to.transfer   : cl_exdata.csp_from.transfer;
+    conv.to.colorrange   = (fp->check[CLFILTER_CHECK_COLORSPACE_RANGE_ENABLE])     ? cl_exdata.csp_to.colorrange : cl_exdata.csp_from.colorrange;
+    prm.colorspace.enable = fp->check[CLFILTER_CHECK_COLORSPACE_ENABLE] != 0;
     prm.colorspace.convs.push_back(conv);
     prm.colorspace.hdr2sdr.tonemap         = cl_exdata.hdr2sdr;
     prm.colorspace.hdr2sdr.hdr_source_peak = (double)fp->track[CLFILTER_TRACK_COLORSPACE_SOURCE_PEAK];
