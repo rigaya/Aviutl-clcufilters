@@ -608,7 +608,7 @@ RGY_ERR clFilterChain::getOutFrame(RGYFrameInfo *pOutputFrame) {
         PrintMes(RGY_LOG_ERROR, _T("failed to unmap output buffer: %s.\n"), get_err_mes(err));
         return err;
     }
-    frameDevOut->mapEvent().wait();
+    frameDevOut->resetMappedFrame();
     return RGY_ERR_NONE;
 }
 
