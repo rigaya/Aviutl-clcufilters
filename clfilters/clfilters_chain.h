@@ -69,7 +69,29 @@ struct clFilterChainParam {
     RGYLogLevel log_level;
 
     clFilterChainParam();
+    bool operator==(const clFilterChainParam &x) const;
+    bool operator!=(const clFilterChainParam &x) const;
     std::vector<clFilter> getFilterChain(const bool resizeRequired) const;
+};
+
+class clFilterFrameBuffer {
+public:
+    static const int bufSize = 4;
+    clFilterFrameBuffer(std::shared_ptr<RGYOpenCLContext> cl);
+    ~clFilterFrameBuffer();
+
+    void freeFrames();
+    void resetCachedFrames();
+    RGYCLFrame *get_in(const int width, const int height);
+    RGYCLFrame *get_out();
+    RGYCLFrame *get_out(const int frameID);
+    void in_to_next();
+    void out_to_next();
+private:
+    std::shared_ptr<RGYOpenCLContext> m_cl;
+    std::array<std::unique_ptr<RGYCLFrame>, bufSize> m_frame;
+    int m_in;
+    int m_out;
 };
 
 class clFilterChain {
@@ -78,17 +100,22 @@ public:
     ~clFilterChain();
 
     RGY_ERR init(const int platformID, const int deviceID, const cl_device_type device_type, const RGYLogLevel log_level);
-    std::string getDeviceName() const;
-    RGY_ERR proc(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame, const clFilterChainParam& prm);
+
+    void resetPipeline();
+    RGY_ERR sendInFrame(const RGYFrameInfo *pInputFrame);
+    RGY_ERR proc(const int frameID, const int outWidth, const int outHeight, const clFilterChainParam& prm);
+    RGY_ERR getOutFrame(RGYFrameInfo *pOutputFrame);
+    int getNextOutFrameId() const;
+
+    std::string getDeviceName() const { return m_deviceName; }
     int platformID() const { return m_platformID; }
     int deviceID() const { return m_deviceID; }
+    const clFilterChainParam& getPrm() const { return m_prm; }
 private:
     void close();
-    bool resizeRequired(const RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame) const;
     RGY_ERR initOpenCL(const int platformID, const int deviceID, const cl_device_type device_type);
-    RGY_ERR allocateBuffer(const RGYFrameInfo *pInputFrame, const RGYFrameInfo *pOutputFrame);
     bool filterChainEqual(const std::vector<clFilter>& objchain) const;
-    RGY_ERR filterChainCreate(const RGYFrameInfo *pInputFrame, const RGYFrameInfo *pOutputFrame);
+    RGY_ERR filterChainCreate(const RGYFrameInfo *pInputFrame, const int outWidth, const int outHeight);
     RGY_ERR configureOneFilter(std::unique_ptr<RGYFilter>& filter, RGYFrameInfo& inputFrame, const clFilter filterType, const int resizeWidth, const int resizeHeight);
     void PrintMes(int logLevel, const TCHAR *format, ...);
 
@@ -98,7 +125,9 @@ private:
     int m_platformID;
     int m_deviceID;
     std::string m_deviceName;
-    std::array<std::unique_ptr<RGYCLFrame>, 2> m_dev;
+    std::unique_ptr<clFilterFrameBuffer> m_frameIn;
+    std::unique_ptr<clFilterFrameBuffer> m_frameOut;
+    RGYOpenCLQueue m_queueSendIn;
     std::vector<std::pair<clFilter, std::unique_ptr<RGYFilter>>> m_filters;
     std::unique_ptr<RGYConvertCSP> m_convert_yc48_to_yuv444_16;
     std::unique_ptr<RGYConvertCSP> m_convert_yuv444_16_to_yc48;

@@ -145,6 +145,7 @@ static_assert(exdatasize == 1024);
 static CLFILTER_EXDATA cl_exdata;
 static std::unique_ptr<clFilterChain> clfilter;
 static std::vector<std::shared_ptr<RGYOpenCLPlatform>> clplatforms;
+static BOOL is_saving;
 
 
 static void cl_exdata_set_default() {
@@ -1330,22 +1331,7 @@ void multi_thread_func(int thread_id, int thread_num, void *param1, void *param2
 
 }
 
-BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
-    if (!clfilter
-        || clfilter->platformID() != cl_exdata.cl_dev_id.s.platform
-        || clfilter->deviceID() != cl_exdata.cl_dev_id.s.device) {
-        clfilter = std::make_unique<clFilterChain>();
-        std::string mes = AUF_FULL_NAME;
-        mes += ": ";
-        if (clfilter->init(cl_exdata.cl_dev_id.s.platform, cl_exdata.cl_dev_id.s.device, CL_DEVICE_TYPE_GPU, cl_exdata.log_level)) {
-            mes += "フィルタは無効です: OpenCLを使用できません。";
-            SendMessage(fp->hwnd, WM_SETTEXT, 0, (LPARAM)mes.c_str());
-            return FALSE;
-        }
-        const auto dev_name = clfilter->getDeviceName();
-        mes += (dev_name.length() == 0) ? "OpenCL 有効" : dev_name;
-        SendMessage(fp->hwnd, WM_SETTEXT, 0, (LPARAM)mes.c_str());
-    }
+static clFilterChainParam func_proc_get_param(const FILTER *fp) {
     clFilterChainParam prm;
     //dllのモジュールハンドル
     prm.hModule = fp->dll_hinst;
@@ -1445,10 +1431,14 @@ BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
     prm.nnedi.errortype     = cl_exdata.nnedi_errortype;
     prm.nnedi.precision     = VPP_FP_PRECISION_AUTO;
 
+    return prm;
+}
+
+static RGYFrameInfo func_proc_set_frame_info(const FILTER *fp, const FILTER_PROC_INFO *fpip, const int iframeID, const int width, const int height, PIXEL_YC *frame) {
     RGYFrameInfo in;
     //入力フレーム情報
-    in.width      = fpip->w;
-    in.height     = fpip->h;
+    in.width      = width;
+    in.height     = height;
     in.pitch[0]   = fpip->max_w * 6;
     in.csp        = RGY_CSP_YC48;
 #if ENABLE_FIELD
@@ -1456,21 +1446,94 @@ BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
 #else
     in.picstruct  = RGY_PICSTRUCT_FRAME;
 #endif //#if ENABLE_FIELD
-    in.ptr[0]     = (uint8_t *)fpip->ycp_edit;
+    in.ptr[0]     = (uint8_t *)frame;
     in.mem_type   = RGY_MEM_TYPE_CPU;
+    in.inputFrameId = iframeID;
 
-    RGYFrameInfo out = in;
-    out.ptr[0] = (uint8_t *)fpip->ycp_temp;
-    if (fp->check[CLFILTER_CHECK_RESIZE_ENABLE]) {
-        out.width  = resize_res[cl_exdata.resize_idx].first;
-        out.height = resize_res[cl_exdata.resize_idx].second;
+    return in;
+}
+
+BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
+    if (!clfilter
+        || clfilter->platformID() != cl_exdata.cl_dev_id.s.platform
+        || clfilter->deviceID()   != cl_exdata.cl_dev_id.s.device) {
+        clfilter = std::make_unique<clFilterChain>();
+        std::string mes = AUF_FULL_NAME;
+        mes += ": ";
+        if (clfilter->init(cl_exdata.cl_dev_id.s.platform, cl_exdata.cl_dev_id.s.device, CL_DEVICE_TYPE_GPU, cl_exdata.log_level)) {
+            mes += "フィルタは無効です: OpenCLを使用できません。";
+            SendMessage(fp->hwnd, WM_SETTEXT, 0, (LPARAM)mes.c_str());
+            return FALSE;
+        }
+        const auto dev_name = clfilter->getDeviceName();
+        mes += (dev_name.length() == 0) ? "OpenCL 有効" : dev_name;
+        SendMessage(fp->hwnd, WM_SETTEXT, 0, (LPARAM)mes.c_str());
+        is_saving = FALSE;
     }
 
-    if (clfilter->proc(&out, &in, prm)) {
+    const int out_width  = (fp->check[CLFILTER_CHECK_RESIZE_ENABLE]) ? resize_res[cl_exdata.resize_idx].first  : fpip->w;
+    const int out_height = (fp->check[CLFILTER_CHECK_RESIZE_ENABLE]) ? resize_res[cl_exdata.resize_idx].second : fpip->h;
+    const bool resize_required = out_width != fpip->w || out_height != fpip->h;
+    const auto prm = func_proc_get_param(fp);
+    if (prm.getFilterChain(resize_required).size() == 0) { // 適用すべきフィルタがない場合
+        return TRUE; // 何もしない
+    }
+
+    // 保存モード(is_saving=true)の時に、どのくらい先まで処理をしておくべきか?
+    static const int frameInOffset   = 2;
+    static const int frameProcOffset = 1;
+    static const int frameOutOffset  = 0;
+    static_assert(frameInOffset < clFilterFrameBuffer::bufSize);
+    const int current_frame = fpip->frame; // 現在のフレーム番号
+    const int frame_n = fpip->frame_n;
+    if (fpip->frame_n <= 0 || current_frame < 0) {
+        return TRUE; // 何もしない
+    }
+    // どのフレームから処理を開始すべきか?
+    int frameIn   = current_frame + ((is_saving) ? frameInOffset   : 0);
+    int frameProc = current_frame + ((is_saving) ? frameProcOffset : 0);
+    int frameOut  = current_frame + ((is_saving) ? frameOutOffset  : 0);
+    if (clfilter->getNextOutFrameId() != current_frame // 出てくる予定のフレームがずれていたらリセット
+        || is_saving != fp->exfunc->is_saving(fpip->editp)) { // モードが切り替わったらリセット
+        clfilter->resetPipeline();
+        frameIn   = current_frame;
+        frameProc = current_frame;
+        frameOut  = current_frame;
+        is_saving = fp->exfunc->is_saving(fpip->editp);
+    }
+    fp->exfunc->set_ycp_filtering_cache_size(fp, fpip->max_w, fpip->max_h, frameInOffset+1, NULL);
+
+    // -- フレームの転送 -----------------------------------------------------------------
+    // frameIn の終了フレーム
+    const int frameInFin = (is_saving) ? std::min(current_frame + frameInOffset, frame_n - 1) : current_frame;
+    // フレーム転送の実行
+    for (; frameIn <= frameInFin; frameIn++) {
+        int width = fpip->w, height = fpip->h;
+        PIXEL_YC *ptr = (frameIn == current_frame) ? fpip->ycp_edit : (PIXEL_YC *)fp->exfunc->get_ycp_filtering_cache_ex(fp, fpip->editp, frameIn, &width, &height);
+        const RGYFrameInfo in = func_proc_set_frame_info(fp, fpip, frameIn, width, height, ptr);
+        if (clfilter->sendInFrame(&in) != RGY_ERR_NONE) {
+            return FALSE;
+        }
+    }
+    // -- フレームの処理 -----------------------------------------------------------------
+    if (prm != clfilter->getPrm()) { // パラメータが変更されていたら、
+        frameProc = current_frame;   // 現在のフレームから処理をやり直す
+    }
+    // frameProc の終了フレーム
+    const int frameProcFin = (is_saving) ? std::min(current_frame + frameProcOffset, frame_n - 1) : current_frame;
+    // フレーム処理の実行
+    for (; frameProc <= frameProcFin; frameProc++) {
+        if (clfilter->proc(frameProc, out_width, out_height, prm) != RGY_ERR_NONE) {
+            return FALSE;
+        }
+    }
+    // -- フレームの取得 -----------------------------------------------------------------
+    RGYFrameInfo out = func_proc_set_frame_info(fp, fpip, current_frame, out_width, out_height, fpip->ycp_temp);
+    if (clfilter->getOutFrame(&out) != RGY_ERR_NONE) {
         return FALSE;
     }
     std::swap(fpip->ycp_edit, fpip->ycp_temp);
-    fpip->w = out.width;
-    fpip->h = out.height;
+    fpip->w = out_width;
+    fpip->h = out_height;
     return TRUE;
 }
