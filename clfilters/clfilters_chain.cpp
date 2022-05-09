@@ -96,9 +96,9 @@ clFilterChainParam::clFilterChainParam() :
     hModule(NULL),
     colorspace(),
     nnedi(),
+    smooth(),
     knn(),
     pmd(),
-    smooth(),
     resize_algo(RGY_VPP_RESIZE_SPLINE36),
     resize_mode(RGY_VPP_RESIZE_MODE_DEFAULT),
     unsharp(),
@@ -113,9 +113,9 @@ clFilterChainParam::clFilterChainParam() :
 bool clFilterChainParam::operator==(const clFilterChainParam &x) const {
     return hModule == x.hModule
         && colorspace == x.colorspace
+        && smooth == x.smooth
         && knn == x.knn
         && pmd == x.pmd
-        && smooth == x.smooth
         && resize_algo == x.resize_algo
         && resize_mode == x.resize_mode
         && unsharp == x.unsharp
@@ -133,9 +133,9 @@ std::vector<clFilter> clFilterChainParam::getFilterChain(const bool resizeRequir
     std::vector<clFilter>  filters;
     if (colorspace.enable) filters.push_back(clFilter::COLORSPACE);
     if (nnedi.enable)      filters.push_back(clFilter::NNEDI);
+    if (smooth.enable)     filters.push_back(clFilter::SMOOTH);
     if (knn.enable)        filters.push_back(clFilter::KNN);
     if (pmd.enable)        filters.push_back(clFilter::PMD);
-    if (smooth.enable)     filters.push_back(clFilter::SMOOTH);
     if (resizeRequired)    filters.push_back(clFilter::RESIZE);
     if (unsharp.enable)    filters.push_back(clFilter::UNSHARP);
     if (edgelevel.enable)  filters.push_back(clFilter::EDGELEVEL);

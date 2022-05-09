@@ -88,11 +88,11 @@ enum {
     ID_LB_NNEDI_ERRORTYPE,
     ID_CX_NNEDI_ERRORTYPE,
 
-    ID_LB_KNN_RADIUS,
-    ID_CX_KNN_RADIUS,
-
     ID_LB_SMOOTH_QUALITY,
     ID_CX_SMOOTH_QUALITY,
+
+    ID_LB_KNN_RADIUS,
+    ID_CX_KNN_RADIUS,
 
     ID_LB_UNSHARP_RADIUS,
     ID_CX_UNSHARP_RADIUS,
@@ -168,14 +168,14 @@ static void cl_exdata_set_default() {
     cl_exdata.nnedi_prescreen = nnedi.pre_screen;
     cl_exdata.nnedi_errortype = nnedi.errortype;
 
+    VppSmooth smooth;
+    cl_exdata.smooth_quality = smooth.quality;
+
     VppKnn knn;
     cl_exdata.knn_radius = knn.radius;
 
     VppPmd pmd;
     cl_exdata.pmd_apply_count = pmd.applyCount;
-
-    VppSmooth smooth;
-    cl_exdata.smooth_quality = smooth.quality;
 
     VppUnsharp unsharp;
     cl_exdata.unsharp_radius = unsharp.radius;
@@ -198,9 +198,9 @@ const TCHAR *track_name[] = {
 #if ENABLE_HDR2SDR_DESAT
     "脱飽和ｵﾌｾｯﾄ", "脱飽和強度", "脱飽和指数", //colorspace
 #endif //#if ENABLE_HDR2SDR_DESAT
+    "QP", // smooth
     "強さ", "ブレンド度合い", "ブレンド閾値", //knn
     "適用回数", "強さ", "閾値", //pmd
-    "QP", // smooth
     "強さ", "閾値", //unsharp
     "特性", "閾値", "黒", "白", //エッジレベル調整
     "閾値", "深度", //warpsharp
@@ -219,7 +219,11 @@ enum {
 #endif //#if ENABLE_HDR2SDR_DESAT
     CLFILTER_TRACK_COLORSPACE_MAX,
 
-    CLFILTER_TRACK_KNN_FIRST = CLFILTER_TRACK_COLORSPACE_MAX,
+    CLFILTER_TRACK_SMOOTH_FIRST = CLFILTER_TRACK_COLORSPACE_MAX,
+    CLFILTER_TRACK_SMOOTH_QP = CLFILTER_TRACK_SMOOTH_FIRST,
+    CLFILTER_TRACK_SMOOTH_MAX,
+
+    CLFILTER_TRACK_KNN_FIRST = CLFILTER_TRACK_SMOOTH_MAX,
     CLFILTER_TRACK_KNN_STRENGTH = CLFILTER_TRACK_KNN_FIRST,
     CLFILTER_TRACK_KNN_LERP,
     CLFILTER_TRACK_KNN_TH_LERP,
@@ -231,11 +235,7 @@ enum {
     CLFILTER_TRACK_PMD_THRESHOLD,
     CLFILTER_TRACK_PMD_MAX,
 
-    CLFILTER_TRACK_SMOOTH_FIRST = CLFILTER_TRACK_PMD_MAX,
-    CLFILTER_TRACK_SMOOTH_QP = CLFILTER_TRACK_SMOOTH_FIRST,
-    CLFILTER_TRACK_SMOOTH_MAX,
-
-    CLFILTER_TRACK_UNSHARP_FIRST = CLFILTER_TRACK_SMOOTH_MAX,
+    CLFILTER_TRACK_UNSHARP_FIRST = CLFILTER_TRACK_PMD_MAX,
     CLFILTER_TRACK_UNSHARP_WEIGHT = CLFILTER_TRACK_UNSHARP_FIRST,
     CLFILTER_TRACK_UNSHARP_THRESHOLD,
     CLFILTER_TRACK_UNSHARP_MAX,
@@ -280,9 +280,9 @@ int track_default[] = {
 #if ENABLE_HDR2SDR_DESAT
     18, 75, 15, //colorspace
 #endif //#if ENABLE_HDR2SDR_DESAT
+    12, //smooth
     8, 20, 80, //knn
     2, 100, 100, //pmd
-    12, //smooth
     5, 10, //unsharp
     5, 20, 0, 0, //エッジレベル調整
     128, 16, //warpsharp
@@ -295,9 +295,9 @@ int track_s[] = {
 #if ENABLE_HDR2SDR_DESAT
     0, 0, 1, //colorspace
 #endif //#if ENABLE_HDR2SDR_DESAT
+    1, //smooth
     0,0,0, //knn
     1,0,0, //pmd
-    1, //smooth
     0,0, //unsharp
     -31,0,0,0, //エッジレベル調整
     0, -128, //warpsharp
@@ -310,9 +310,9 @@ int track_e[] = {
 #if ENABLE_HDR2SDR_DESAT
     100, 100, 30, //colorspace
 #endif //#if ENABLE_HDR2SDR_DESAT
+    63, //smooth
     100, 100, 100, //knn
     10, 100, 255, //pmd
-    63, //smooth
     100, 255, //unsharp
     31, 255, 31, 31, //エッジレベル調整
     255, 128, //warpsharp
@@ -335,9 +335,9 @@ const TCHAR *check_name[] = {
 #endif //#if ENABLE_FIELD
     "リサイズ",
     "色空間変換", "matrix", "colorprim", "transfer", "range",
+    "ノイズ除去 (smooth)",
     "ノイズ除去 (knn)",
     "ノイズ除去 (pmd)",
-    "ノイズ除去 (smooth)",
     "unsharp",
     "エッジレベル調整",
     "warpsharp", "マスクサイズ off:13x13, on:5x5", "色差マスク",
@@ -360,16 +360,16 @@ enum {
     CLFILTER_CHECK_COLORSPACE_RANGE_ENABLE,
     CLFILTER_CHECK_COLORSPACE_MAX,
 
-    CLFILTER_CHECK_KNN_ENABLE = CLFILTER_CHECK_COLORSPACE_MAX,
+    CLFILTER_CHECK_SMOOTH_ENABLE = CLFILTER_CHECK_COLORSPACE_MAX,
+    CLFILTER_CHECK_SMOOTH_MAX,
+
+    CLFILTER_CHECK_KNN_ENABLE = CLFILTER_CHECK_SMOOTH_MAX,
     CLFILTER_CHECK_KNN_MAX,
 
     CLFILTER_CHECK_PMD_ENABLE = CLFILTER_CHECK_KNN_MAX,
     CLFILTER_CHECK_PMD_MAX,
 
-    CLFILTER_CHECK_SMOOTH_ENABLE = CLFILTER_CHECK_PMD_MAX,
-    CLFILTER_CHECK_SMOOTH_MAX,
-
-    CLFILTER_CHECK_UNSHARP_ENABLE = CLFILTER_CHECK_SMOOTH_MAX,
+    CLFILTER_CHECK_UNSHARP_ENABLE = CLFILTER_CHECK_PMD_MAX,
     CLFILTER_CHECK_UNSHARP_MAX,
 
     CLFILTER_CHECK_EDGELEVEL_ENABLE = CLFILTER_CHECK_UNSHARP_MAX,
@@ -401,9 +401,9 @@ int check_default[] = {
 #endif //#if ENABLE_FIELD
     0, // resize
     0, 0, 0, 0, 0, // colorspace
+    0, // smooth
     0, // knn
     0, // pmd
-    0, // smooth
     0, // unsharp
     0, // edgelevel
     0, 0, 0, // warpsharp
@@ -983,19 +983,19 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
                 break;
             }
             break;
-        case ID_CX_KNN_RADIUS: // コンボボックス
+        case ID_CX_SMOOTH_QUALITY: // コンボボックス
             switch (HIWORD(wparam)) {
             case CBN_SELCHANGE: // 選択変更
-                change_cx_param(cx_knn_radius);
+                change_cx_param(cx_smooth_quality);
                 return TRUE; //TRUEを返すと画像処理が更新される
             default:
                 break;
             }
             break;
-        case ID_CX_SMOOTH_QUALITY: // コンボボックス
+        case ID_CX_KNN_RADIUS: // コンボボックス
             switch (HIWORD(wparam)) {
             case CBN_SELCHANGE: // 選択変更
-                change_cx_param(cx_smooth_quality);
+                change_cx_param(cx_knn_radius);
                 return TRUE; //TRUEを返すと画像処理が更新される
             default:
                 break;
@@ -1299,16 +1299,16 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     add_combobox(cx_nnedi_errortype, ID_CX_NNEDI_ERRORTYPE, lb_nnedi_errortype, ID_LB_NNEDI_ERRORTYPE, "errortype", col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_error_type);
     y_pos += track_bar_delta_y / 2;
 
+    //smooth
+    move_group(y_pos, col, col_width, CLFILTER_CHECK_SMOOTH_ENABLE, CLFILTER_CHECK_SMOOTH_MAX, CLFILTER_TRACK_SMOOTH_FIRST, CLFILTER_TRACK_SMOOTH_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
+    add_combobox(cx_smooth_quality, ID_CX_SMOOTH_QUALITY, lb_smooth_quality, ID_LB_SMOOTH_QUALITY, "品質", col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_smooth_quality);
+
     //knn
     move_group(y_pos, col, col_width, CLFILTER_CHECK_KNN_ENABLE, CLFILTER_CHECK_KNN_MAX, CLFILTER_TRACK_KNN_FIRST, CLFILTER_TRACK_KNN_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
     add_combobox(cx_knn_radius, ID_CX_KNN_RADIUS, lb_knn_radius, ID_LB_KNN_RADIUS, "適用半径", col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_raduis);
 
     //pmd
     move_group(y_pos, col, col_width, CLFILTER_CHECK_PMD_ENABLE, CLFILTER_CHECK_PMD_MAX, CLFILTER_TRACK_PMD_FIRST, CLFILTER_TRACK_PMD_MAX, track_bar_delta_y, ADD_CX_FIRST, 0, cx_y_pos, checkbox_idx, dialog_rc);
-
-    //smooth
-    move_group(y_pos, col, col_width, CLFILTER_CHECK_SMOOTH_ENABLE, CLFILTER_CHECK_SMOOTH_MAX, CLFILTER_TRACK_SMOOTH_FIRST, CLFILTER_TRACK_SMOOTH_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
-    add_combobox(cx_smooth_quality, ID_CX_SMOOTH_QUALITY, lb_smooth_quality, ID_LB_SMOOTH_QUALITY, "品質", col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_smooth_quality);
 
     y_pos_max = std::max(y_pos_max, y_pos);
     // --- 次の列 -----------------------------------------
@@ -1387,6 +1387,11 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp) {
     prm.colorspace.hdr2sdr.desat_exp      = (float)fp->track[CLFILTER_TRACK_COLORSPACE_DESAT_EXP] * 0.1f;
 #endif //#if ENABLE_HDR2SDR_DESAT
 
+    //smooth
+    prm.smooth.enable     = fp->check[CLFILTER_CHECK_SMOOTH_ENABLE] != 0;
+    prm.smooth.quality    = cl_exdata.smooth_quality;
+    prm.smooth.qp         = fp->track[CLFILTER_TRACK_SMOOTH_QP];
+
     //knn
     prm.knn.enable         = fp->check[CLFILTER_CHECK_KNN_ENABLE] != 0;
     prm.knn.radius         = cl_exdata.knn_radius;
@@ -1399,11 +1404,6 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp) {
     prm.pmd.applyCount     = cl_exdata.pmd_apply_count;
     prm.pmd.strength       = (float)fp->track[CLFILTER_TRACK_PMD_STRENGTH];
     prm.pmd.threshold      = (float)fp->track[CLFILTER_TRACK_PMD_THRESHOLD];
-
-    //smooth
-    prm.smooth.enable     = fp->check[CLFILTER_CHECK_SMOOTH_ENABLE] != 0;
-    prm.smooth.quality    = cl_exdata.smooth_quality;
-    prm.smooth.qp         = fp->track[CLFILTER_TRACK_SMOOTH_QP];
 
     //unsharp
     prm.unsharp.enable    = fp->check[CLFILTER_CHECK_UNSHARP_ENABLE] != 0;

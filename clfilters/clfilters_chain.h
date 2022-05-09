@@ -56,9 +56,9 @@ struct clFilterChainParam {
     HMODULE hModule;
     VppColorspace colorspace;
     VppNnedi nnedi;
+    VppSmooth smooth;
     VppKnn knn;
     VppPmd pmd;
-    VppSmooth smooth;
     RGY_VPP_RESIZE_ALGO resize_algo;
     RGY_VPP_RESIZE_MODE resize_mode;
     VppUnsharp unsharp;
