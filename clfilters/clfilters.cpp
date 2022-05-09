@@ -1059,6 +1059,7 @@ enum AddCXMode {
 };
 
 static const int CX_HEIGHT = 24;
+static const int AVIUTL_1_10_OFFSET = 5;
 
 void move_group(int& y_pos, int col, int col_width, int check_min, int check_max, int track_min, int track_max, const int track_bar_delta_y,
                 const AddCXMode add_cx_mode, const int add_cx_num, int& cx_y_pos, const int checkbox_idx, const RECT& dialog_rc) {
@@ -1107,10 +1108,10 @@ void set_combobox_items(HWND hwnd_cx, const CX_DESC *cx_items, int limit = INT_M
 }
 
 void add_combobox(HWND& hwnd_cx, int id_cx, HWND& hwnd_lb, int id_lb, const char *lb_str, int col, int col_width, int& y_pos, HFONT b_font, HWND hwnd, HINSTANCE hinst, const CX_DESC *cx_items, int cx_item_limit = INT_MAX) {
-    hwnd_lb = CreateWindow("static", "", SS_SIMPLE|WS_CHILD|WS_VISIBLE, 10 + col * col_width, y_pos, 58, 24, hwnd, (HMENU)id_lb, hinst, NULL);
+    hwnd_lb = CreateWindow("static", "", SS_SIMPLE|WS_CHILD|WS_VISIBLE, 10 + col * col_width + AVIUTL_1_10_OFFSET, y_pos, 58, 24, hwnd, (HMENU)id_lb, hinst, NULL);
     SendMessage(hwnd_lb, WM_SETFONT, (WPARAM)b_font, 0);
     SendMessage(hwnd_lb, WM_SETTEXT, 0, (LPARAM)lb_str);
-    hwnd_cx = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, 68 + col * col_width, y_pos, 145, 100, hwnd, (HMENU)id_cx, hinst, NULL);
+    hwnd_cx = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, 68 + col * col_width + AVIUTL_1_10_OFFSET, y_pos, 145, 100, hwnd, (HMENU)id_cx, hinst, NULL);
     SendMessage(hwnd_cx, WM_SETFONT, (WPARAM)b_font, 0);
     set_combobox_items(hwnd_cx, cx_items, cx_item_limit);
     y_pos += CX_HEIGHT;
@@ -1121,15 +1122,15 @@ void add_combobox_from_to(
     HWND& hwnd_lb_from_to, int id_lb_from_to,
     const char *lb_str, int col, int col_width, int& y_pos, HFONT b_font, HWND hwnd, HINSTANCE hinst, const CX_DESC *cx_items, int cx_item_limit = INT_MAX) {
     // from
-    hwnd_cx_from = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 98 + col * col_width, y_pos, 90, 100, hwnd, (HMENU)id_cx_from, hinst, NULL);
+    hwnd_cx_from = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 98 + col * col_width + AVIUTL_1_10_OFFSET, y_pos, 90, 100, hwnd, (HMENU)id_cx_from, hinst, NULL);
     SendMessage(hwnd_cx_from, WM_SETFONT, (WPARAM)b_font, 0);
     set_combobox_items(hwnd_cx_from, cx_items, cx_item_limit);
     // label (from->to)
-    hwnd_lb_from_to = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, 192 + col * col_width, y_pos, 10, 24, hwnd, (HMENU)id_lb_from_to, hinst, NULL);
+    hwnd_lb_from_to = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, 192 + col * col_width + AVIUTL_1_10_OFFSET, y_pos, 10, 24, hwnd, (HMENU)id_lb_from_to, hinst, NULL);
     SendMessage(hwnd_lb_from_to, WM_SETFONT, (WPARAM)b_font, 0);
     SendMessage(hwnd_lb_from_to, WM_SETTEXT, 0, (LPARAM)"→");
     // to
-    hwnd_cx_to = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 208 + col * col_width, y_pos, 90, 100, hwnd, (HMENU)id_cx_to, hinst, NULL);
+    hwnd_cx_to = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 208 + col * col_width + AVIUTL_1_10_OFFSET, y_pos, 90, 100, hwnd, (HMENU)id_cx_to, hinst, NULL);
     SendMessage(hwnd_cx_to, WM_SETFONT, (WPARAM)b_font, 0);
     set_combobox_items(hwnd_cx_to, cx_items, cx_item_limit);
     y_pos += CX_HEIGHT;
@@ -1186,7 +1187,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
 
     //clfilterのチェックボックス
     GetWindowRect(child_hwnd[0], &rc);
-    SetWindowPos(child_hwnd[0], HWND_TOP, rc.left - dialog_rc.left + (columns-1) * col_width - 5, 0, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
+    SetWindowPos(child_hwnd[0], HWND_TOP, rc.left - dialog_rc.left + (columns-1) * col_width - AVIUTL_1_10_OFFSET, 0, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
 
     //最初のtrackbar
     GetWindowRect(child_hwnd[1], &rc);
@@ -1254,7 +1255,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     GetWindowRect(child_hwnd[checkbox_idx + CLFILTER_CHECK_RESIZE_ENABLE], &rc);
     SetWindowPos(child_hwnd[checkbox_idx + CLFILTER_CHECK_RESIZE_ENABLE], HWND_TOP, rc.left - dialog_rc.left, cb_resize_y, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
 
-    lb_proc_mode = CreateWindow("static", "", SS_SIMPLE|WS_CHILD|WS_VISIBLE, 8, cb_resize_y+24, 60, 24, hwnd, (HMENU)ID_LB_RESIZE_RES, hinst, NULL);
+    lb_proc_mode = CreateWindow("static", "", SS_SIMPLE|WS_CHILD|WS_VISIBLE, 8 + AVIUTL_1_10_OFFSET, cb_resize_y+24, 60, 24, hwnd, (HMENU)ID_LB_RESIZE_RES, hinst, NULL);
     SendMessage(lb_proc_mode, WM_SETFONT, (WPARAM)b_font, 0);
     SendMessage(lb_proc_mode, WM_SETTEXT, 0, (LPARAM)"サイズ");
 
