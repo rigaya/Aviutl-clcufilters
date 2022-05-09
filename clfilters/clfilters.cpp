@@ -1272,7 +1272,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
 
     update_cx_resize_res_items(fp);
     set_combo_item(cx_resize_algo, "spline16", RGY_VPP_RESIZE_SPLINE16);
-    set_combo_item(cx_resize_algo, "spline36", RGY_VPP_RESIZE_SPLINE16);
+    set_combo_item(cx_resize_algo, "spline36", RGY_VPP_RESIZE_SPLINE36);
     set_combo_item(cx_resize_algo, "spline64", RGY_VPP_RESIZE_SPLINE64);
     set_combo_item(cx_resize_algo, "lanczos2", RGY_VPP_RESIZE_LANCZOS2);
     set_combo_item(cx_resize_algo, "lanczos3", RGY_VPP_RESIZE_LANCZOS3);
