@@ -1,6 +1,11 @@
 ﻿#define NNEDI_BLOCK_X      (32)
 #define NNEDI_BLOCK_Y      (8)
 
+// NVIDIAはcl_khr_subgroupsをサポートしないため、
+// COLLECT_FLAG_MODE=0(sub_group_any)を使用できない
+// ここでは、warpsize=32を仮定して処理する
+#define COLLECT_FLAG_NVIDIA_SUBGROUP_SIZE (32)
+
 #define weight0size    (49 * 4 + 5 * 4 + 9 * 4)
 #define weight0sizenew (4 * 65 + 4 * 5)
 
@@ -102,7 +107,7 @@ void load_texSrc(
 void load_texSrc(
     const int pix_x_per_thread, const bool load_for_interp,
     __local float *const ptr_src, const int ssrc_dim, __local TypePixel *const ptr_pix, const int spix_dim, 
-    __global uchar *__restrict__ pIn,
+    __global uchar * pIn,
     const int inPitch, //1行おきなので通常の2倍の値が入っている
     const int inWidth,
     const int inHeight,
@@ -141,7 +146,9 @@ void dot_product0(
     const int pix_x_per_thread,
     const float mstd[thread_y_loop][4]
 ) {
+#if ENABLE_DP1_SHUFFLE_OPT
     const int laneid = get_sub_group_local_id();
+#endif
     #pragma unroll
     for (int ithy = 0; ithy < thread_y_loop; ithy++) {
         #pragma unroll

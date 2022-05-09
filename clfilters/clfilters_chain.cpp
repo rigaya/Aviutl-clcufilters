@@ -549,7 +549,7 @@ RGY_ERR clFilterChain::sendInFrame(const RGYFrameInfo *pInputFrame) {
     auto frameDevIn = m_frameIn->get_in(pInputFrame->width, pInputFrame->height);
     m_frameIn->in_to_next();
 
-    auto err = frameDevIn->queueMapBuffer(m_queueSendIn, CL_MAP_WRITE);
+    auto err = frameDevIn->queueMapBuffer(m_queueSendIn, CL_MAP_WRITE /*CL_​MAP_​WRITE_​INVALIDATE_​REGION*/);
     if (err != RGY_ERR_NONE) {
         PrintMes(RGY_LOG_ERROR, _T("failed to queue map input buffer: %s.\n"), get_err_mes(err));
         return err;
