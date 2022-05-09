@@ -1196,7 +1196,9 @@ void init_dialog(HWND hwnd, FILTER *fp) {
             CL_PLATFORM_DEVICE pd;
             pd.s.platform = (int16_t)ip;
             pd.s.device = (int16_t)idev;
-            set_combo_item(cx_opencl_device, clplatforms[ip]->dev(idev).info().name.c_str(), pd.i);
+            const auto devInfo = clplatforms[ip]->dev(idev).info();
+            const auto devName = (devInfo.board_name_amd.length() > 0) ? devInfo.board_name_amd : devInfo.name;
+            set_combo_item(cx_opencl_device, devName.c_str(), pd.i);
         }
     }
 
