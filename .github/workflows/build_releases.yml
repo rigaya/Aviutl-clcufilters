@@ -68,7 +68,7 @@ jobs:
       - name: MSBuild
         run: |
           set OPENCL_HEADERS=${{ github.workspace }}\..\openclheaders
-          msbuild clfilters.sln /t:build /p:configuration=Release /p:Platform=${{ matrix.platform }} -maxcpucount
+          msbuild clfilters.sln /t:build /p:configuration=Release /p:Platform=${{ matrix.arch }} -maxcpucount
 
       - name: Create Archieve
         id: archieve
