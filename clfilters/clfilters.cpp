@@ -55,6 +55,7 @@ enum {
 
     ID_LB_OPENCL_DEVICE,
     ID_CX_OPENCL_DEVICE,
+    ID_BT_OPENCL_INFO,
 
     ID_LB_LOG_LEVEL,
     ID_CX_LOG_LEVEL,
@@ -492,6 +493,7 @@ static HWND lb_proc_mode;
 static std::vector<std::pair<int, int>> resize_res;
 static HWND lb_opencl_device;
 static HWND cx_opencl_device;
+static HWND bt_opencl_info;
 static HWND lb_log_level;
 static HWND cx_log_level;
 static HWND cx_resize_res;
@@ -685,6 +687,20 @@ static void del_combo_item_current(FILTER *fp, HWND hwnd) {
     }
 }
 
+static BOOL out_opencl_info(FILTER *fp) {
+    char buffer[1024] = { 0 };
+    if (fp->exfunc->dlg_get_save_name(buffer, (LPSTR)".txt", (LPSTR)"clinfo.txt")) {
+        const auto str = getOpenCLInfo(CL_DEVICE_TYPE_GPU);
+        FILE *fp = fopen(buffer, "w");
+        if (fp) {
+            fprintf(fp, "%s", str.c_str());
+            fclose(fp);
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
 static void update_cx_resize_res_items(FILTER *fp) {
     //クリア
     SendMessage(cx_resize_res, CB_RESETCONTENT, 0, 0);
@@ -828,6 +844,9 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
             break;
         case ID_BT_RESIZE_RES_DEL:
             del_combo_item_current(fp, cx_resize_res);
+            break;
+        case ID_BT_OPENCL_INFO:
+            out_opencl_info(fp);
             break;
         case ID_CX_COLORSPACE_COLORMATRIX_FROM: // コンボボックス
             switch (HIWORD(wparam)) {
@@ -1201,6 +1220,10 @@ void init_dialog(HWND hwnd, FILTER *fp) {
             set_combo_item(cx_opencl_device, devName.c_str(), pd.i);
         }
     }
+
+    //OpenCL info
+    bt_opencl_info = CreateWindow("BUTTON", "clinfo", WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, 278, cb_opencl_platform_y, 48, 22, hwnd, (HMENU)ID_BT_OPENCL_INFO, hinst, NULL);
+    SendMessage(bt_opencl_info, WM_SETFONT, (WPARAM)b_font, 0);
 
     //log_level
     const int cb_log_level_y = cb_opencl_platform_y+24;
