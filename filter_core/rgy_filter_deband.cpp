@@ -276,7 +276,7 @@ RGY_ERR RGYFilterDeband::init(shared_ptr<RGYFilterParam> pParam, shared_ptr<RGYL
             //includeの反映
             mrg31k3p_clh = str_replace(mrg31k3p_clh, "#include <clRNG/clRNG.clh>", clrng_clh);
             mrg31k3p_clh = str_replace(mrg31k3p_clh, "#include <clRNG/private/mrg31k3p.c.h>", mrg31k3p_private_c_h);
-#if ENCODER_QSV || CLFILTER_AUF // Intel OpenCLでコンパイルを通すための小細工を行う
+#if ENCODER_QSV || CLFILTERS_AUF // Intel OpenCLでコンパイルを通すための小細工を行う
             auto mrg31k3p_clh_lines = split(mrg31k3p_clh, "\n");
             mrg31k3p_clh.clear();
             for (auto& line : mrg31k3p_clh_lines) {

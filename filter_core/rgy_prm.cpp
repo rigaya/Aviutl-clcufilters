@@ -31,7 +31,7 @@
 #include "rgy_util.h"
 #include "rgy_filesystem.h"
 #include "rgy_version.h"
-#if !CLFILTER_AUF
+#if !CLFILTERS_AUF
 #include "rgy_avutil.h"
 #endif
 #include "rgy_prm.h"
