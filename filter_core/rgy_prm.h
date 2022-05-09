@@ -538,8 +538,7 @@ const CX_DESC list_vpp_raduis[] = {
     { _T("2"),  2 },
     { _T("3"),  3 },
     { _T("4"),  4 },
-    { _T("5"),  5 },
-    { _T("6 - strong"),  6 },
+    { _T("5 - strong"),  5 },
     { NULL, 0 }
 };
 
