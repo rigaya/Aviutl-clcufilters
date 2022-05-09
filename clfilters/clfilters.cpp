@@ -1326,12 +1326,12 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     move_group(y_pos, col, col_width, CLFILTER_CHECK_WARPSHARP_ENABLE, CLFILTER_CHECK_WARPSHARP_MAX, CLFILTER_TRACK_WARPSHARP_FIRST, CLFILTER_TRACK_WARPSHARP_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
     add_combobox(cx_warpsharp_blur, ID_CX_WARPSHARP_BLUR, lb_warpsharp_blur, ID_LB_WARPSHARP_BLUR, "ブラー", col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_1_to_10);
 
+    //tweak
+    move_group(y_pos, col, col_width, CLFILTER_CHECK_TWEAK_ENABLE, CLFILTER_CHECK_TWEAK_MAX, CLFILTER_TRACK_TWEAK_FIRST, CLFILTER_TRACK_TWEAK_MAX, track_bar_delta_y, ADD_CX_FIRST, 0, cx_y_pos, checkbox_idx, dialog_rc);
+
     //バンディング
     move_group(y_pos, col, col_width, CLFILTER_CHECK_DEBAND_ENABLE, CLFILTER_CHECK_DEBAND_MAX, CLFILTER_TRACK_DEBAND_FIRST, CLFILTER_TRACK_DEBAND_MAX, track_bar_delta_y, ADD_CX_AFTER_TRACK, 1, cx_y_pos, checkbox_idx, dialog_rc);
     add_combobox(cx_deband_sample, ID_CX_DEBAND_SAMPLE, lb_deband_sample, ID_LB_DEBAND_SAMPLE, "sample", col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_deband);
-
-    //tweak
-    move_group(y_pos, col, col_width, CLFILTER_CHECK_TWEAK_ENABLE, CLFILTER_CHECK_TWEAK_MAX, CLFILTER_TRACK_TWEAK_FIRST, CLFILTER_TRACK_TWEAK_MAX, track_bar_delta_y, ADD_CX_FIRST, 0, cx_y_pos, checkbox_idx, dialog_rc);
     
     y_pos_max = std::max(y_pos_max, y_pos);
 
