@@ -1,11 +1,6 @@
 ﻿#define NNEDI_BLOCK_X      (32)
 #define NNEDI_BLOCK_Y      (8)
 
-// NVIDIAはcl_khr_subgroupsをサポートしないため、
-// COLLECT_FLAG_MODE=0(sub_group_any)を使用できない
-// ここでは、warpsize=32を仮定して処理する
-#define COLLECT_FLAG_NVIDIA_SUBGROUP_SIZE (32)
-
 #define weight0size    (49 * 4 + 5 * 4 + 9 * 4)
 #define weight0sizenew (4 * 65 + 4 * 5)
 

@@ -408,11 +408,8 @@ __kernel void kernel_compute_network1(
     //2.tmp: (nny + NNEDI_BLOCK_Y * thread_y_loop) * NNEDI_BLOCK_X * 2 * sizeof(ptr_temp[0])
     __local TypeCalc shared_src[(NNEDI_BLOCK_X + nnx) * (NNEDI_BLOCK_Y * thread_y_loop + nny)];////src 計算用
     __local TypeCalc shared_tmp[(nny + NNEDI_BLOCK_Y * thread_y_loop) * NNEDI_BLOCK_X * 2]; //tmp (計算結果の一時保管用)
-#if COLLECT_FLAG_MODE == 1 // NVIDIA専用
-    const int thIdXY = thIdY * NNEDI_BLOCK_X + thIdX;
-    const int thLaneID = thIdXY % COLLECT_FLAG_NVIDIA_SUBGROUP_SIZE;
-    const int subGroupID = thIdXY / COLLECT_FLAG_NVIDIA_SUBGROUP_SIZE;
-    __local uint flag_collect[NNEDI_BLOCK_X * NNEDI_BLOCK_Y / COLLECT_FLAG_NVIDIA_SUBGROUP_SIZE];
+#if COLLECT_FLAG_MODE == 1
+    __local uint flag_collect[NNEDI_BLOCK_Y];
 #endif
     const int ssrc_dim = NNEDI_BLOCK_X + nnx;
 
@@ -481,11 +478,11 @@ NNEDI_BLOCK_X   |                  |  |    | <-- 各スレッドはこの出力�
 #if COLLECT_FLAG_MODE == 0
     if (sub_group_any(flag_sum)) { //どのpixelも処理する必要がなければ、スキップする : cl_khr_subgroups
 #elif COLLECT_FLAG_MODE == 1
-    if (thLaneID == 0) {
-        flag_collect[subGroupID] = 0; // 初期化
+    if (thIdX == 0) {
+        flag_collect[thIdY] = 0; // 初期化
     }
-     atom_or(&flag_collect[subGroupID], flag_sum); // cl_khr_local_int32_extended_atomics
-    if (flag_collect[subGroupID]) { //どのpixelも処理する必要がなければ、スキップする
+     atom_or(&flag_collect[thIdY], flag_sum); // cl_khr_local_int32_extended_atomics
+    if (flag_collect[thIdY]) { //どのpixelも処理する必要がなければ、スキップする
 #endif //#if COLLECT_FLAG_MODE == 0 || 1
 
         for (int iquality = 0; iquality < quals; iquality++) {

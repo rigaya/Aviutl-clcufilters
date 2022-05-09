@@ -612,10 +612,8 @@ RGY_ERR RGYFilterNnedi::init(shared_ptr<RGYFilterParam> pParam, shared_ptr<RGYLo
         auto collect_flag_mode = NNediCollectFlagMode::NoOptimization;
         if (sub_group_ext_avail != RGYOpenCLSubGroupSupport::NONE) {
             collect_flag_mode = NNediCollectFlagMode::SubGroupAny;
-        } else if (RGYOpenCLDevice(m_cl->queue().devid()).checkExtension("cl_khr_local_int32_extended_atomics")) {
-            if (m_cl->platform()->isVendor("NVIDIA")) { // このモードはNVIDIA GPUを前提としている (warpsize=32を仮定するため)
-                collect_flag_mode = NNediCollectFlagMode::LocalAtomicOr;
-            }
+        } else if (RGYOpenCLDevice(m_cl->queue().devid()).checkExtension("cl_khr_local_int32_extended_atomics")) { // atomic_or
+            collect_flag_mode = NNediCollectFlagMode::LocalAtomicOr;
         }
         const int prescreen_new = ((prm->nnedi.pre_screen & VPP_NNEDI_PRE_SCREEN_MODE) == VPP_NNEDI_PRE_SCREEN_ORIGINAL) ? 0 : 1;
         const auto fields = make_array<NnediTargetField>(NNEDI_GEN_FIELD_TOP, NNEDI_GEN_FIELD_BOTTOM);
