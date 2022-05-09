@@ -1,6 +1,6 @@
 # clfilters
 
-clfilters.auf は、OpenCL経由でGPUを使用し各種フィルタ処理を一括で行います。
+clfilters.auf は、Aviutl用のOpenCLによるGPUフィルタです。
 
 フィルタ処理をGPU上で連続して行うことで、フィルタをそれぞれ実行するのと比べてCPU - GPU間のデータ転送を削減でき、高速化が期待できます。
 
