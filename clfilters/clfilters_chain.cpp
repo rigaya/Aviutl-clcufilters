@@ -254,7 +254,7 @@ RGY_ERR clFilterChain::initOpenCL(const int platformID, const int deviceID, cons
         return RGY_ERR_UNKNOWN;
     }
     const auto devInfo = platform->dev(0).info();
-    m_deviceName = devInfo.name;
+    m_deviceName = (devInfo.board_name_amd.length() > 0) ? devInfo.board_name_amd : devInfo.name;
     m_platformID = platformID;
     m_deviceID = deviceID;
     m_queueSendIn = m_cl->createQueue(platform->dev(0).id(), 0 /*CL_QUEUE_PROFILING_ENABLE*/);
