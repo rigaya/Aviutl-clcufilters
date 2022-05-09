@@ -31,6 +31,9 @@
 #ifndef wrap
 #define wrap(x, low, high) (((x) < (low)) ? (((low)<<1)-(x)) : (((x) >= (high)) ? (((high)<<1) - (x)) : (x)))
 #endif
+#ifndef NULL
+#define NULL (0)
+#endif
 
 float exp_(float val) {
     return native_exp(clamp(val, -80.0f, 80.0f));
