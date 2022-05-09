@@ -275,7 +275,7 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = false;
-        auto sts = filter->init(param, nullptr);
+        auto sts = filter->init(param, m_log);
         if (sts != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("failed to init colorspace.\n"));
             return sts;
@@ -295,7 +295,7 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = false;
-        auto sts = filter->init(param, nullptr);
+        auto sts = filter->init(param, m_log);
         if (sts != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("failed to init nnedi.\n"));
             return sts;
@@ -314,7 +314,7 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = false;
-        auto sts = filter->init(param, nullptr);
+        auto sts = filter->init(param, m_log);
         if (sts != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("failed to init knn.\n"));
             return sts;
@@ -333,7 +333,7 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = false;
-        auto sts = filter->init(param, nullptr);
+        auto sts = filter->init(param, m_log);
         if (sts != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("failed to init pmd.\n"));
             return sts;
@@ -352,7 +352,7 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = false;
-        auto sts = filter->init(param, nullptr);
+        auto sts = filter->init(param, m_log);
         if (sts != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("failed to init smooth.\n"));
             return sts;
@@ -374,7 +374,7 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         param->frameOut.width = resizeWidth;
         param->frameOut.height = resizeHeight;
         param->bOutOverwrite = false;
-        auto sts = filter->init(param, nullptr);
+        auto sts = filter->init(param, m_log);
         if (sts != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("failed to init resize.\n"));
             return sts;
@@ -395,7 +395,7 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = false;
-        auto sts = filter->init(param, nullptr);
+        auto sts = filter->init(param, m_log);
         if (sts != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("failed to init unsharp.\n"));
             return sts;
@@ -414,7 +414,7 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = false;
-        auto sts = filter->init(param, nullptr);
+        auto sts = filter->init(param, m_log);
         if (sts != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("failed to init edgelevel.\n"));
             return sts;
@@ -433,7 +433,7 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = false;
-        auto sts = filter->init(param, nullptr);
+        auto sts = filter->init(param, m_log);
         if (sts != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("failed to init warpsharp.\n"));
             return sts;
@@ -452,7 +452,7 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = true;
-        auto sts = filter->init(param, nullptr);
+        auto sts = filter->init(param, m_log);
         if (sts != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("failed to init tweak.\n"));
             return sts;
@@ -471,7 +471,7 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = false;
-        auto sts = filter->init(param, nullptr);
+        auto sts = filter->init(param, m_log);
         if (sts != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("failed to init deband.\n"));
             return sts;
