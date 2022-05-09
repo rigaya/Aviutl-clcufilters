@@ -1186,7 +1186,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
 
     //clfilterのチェックボックス
     GetWindowRect(child_hwnd[0], &rc);
-    SetWindowPos(child_hwnd[0], HWND_TOP, rc.left - dialog_rc.left + (columns-1) * col_width, 0, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
+    SetWindowPos(child_hwnd[0], HWND_TOP, rc.left - dialog_rc.left + (columns-1) * col_width - 5, 0, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
 
     //最初のtrackbar
     GetWindowRect(child_hwnd[1], &rc);
