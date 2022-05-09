@@ -410,6 +410,9 @@ __kernel void kernel_compute_network1(
     __local TypeCalc shared_tmp[(nny + NNEDI_BLOCK_Y * thread_y_loop) * NNEDI_BLOCK_X * 2]; //tmp (計算結果の一時保管用)
 #if COLLECT_FLAG_MODE == 1
     __local uint flag_collect[NNEDI_BLOCK_Y];
+    if (thIdX == 0) {
+        flag_collect[thIdY] = 0; // 初期化
+    }
 #endif
     const int ssrc_dim = NNEDI_BLOCK_X + nnx;
 
@@ -478,10 +481,8 @@ NNEDI_BLOCK_X   |                  |  |    | <-- 各スレッドはこの出力�
 #if COLLECT_FLAG_MODE == 0
     if (sub_group_any(flag_sum)) { //どのpixelも処理する必要がなければ、スキップする : cl_khr_subgroups
 #elif COLLECT_FLAG_MODE == 1
-    if (thIdX == 0) {
-        flag_collect[thIdY] = 0; // 初期化
-    }
-     atom_or(&flag_collect[thIdY], flag_sum); // cl_khr_local_int32_extended_atomics
+    atom_or(&flag_collect[thIdY], flag_sum); // cl_khr_local_int32_extended_atomics
+    barrier(CLK_LOCAL_MEM_FENCE);
     if (flag_collect[thIdY]) { //どのpixelも処理する必要がなければ、スキップする
 #endif //#if COLLECT_FLAG_MODE == 0 || 1
 
