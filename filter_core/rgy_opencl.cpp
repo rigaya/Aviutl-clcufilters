@@ -796,7 +796,6 @@ tstring RGYOpenCLDevice::infostr(bool full) const {
         if (is_intel) {
         ts << "  num_slices_intel :           " << dev.num_slices_intel << std::endl;
         ts << "  num_subslices_intel :        " << dev.num_subslices_intel << std::endl;
-        ts << "  simd_instruction_width_amd : " << dev.simd_instruction_width_amd << std::endl;
         ts << "  num_eus_per_subslice_intel : " << dev.num_eus_per_subslice_intel << std::endl;
         ts << "  num_threads_per_eu_intel :   " << dev.num_threads_per_eu_intel << std::endl;
         ts << "  feature_capabilities_intel : " << dev.feature_capabilities_intel << std::endl;
