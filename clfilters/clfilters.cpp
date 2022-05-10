@@ -333,6 +333,7 @@ const TCHAR *check_name[] = {
 #if ENABLE_FIELD
     "フィールド処理",
 #endif //#if ENABLE_FIELD
+    "ファイルに出力", // log to file
     "リサイズ",
     "色空間変換", "matrix", "colorprim", "transfer", "range",
     "ノイズ除去 (smooth)",
@@ -350,7 +351,10 @@ enum {
 #if ENABLE_FIELD
     CLFILTER_CHECK_FIELD,
 #endif //#if ENABLE_FIELD
-    CLFILTER_CHECK_RESIZE_ENABLE,
+    CLFILTER_CHECK_LOG_TO_FILE,
+    CLFILTER_CHECK_LOG_MAX,
+
+    CLFILTER_CHECK_RESIZE_ENABLE = CLFILTER_CHECK_LOG_MAX,
     CLFILTER_CHECK_RESIZE_MAX,
 
     CLFILTER_CHECK_COLORSPACE_ENABLE = CLFILTER_CHECK_RESIZE_MAX,
@@ -399,6 +403,7 @@ int check_default[] = {
 #if ENABLE_FIELD
     0, // field
 #endif //#if ENABLE_FIELD
+    0, // log to file
     0, // resize
     0, 0, 0, 0, 0, // colorspace
     0, // smooth
@@ -1232,7 +1237,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     SendMessage(lb_log_level, WM_SETFONT, (WPARAM)b_font, 0);
     SendMessage(lb_log_level, WM_SETTEXT, 0, (LPARAM)"ログ出力");
 
-    cx_log_level = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 68, cb_log_level_y, 205, 100, hwnd, (HMENU)ID_CX_LOG_LEVEL, hinst, NULL);
+    cx_log_level = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 68, cb_log_level_y, 145, 100, hwnd, (HMENU)ID_CX_LOG_LEVEL, hinst, NULL);
     SendMessage(cx_log_level, WM_SETFONT, (WPARAM)b_font, 0);
 
     for (const auto& log_level : RGY_LOG_LEVEL_STR) {
@@ -1250,8 +1255,12 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     const int cb_filed_y = cb_log_level_y;
 #endif //#if ENABLE_FIELD
 
+    // log to file
+    GetWindowRect(child_hwnd[checkbox_idx + CLFILTER_CHECK_LOG_TO_FILE], &rc);
+    SetWindowPos(child_hwnd[checkbox_idx + CLFILTER_CHECK_LOG_TO_FILE], HWND_TOP, 218, cb_log_level_y+4, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
+
     //リサイズ
-    const int cb_resize_y = cb_filed_y + 24;
+    const int cb_resize_y = cb_filed_y + 28;
     GetWindowRect(child_hwnd[checkbox_idx + CLFILTER_CHECK_RESIZE_ENABLE], &rc);
     SetWindowPos(child_hwnd[checkbox_idx + CLFILTER_CHECK_RESIZE_ENABLE], HWND_TOP, rc.left - dialog_rc.left, cb_resize_y, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
 
@@ -1362,6 +1371,7 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp) {
     //dllのモジュールハンドル
     prm.hModule = fp->dll_hinst;
     prm.log_level = cl_exdata.log_level;
+    prm.log_to_file = fp->check[CLFILTER_CHECK_LOG_TO_FILE] != 0;
 
     //リサイズ
     prm.resize_algo        = (RGY_VPP_RESIZE_ALGO)cl_exdata.resize_algo;
@@ -1486,7 +1496,7 @@ BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
         clfilter = std::make_unique<clFilterChain>();
         std::string mes = AUF_FULL_NAME;
         mes += ": ";
-        if (clfilter->init(cl_exdata.cl_dev_id.s.platform, cl_exdata.cl_dev_id.s.device, CL_DEVICE_TYPE_GPU, cl_exdata.log_level)) {
+        if (clfilter->init(cl_exdata.cl_dev_id.s.platform, cl_exdata.cl_dev_id.s.device, CL_DEVICE_TYPE_GPU, cl_exdata.log_level, fp->check[CLFILTER_CHECK_LOG_TO_FILE] != 0)) {
             mes += "フィルタは無効です: OpenCLを使用できません。";
             SendMessage(fp->hwnd, WM_SETTEXT, 0, (LPARAM)mes.c_str());
             return FALSE;

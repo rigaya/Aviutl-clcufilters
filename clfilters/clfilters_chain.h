@@ -67,6 +67,7 @@ struct clFilterChainParam {
     VppDeband deband;
     VppTweak tweak;
     RGYLogLevel log_level;
+    bool log_to_file;
 
     clFilterChainParam();
     bool operator==(const clFilterChainParam &x) const;
@@ -99,7 +100,7 @@ public:
     clFilterChain();
     ~clFilterChain();
 
-    RGY_ERR init(const int platformID, const int deviceID, const cl_device_type device_type, const RGYLogLevel log_level);
+    RGY_ERR init(const int platformID, const int deviceID, const cl_device_type device_type, const RGYLogLevel log_level, const bool log_to_file);
 
     void resetPipeline();
     RGY_ERR sendInFrame(const RGYFrameInfo *pInputFrame);
@@ -117,7 +118,8 @@ private:
     bool filterChainEqual(const std::vector<clFilter>& objchain) const;
     RGY_ERR filterChainCreate(const RGYFrameInfo *pInputFrame, const int outWidth, const int outHeight);
     RGY_ERR configureOneFilter(std::unique_ptr<RGYFilter>& filter, RGYFrameInfo& inputFrame, const clFilter filterType, const int resizeWidth, const int resizeHeight);
-    void PrintMes(int logLevel, const TCHAR *format, ...);
+    void PrintMes(const RGYLogLevel logLevel, const TCHAR *format, ...);
+    tstring printFilterChain(const std::vector<clFilter>& objchain) const;
 
     std::shared_ptr<RGYLog> m_log;
     clFilterChainParam m_prm;

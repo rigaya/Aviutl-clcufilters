@@ -39,6 +39,24 @@
 #include "rgy_filter_deband.h"
 #include "rgy_filter_tweak.h"
 
+static const TCHAR *LOG_FILE_NAME = "clfilters.auf.log";
+
+static const auto CLFILTER_TO_STR = make_array<std::pair<clFilter, tstring>>(
+    std::make_pair(clFilter::UNKNOWN,    _T("unknown")),
+    std::make_pair(clFilter::COLORSPACE, _T("colorspace")),
+    std::make_pair(clFilter::NNEDI,      _T("nnedi")),
+    std::make_pair(clFilter::KNN,        _T("knn")),
+    std::make_pair(clFilter::PMD,        _T("pmd")),
+    std::make_pair(clFilter::SMOOTH,     _T("smooth")),
+    std::make_pair(clFilter::RESIZE,     _T("resize")),
+    std::make_pair(clFilter::UNSHARP,    _T("unsharp")),
+    std::make_pair(clFilter::EDGELEVEL,  _T("edgelevel")),
+    std::make_pair(clFilter::WARPSHARP,  _T("warpsharp")),
+    std::make_pair(clFilter::TWEAK,      _T("tweak")),
+    std::make_pair(clFilter::DEBAND,     _T("deband"))
+);
+MAP_PAIR_0_1(clfilter, cl, clFilter, str, tstring, CLFILTER_TO_STR, clFilter::UNKNOWN, _T("unknown"));
+
 clFilterFrameBuffer::clFilterFrameBuffer(std::shared_ptr<RGYOpenCLContext> cl) :
     m_cl(cl),
     m_frame(),
@@ -106,7 +124,8 @@ clFilterChainParam::clFilterChainParam() :
     warpsharp(),
     tweak(),
     deband(),
-    log_level(RGY_LOG_QUIET) {
+    log_level(RGY_LOG_QUIET),
+    log_to_file(false) {
 
 }
 
@@ -123,7 +142,8 @@ bool clFilterChainParam::operator==(const clFilterChainParam &x) const {
         && warpsharp == x.warpsharp
         && tweak == x.tweak
         && deband == x.deband
-        && log_level == x.log_level;
+        && log_level == x.log_level
+        && log_to_file == x.log_to_file;
 }
 bool clFilterChainParam::operator!=(const clFilterChainParam &x) const {
     return !(*this == x);
@@ -180,11 +200,7 @@ void clFilterChain::close() {
     m_deviceID = -1;
 }
 
-void clFilterChain::PrintMes(int logLevel, const TCHAR *format, ...) {
-    if (logLevel < RGY_LOG_ERROR) {
-        return;
-    }
-
+void clFilterChain::PrintMes(const RGYLogLevel logLevel, const TCHAR *format, ...) {
     va_list args;
     va_start(args, format);
 
@@ -193,11 +209,17 @@ void clFilterChain::PrintMes(int logLevel, const TCHAR *format, ...) {
     _vstprintf_s(buffer.data(), len, format, args);
     va_end(args);
 
+    m_log->write_log(logLevel, RGY_LOGT_APP, buffer.data());
+
+    if (logLevel < RGY_LOG_ERROR) {
+        return;
+    }
+
     MessageBoxA(NULL, buffer.data(), AUF_FULL_NAME, MB_OK | MB_ICONEXCLAMATION);
 }
 
-RGY_ERR clFilterChain::init(const int platformID, const int deviceID, const cl_device_type device_type, const RGYLogLevel log_level) {
-    m_log = std::make_shared<RGYLog>("clfiters.auf.log", log_level);
+RGY_ERR clFilterChain::init(const int platformID, const int deviceID, const cl_device_type device_type, const RGYLogLevel log_level, const bool log_to_file) {
+    m_log = std::make_shared<RGYLog>(log_to_file ? LOG_FILE_NAME : nullptr, log_level);
 
     if (auto err = initOpenCL(platformID, deviceID, device_type); err != RGY_ERR_NONE) {
         return err;
@@ -212,15 +234,22 @@ RGY_ERR clFilterChain::init(const int platformID, const int deviceID, const cl_d
                  RGY_CSP_NAMES[RGY_CSP_YC48], RGY_CSP_NAMES[RGY_CSP_YUV444_16]);
         return RGY_ERR_INVALID_COLOR_FORMAT;
     }
+    PrintMes(RGY_LOG_INFO, _T("color conversion %s -> %s [%s].\n"),
+        RGY_CSP_NAMES[RGY_CSP_YC48], RGY_CSP_NAMES[RGY_CSP_YUV444_16], get_simd_str(m_convert_yc48_to_yuv444_16->getFunc()->simd));
+
     m_convert_yuv444_16_to_yc48 = std::make_unique<RGYConvertCSP>();
     if (m_convert_yuv444_16_to_yc48->getFunc(RGY_CSP_YUV444_16, RGY_CSP_YC48, false, RGY_SIMD::SIMD_ALL) == nullptr) {
         PrintMes(RGY_LOG_ERROR, _T("unsupported color format conversion, %s -> %s\n"), RGY_CSP_NAMES[RGY_CSP_YUV444_16], RGY_CSP_NAMES[RGY_CSP_YC48]);
         return RGY_ERR_INVALID_COLOR_FORMAT;
     }
+    PrintMes(RGY_LOG_INFO, _T("color conversion %s -> %s [%s].\n"),
+        RGY_CSP_NAMES[RGY_CSP_YUV444_16], RGY_CSP_NAMES[RGY_CSP_YC48], get_simd_str(m_convert_yuv444_16_to_yc48->getFunc()->simd));
     return RGY_ERR_NONE;
 }
 
 RGY_ERR clFilterChain::initOpenCL(const int platformID, const int deviceID, const cl_device_type device_type) {
+    PrintMes(RGY_LOG_INFO, _T("start init OpenCL platform %d, device %d\n"), platformID, deviceID);
+
     RGYOpenCL cl(m_log);
     auto platforms = cl.getPlatforms(nullptr);
     if (platforms.size() == 0) {
@@ -232,6 +261,7 @@ RGY_ERR clFilterChain::initOpenCL(const int platformID, const int deviceID, cons
         PrintMes(RGY_LOG_ERROR, _T("platform %d does not exist (platform count = %d)\n"), platformID, (int)platforms.size());
         return RGY_ERR_DEVICE_NOT_FOUND;
     }
+    PrintMes(RGY_LOG_INFO, _T("OpenCL platform count %d\n"), (int)platforms.size());
 
     auto& platform = platforms[std::max(platformID, 0)];
 
@@ -240,7 +270,7 @@ RGY_ERR clFilterChain::initOpenCL(const int platformID, const int deviceID, cons
         PrintMes(RGY_LOG_ERROR, _T("Failed to create device list: %s\n"), get_err_mes(err));
         return RGY_ERR_DEVICE_NOT_FOUND;
     }
-    PrintMes(RGY_LOG_DEBUG, _T("created device list: %d device(s).\n"), platform->devs().size());
+    PrintMes(RGY_LOG_INFO, _T("created device list: %d device(s).\n"), platform->devs().size());
 
     if (deviceID >= 0 && deviceID >= (int)platform->devs().size()) {
         PrintMes(RGY_LOG_ERROR, _T("Invalid device Id %d (device count %d)\n"), deviceID, (int)platform->devs().size());
@@ -253,12 +283,14 @@ RGY_ERR clFilterChain::initOpenCL(const int platformID, const int deviceID, cons
         PrintMes(RGY_LOG_ERROR, _T("Failed to create OpenCL context.\n"));
         return RGY_ERR_UNKNOWN;
     }
+
     const auto devInfo = platform->dev(0).info();
     m_deviceName = (devInfo.board_name_amd.length() > 0) ? devInfo.board_name_amd : devInfo.name;
     m_platformID = platformID;
     m_deviceID = deviceID;
     m_queueSendIn = m_cl->createQueue(platform->dev(0).id(), 0 /*CL_QUEUE_PROFILING_ENABLE*/);
 
+    PrintMes(RGY_LOG_INFO, _T("created OpenCL context, selcted device %s.\n"), m_deviceName.c_str());
     return RGY_ERR_NONE;
 }
 
@@ -482,6 +514,15 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
     return RGY_ERR_NONE;
 }
 
+tstring clFilterChain::printFilterChain(const std::vector<clFilter>& filterChain) const {
+    tstring str;
+    for (auto& filter : filterChain) {
+        if (str.length() > 0) str += _T(", ");
+        str += clfilter_cl_to_str(filter);
+    }
+    return str;
+}
+
 bool clFilterChain::filterChainEqual(const std::vector<clFilter>& target) const {
     if (m_filters.size() != target.size()) {
         return false;
@@ -503,6 +544,8 @@ RGY_ERR clFilterChain::filterChainCreate(const RGYFrameInfo *pInputFrame, const 
     const bool resizeRequired = pInputFrame->width != outWidth || pInputFrame->height != outHeight;
     const auto filterChain = m_prm.getFilterChain(resizeRequired);
     if (!filterChainEqual(filterChain)) {
+        PrintMes(RGY_LOG_INFO, _T("clFilterChain changed: %s\n"), printFilterChain(filterChain).c_str());
+
         decltype(m_filters) newFilters;
         newFilters.reserve(filterChain.size());
         for (const auto filterType : filterChain) {
@@ -530,6 +573,7 @@ RGY_ERR clFilterChain::filterChainCreate(const RGYFrameInfo *pInputFrame, const 
 void clFilterChain::resetPipeline() {
     m_frameIn->resetCachedFrames();
     m_frameOut->resetCachedFrames();
+    PrintMes(RGY_LOG_DEBUG, _T("clFilterChain reset pipeline.\n"));
 }
 
 static void copyFramePropWithoutCsp(RGYFrameInfo *dst, const RGYFrameInfo *src) {
@@ -624,6 +668,7 @@ RGY_ERR clFilterChain::proc(const int frameID, const int outWidth, const int out
     }
     m_cl->setModuleHandle(prm.hModule);
     m_log->setLogLevel(prm.log_level, RGY_LOGT_ALL);
+    m_log->setLogFile(prm.log_to_file ? LOG_FILE_NAME : nullptr);
     m_prm = prm;
 
     auto frameDevOut = m_frameOut->get_in(outWidth, outHeight);

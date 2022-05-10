@@ -2,7 +2,7 @@
 
 clfilters.auf ‚ÍAAviutl—p‚ÌOpenCL‚É‚æ‚éGPUƒtƒBƒ‹ƒ^‚Å‚·B
 
-ƒtƒBƒ‹ƒ^ˆ—‚ðGPUã‚Å˜A‘±‚µ‚Äs‚¤‚±‚Æ‚ÅAƒtƒBƒ‹ƒ^‚ð‚»‚ê‚¼‚êŽÀs‚·‚é‚Ì‚Æ”ä‚×‚ÄCPU - GPUŠÔ‚Ìƒf[ƒ^“]‘—‚ðíŒ¸‚Å‚«A‚‘¬‰»‚ªŠú‘Ò‚Å‚«‚Ü‚·B
+•¡”‚ÌƒtƒBƒ‹ƒ^ˆ—‚ðGPUã‚Å˜A‘±‚µ‚Äs‚¤‚±‚Æ‚ÅAƒtƒBƒ‹ƒ^‚ð‚»‚ê‚¼‚êŽÀs‚·‚é‚Ì‚Æ”ä‚×‚ÄCPU - GPUŠÔ‚Ìƒf[ƒ^“]‘—‚ðíŒ¸‚Å‚«A‚‘¬‰»‚ªŠú‘Ò‚Å‚«‚Ü‚·B
 
 ## ‘z’è“®ìŠÂ‹«
 
@@ -41,7 +41,7 @@ Intel / NVIDIA / AMD ‚ÌGPUƒhƒ‰ƒCƒo‚ÌƒCƒ“ƒXƒg[ƒ‹‚³‚ê‚½ŠÂ‹«
 
 ![ƒfƒoƒCƒX‘I‘ð](./data/clfilters_select_device.png)
 
-‚»‚ÌŒãA“K—p‚·‚éƒtƒBƒ‹ƒ^‚Éƒ`ƒFƒbƒN‚ð“ü‚êAƒpƒ‰ƒ[ƒ^’²®‚ðs‚Á‚Ä‚­‚¾‚³‚¢B
+‚»‚ÌŒãA“K—p‚·‚éƒtƒBƒ‹ƒ^‚Éƒ`ƒFƒbƒN‚ð“ü‚êAƒpƒ‰ƒ[ƒ^’²®‚ðs‚Á‚Ä‚­‚¾‚³‚¢B•W€’l‚Í‰º‹L‚Ì‚Æ‚¨‚è‚Å‚·B
 
 ![ƒpƒ‰ƒ[ƒ^’²®](./data/clfilters_params.png)
 
@@ -92,20 +92,18 @@ GPU‚Ìƒƒ‚ƒŠŠm•Û‚ÍCPUˆÈã‚É’x‚¢‚Ì‚ÅA‚È‚é‚×‚­Šm•Û‚µ‚½ƒƒ‚ƒŠ‚ðŽg‚¢‚Ü‚í‚·‚æ‚¤‚ÉH•v
 
 ‚Ü‚¾GPU‚ª—V‚ñ‚Å‚¢‚éŽžŠÔ‚ª‘½‚¢ó‹µ‚¾‚Á‚½‚Ì‚ÅAVTune‚È‚Ç‚ðŽg‚Á‚ÄAOpenCL API‚ÌŒÄ‚Î‚ê•û‚È‚Ç‚ðƒ`ƒFƒbƒN‚µ‚Ü‚µ‚½BƒŠƒ\[ƒX‚Ì‰ð•ú˜R‚ê‚É‚æ‚èA–³‘Ê‚È“¯Šú‚ª‚©‚©‚Á‚Ä‚µ‚Ü‚Á‚Ä‚¢‚½‚Ì‚ð‰ðÁ‚µ‚Ä‚‘¬‰»‚µ‚Ü‚µ‚½B
 
-## ‰Û‘è
+## Ý’è‰æ–Ê‚ÌÚ×
 
-clfilters ‚É‚Í‰º‹L‚Ì‰Û‘è‚ª‚ ‚è‚Ü‚·B
+### ƒfƒoƒCƒX‘I‘ð  
+Žg—p‚·‚éƒfƒoƒCƒX(GPU)‚ð‘I‘ð‚µ‚Ü‚·B
 
-- NVIDIA‚ÌGPU“™A[cl_khr_image2d_from_buffer](https://www.khronos.org/registry/OpenCL/sdk/3.0/docs/man/html/cl_khr_image2d_from_buffer.html) ‚Æ‚¢‚¤KHRŠg’£‚ªƒTƒ|[ƒg‚³‚ê‚È‚¢ŠÂ‹«‚Å–³‘Ê‚Éƒƒ‚ƒŠƒRƒs[‚ª‘½”­‚·‚éB  
-  OpenCL 2.0‚Å‚±‚ÌŠg’£‚Í•W€‚É‚È‚Á‚½‚Ì‚ÅA‚¢‚ë‚¢‚ë‚ÈƒtƒBƒ‹ƒ^‚ð cl_khr_image2d_from_buffer ‚ ‚è‚«‚ÅŽÀ‘•‚µ‚Ä‚«‚½‚Ì‚Å‚·‚ªA
-  OpenCL 3.0‚Å•W€‚©‚çŠO‚ê‚Ä‚µ‚Ü‚¢ANVIDIA GPU‚Å‚Í‘Î‰ž‚µ‚Ä‚¢‚È‚¢‚æ‚¤‚Å‚·(Intel/AMD‚Í‘Î‰ž)B
-  CUDA‚Å‚à‚Ù‚Ú“¯‚¶‚±‚Æ‚Å‚«‚é‚Ì‚É‚È‚ñ‚ÅƒTƒ|[ƒg‚µ‚È‚¢‚ÌcB”ß‚µ‚ÝB
+### clinfo  
+Œ»ŠÂ‹«‚Å”FŽ¯‚µ‚Ä‚¢‚éƒfƒoƒCƒX‚ÌƒŠƒXƒg‚Æ‚»‚Ìî•ñ‚ðŽw’è‚Ìƒtƒ@ƒCƒ‹‚Éo—Í‚µ‚Ü‚·B
 
-- ŽžŠÔ•ûŒü‚ÉŽQÆ‚·‚éƒtƒBƒ‹ƒ^‚É–¢‘Î‰žB  
-  vpp-convolution3d ‚È‚ÇBŽÀ‘•‚ª‚â‚â‚±‚µ‚¢‚Ì‚ÅŒ©‘—‚è’†‚Å‚·B
-  
-  
-## ŠeƒtƒBƒ‹ƒ^‚ÌÚ×
+### ƒƒOo—Í  
+ƒƒOo—Í‚Ì’iŠK‚ð‘I‘ð‚µ‚Ü‚·B’Êí‚ÍA"quiet"‚Å–â‘è‚ ‚è‚Ü‚¹‚ñB
+
+quietˆÈŠO‚ð‘I‘ð‚µ‚½ê‡AƒƒO‚Í[patch.aul](https://www.nicovideo.jp/watch/sm39491708)‚É‚æ‚è•\Ž¦‰Â”\‚ÈƒRƒ“ƒ\[ƒ‹ƒEƒBƒ“ƒhƒE‚Éo—Í‚³‚ê‚Ü‚·B‚Ü‚½Auƒtƒ@ƒCƒ‹‚Éo—Ív‚Ìƒ`ƒFƒbƒN‚ð“ü‚ê‚é‚±‚Æ‚ÅA"cufilter.auf.log"‚Éƒtƒ@ƒCƒ‹o—Í‚·‚é‚±‚Æ‚à‰Â”\‚Å‚·B
 
 ### F‹óŠÔ•ÏŠ·  
 Žw’è‚ÌF‹óŠÔ•ÏŠ·‚ðs‚¤B
@@ -136,7 +134,7 @@ clfilters ‚É‚Í‰º‹L‚Ì‰Û‘è‚ª‚ ‚è‚Ü‚·B
 
 
 - hdr2sdr  
-  tone-mapping‚ðŽw’è‚µ‚ÄHDR‚©‚çSDR‚Ö‚Ì•ÏŠ·‚ðs‚¤B 
+  tone-mapping‚ðŽw’è‚µ‚ÄHDR‚©‚çSDR‚Ö‚Ì•ÏŠ·‚ðs‚¤BŽg—pŽž‚É‚ÍAmatrix, colorprim, transfer “™‚Ì•ÏŠ·‚à“¯Žž‚É“KØ‚ÉŽw’è‚µ‚Ä‚­‚¾‚³‚¢B
   
   - none  (ƒfƒtƒHƒ‹ƒg)  
     hdr2sdr‚Ìˆ—‚ðs‚¤‚È‚¢B
@@ -361,6 +359,23 @@ nnedi‚É‚æ‚éƒCƒ“ƒ^ƒŒ‰ðœ‚ðs‚¤BŠî–{“I‚É‚Í•Ð•ûƒtƒB[ƒ‹ƒh‚ÍŽÌ‚Ä‚ÄA‚à‚¤•Ð•û‚ÌƒtƒB
 - –ˆƒtƒŒ[ƒ€—”¶¬ (ƒfƒtƒHƒ‹ƒg=ƒIƒt)  
   –ˆƒtƒŒ[ƒ€Žg—p‚·‚é—”‚ð•ÏX‚·‚éB
 
+## ‰Û‘è
+
+clfilters ‚É‚Í‰º‹L‚Ì‰Û‘è‚ª‚ ‚è‚Ü‚·B
+
+- ƒtƒBƒ‹ƒ^‚Ì‡˜‚ªŒÅ’è  
+  ‚»‚Ì‚¤‚¿ƒtƒBƒ‹ƒ^‚Ì‡˜‚ð•ÏX‰Â”\‚É‚µ‚½‚¢‚Å‚·B
+
+- NVIDIA‚ÌGPU“™A[cl_khr_image2d_from_buffer](https://www.khronos.org/registry/OpenCL/sdk/3.0/docs/man/html/cl_khr_image2d_from_buffer.html) ‚Æ‚¢‚¤KHRŠg’£‚ªƒTƒ|[ƒg‚³‚ê‚È‚¢ŠÂ‹«‚Å–³‘Ê‚Éƒƒ‚ƒŠƒRƒs[‚ª‘½”­‚·‚éB  
+  OpenCL 2.0‚Å‚±‚ÌŠg’£‚Í•W€‚É‚È‚Á‚½‚Ì‚ÅA‚¢‚ë‚¢‚ë‚ÈƒtƒBƒ‹ƒ^‚ð cl_khr_image2d_from_buffer ‚ ‚è‚«‚ÅŽÀ‘•‚µ‚Ä‚«‚½‚Ì‚Å‚·‚ªA
+  OpenCL 3.0‚Å•W€‚©‚çŠO‚ê‚Ä‚µ‚Ü‚¢ANVIDIA GPU‚Å‚Í‘Î‰ž‚µ‚Ä‚¢‚È‚¢‚æ‚¤‚Å‚·(Intel/AMD‚Í‘Î‰ž)B
+  CUDA‚Å‚à‚Ù‚Ú“¯‚¶‚±‚Æ‚Å‚«‚é‚Ì‚É‚È‚ñ‚ÅƒTƒ|[ƒg‚µ‚È‚¢‚ÌcB”ß‚µ‚ÝB
+
+- ŽžŠÔ•ûŒü‚ÉŽQÆ‚·‚éƒtƒBƒ‹ƒ^‚É–¢‘Î‰žB  
+  vpp-convolution3d ‚È‚ÇB‚©‚È‚èŽÀ‘•‚ª‚â‚â‚±‚µ‚­‚È‚Á‚Ä‚µ‚Ü‚¤‚Ì‚ÅŒ©‘—‚è’†‚Å‚·B
+
+- ƒgƒ‰ƒbƒNƒo[‚ð32ŒÂ‚æ‚è‘½‚­Ý’u‚·‚é‚Æˆê•”‚ª”½‰ž‚µ‚È‚­‚È‚éB  
+  ‚È‚é‚×‚­ƒgƒ‰ƒbƒNƒo[‚ðŽg—p‚µ‚È‚¢‚æ‚¤Aƒpƒ‰ƒ[ƒ^”‚ð—}§‚µ‚Ü‚µ‚½BAviutl‚Ì§ŒÀ‚È‚Ì‚©‚à‚µ‚ê‚Ü‚¹‚ñB  
 
 ## ƒRƒ“ƒpƒCƒ‹ŠÂ‹«
 
