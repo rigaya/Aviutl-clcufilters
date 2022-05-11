@@ -105,7 +105,7 @@ void load_texSrc(
 void load_texSrc(
     const int pix_x_per_thread, const bool load_for_interp,
     __local float *const ptr_src, const int ssrc_dim, __local TypePixel *const ptr_pix, const int spix_dim, 
-    __global uchar * pIn,
+    __global uchar *__restrict__ pIn,
     const int inPitch, //1行おきなので通常の2倍の値が入っている
     const int inWidth,
     const int inHeight,
