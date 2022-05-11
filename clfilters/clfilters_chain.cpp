@@ -303,7 +303,6 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         }
         std::shared_ptr<RGYFilterParamColorspace> param(new RGYFilterParamColorspace());
         param->colorspace = m_prm.colorspace;
-        param->hModule = m_prm.hModule;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = false;
