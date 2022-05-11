@@ -78,7 +78,7 @@ RGY_ERR RGYFilterUnsharp::procFrame(RGYFrameInfo *pOutputFrame, const RGYFrameIn
     return RGY_ERR_NONE;
 }
 
-RGYFilterUnsharp::RGYFilterUnsharp(shared_ptr<RGYOpenCLContext> context) : RGYFilter(context), m_unsharp() {
+RGYFilterUnsharp::RGYFilterUnsharp(shared_ptr<RGYOpenCLContext> context) : RGYFilter(context), m_unsharp(), m_srcImage() {
     m_name = _T("unsharp");
 }
 
