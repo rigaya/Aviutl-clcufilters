@@ -243,6 +243,7 @@
     <ClInclude Include="gpuz_info.h" />
     <ClInclude Include="gpu_info.h" />
     <ClInclude Include="rgy_arch.h" />
+    <ClInclude Include="rgy_caption.h" />
     <ClInclude Include="rgy_codepage.h" />
     <ClInclude Include="rgy_def.h" />
     <ClInclude Include="rgy_env.h" />

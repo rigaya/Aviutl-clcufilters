@@ -90,6 +90,7 @@
     <ClInclude Include="rgy_status.h" />
     <ClInclude Include="gpuz_info.h" />
     <ClInclude Include="convert_csp_func.h" />
+    <ClInclude Include="rgy_caption.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="rgy_filter.cl" />

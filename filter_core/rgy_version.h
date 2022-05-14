@@ -72,12 +72,12 @@ const char *get_encoder_version();
 
 #define ENCODER_NAME  "clfilters"
 #define FOR_AUO                   1
-#define ENABLE_RAW_READER         1
-#define ENABLE_AVI_READER         1
-#define ENABLE_AVISYNTH_READER    1
-#define ENABLE_VAPOURSYNTH_READER 1
-#define ENABLE_AVSW_READER        1
-#define ENABLE_SM_READER          1
+#define ENABLE_RAW_READER         0
+#define ENABLE_AVI_READER         0
+#define ENABLE_AVISYNTH_READER    0
+#define ENABLE_VAPOURSYNTH_READER 0
+#define ENABLE_AVSW_READER        0
+#define ENABLE_SM_READER          0
 #define ENABLE_OPENCL             1
 #define ENABLE_CAPTION2ASS        0
 
