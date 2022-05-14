@@ -77,6 +77,11 @@ jobs:
           copy _build\${{ matrix.platform }}\Release\clfilters.auf clfilters_release
           7z a -mx9 clfilters_${{ needs.get_version_name.outputs.version_name }}.zip .\clfilters_release\*
 
+      - name: Check Version
+        id: check_ver
+        run: |
+          powershell "$ver = (Get-ItemProperty .\Aviutl_QSVEnc_release\plugins\QSVEnc.auo).VersionInfo.FileVersion; if ($ver -eq '${{ needs.get_version_name.outputs.version_name }}') { exit 0; } exit 1;"
+
       - name: Upload Release Asset
         id: upload-release-asset 
         uses: softprops/action-gh-release@v1
