@@ -22,7 +22,7 @@
 |:--       |:--                |:--   |
 | Intel    | igdrcl32.dll      | C:\Windows\System32\DriverStore\FileRepository\iigd_dch.inf_amd64_*  |
 | NVIDIA   | nvopencl32.dll    | C:\Windows\System32\DriverStore\FileRepository\nv_dispig.inf_amd64_* |
-| AMD      | amdocl.dll        | C:\Windows\System32\DriverStore\FileRepository\\*.inf_amd64_*         |
+| AMD      | amdocl.dll        | C:\Windows\System32\DriverStore\FileRepository\xxxxxxxx.inf_amd64_*  |
 
 ## モジュールが存在しない場合
 
@@ -62,7 +62,7 @@ OpenCLは、本来はGPUに限らず並列計算を行うための汎用的な�
 |:--       |:--                |:--                |:--   |
 | Intel    | igdrcl32.dll      | igdrcl64.dll      | C:\Windows\System32\DriverStore\FileRepository\iigd_dch.inf_amd64_*  |
 | NVIDIA   | nvopencl32.dll    | nvopencl64.dll    | C:\Windows\System32\DriverStore\FileRepository\nv_dispig.inf_amd64_* |
-| AMD      | amdocl.dll        | amdocl64.dll      | C:\Windows\System32\DriverStore\FileRepository\\*.inf_amd64_*         |
+| AMD      | amdocl.dll        | amdocl64.dll      | C:\Windows\System32\DriverStore\FileRepository\xxxxxxxx.inf_amd64_*  |
 
 OpenCL.dllが呼び出されると、OpenCL.dllがこれらモジュールを見つけに行くことになります。
 一般にはGPUドライバインストール時にレジストリに各モジュールの場所が書き込まれており、
