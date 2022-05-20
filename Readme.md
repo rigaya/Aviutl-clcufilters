@@ -45,6 +45,10 @@ Intel / NVIDIA / AMD のGPUドライバのインストールされた環境
 
 ![パラメータ調整](./data/clfilters_params.png)
 
+## clfitlersで "OpenCLを使用できません。" と出てしまう
+
+問題の確認方法、対処方法をまとめました。[こちら](./opencl_load_error.md)をご確認ください。
+
 ## 処理概要
 
 Aviutlの内部フォーマット(YC48)からGPUで扱いやすいYUV444 16bitに変換したのち、GPUに転送してフィルタ処理を行います。その後、処理結果をCPUに転送し、YC48に戻して処理を完了させます。
