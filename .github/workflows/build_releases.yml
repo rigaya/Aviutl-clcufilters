@@ -79,6 +79,7 @@ jobs:
 
       - name: Check Version
         id: check_ver
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
           powershell "$ver = (Get-ItemProperty .\clfilters_release\clfilters.auf).VersionInfo.FileVersion; if ($ver -eq '${{ needs.get_version_name.outputs.version_name }}') { exit 0; } exit 1;"
 
