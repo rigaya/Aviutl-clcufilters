@@ -291,7 +291,7 @@ int track_default[] = {
 };
 //  トラックバーの下限値
 int track_s[] = {
-    0, 0, //colorspace
+    1, 1, //colorspace
 #if ENABLE_HDR2SDR_DESAT
     0, 0, 1, //colorspace
 #endif //#if ENABLE_HDR2SDR_DESAT
