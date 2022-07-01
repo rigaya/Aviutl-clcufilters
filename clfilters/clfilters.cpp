@@ -60,6 +60,11 @@ enum {
     ID_LB_LOG_LEVEL,
     ID_CX_LOG_LEVEL,
 
+    ID_LB_FILTER_ORDER,
+    ID_LS_FILTER_ORDER,
+    ID_BT_FILTER_ORDER_UP,
+    ID_BT_FILTER_ORDER_DOWN,
+
     ID_LB_COLORSPACE_COLORMATRIX_FROM_TO,
     ID_CX_COLORSPACE_COLORMATRIX_FROM,
     ID_CX_COLORSPACE_COLORMATRIX_TO,
@@ -137,7 +142,9 @@ struct CLFILTER_EXDATA {
     int warpsharp_blur;
     int deband_sample;
 
-    char reserved[900];
+    clFilter filterOrder[64];
+
+    char reserved[644];
 };
 # pragma pack()
 static const size_t exdatasize = sizeof(CLFILTER_EXDATA);
@@ -190,7 +197,6 @@ static void cl_exdata_set_default() {
 //---------------------------------------------------------------------
 //        フィルタ構造体定義
 //---------------------------------------------------------------------
-
 //  トラックバーの名前
 const TCHAR *track_name[] = {
     //リサイズ
@@ -506,6 +512,11 @@ static HWND bt_resize_res_add;
 static HWND bt_resize_res_del;
 static HWND cx_resize_algo;
 
+static HWND lb_filter_order;
+static HWND ls_filter_order;
+static HWND bt_filter_order_up;
+static HWND bt_filter_order_down;
+
 static HWND lb_colorspace_colormatrix_from_to;
 static HWND cx_colorspace_colormatrix_from;
 static HWND cx_colorspace_colormatrix_to;
@@ -599,6 +610,17 @@ static void set_cl_exdata(const HWND hwnd, const int value) {
     }
 }
 
+static void set_filter_order() {
+    static_assert((size_t)(clFilter::FILTER_MAX) <= _countof(cl_exdata.filterOrder));
+    memset(cl_exdata.filterOrder, 0, sizeof(cl_exdata.filterOrder));
+
+    const int n = SendMessage(ls_filter_order, LB_GETCOUNT, 0, 0);
+    for (int i = 0; i < std::min<int>(n, _countof(cl_exdata.filterOrder)); i++) {
+        const auto id = (clFilter)SendMessage(ls_filter_order, LB_GETITEMDATA, i, 0);
+        cl_exdata.filterOrder[i] = id;
+    }
+}
+
 static void change_cx_param(HWND hwnd) {
     LRESULT ret;
 
@@ -609,6 +631,55 @@ static void change_cx_param(HWND hwnd) {
     if (ret != CB_ERR) {
         set_cl_exdata(hwnd, ret);
     }
+}
+
+static void lstbox_move_up(HWND hdlg) {
+    // 選択位置取得
+    int n = SendMessage(hdlg, LB_GETCURSEL, 0, 0);
+    if (n == 0 || n == LB_ERR) {// 一番上のときor選択されていない
+        SendMessage(hdlg, LB_SETCURSEL, n, 0);
+        return;
+    }
+
+    // データ・文字列取得
+    char str[FILTER_NAME_MAX_LENGTH] = { 0 };
+    void *data = (void *)SendMessage(hdlg, LB_GETITEMDATA, n, 0);
+    SendMessage(hdlg, LB_GETTEXT, n, (LPARAM)str);
+
+    // 削除
+    SendMessage(hdlg, LB_DELETESTRING, n, 0);
+
+    // 挿入
+    n--;	// 一つ上
+    SendMessage(hdlg, LB_INSERTSTRING, n, (LPARAM)str);
+    SendMessage(hdlg, LB_SETITEMDATA, n, (LPARAM)data);
+
+    SendMessage(hdlg, LB_SETCURSEL, n, 0);
+}
+
+static void lstbox_move_down(HWND hdlg) {
+    // 選択位置取得
+    int n = SendMessage(hdlg, LB_GETCURSEL, 0, 0);
+    int count = SendMessage(hdlg, LB_GETCOUNT, 0, 0);
+    if (n == count - 1 || n == LB_ERR) { // 一番下or選択されていない
+        SendMessage(hdlg, LB_SETCURSEL, n, 0);
+        return;
+    }
+
+    // データ・文字列取得
+    char str[FILTER_NAME_MAX_LENGTH] = { 0 };
+    void *data = (void *)SendMessage(hdlg, LB_GETITEMDATA, n, 0);
+    SendMessage(hdlg, LB_GETTEXT, n, (LPARAM)str);
+
+    // 削除
+    SendMessage(hdlg, LB_DELETESTRING, n, 0);
+
+    // 挿入
+    n++;	// 一つ下
+    SendMessage(hdlg, LB_INSERTSTRING, n, (LPARAM)str);
+    SendMessage(hdlg, LB_SETITEMDATA, n, (LPARAM)data);
+
+    SendMessage(hdlg, LB_SETCURSEL, n, 0);
 }
 
 static int select_combo_item(HWND hwnd, int data) {
@@ -852,6 +923,17 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
             break;
         case ID_BT_OPENCL_INFO:
             out_opencl_info(fp);
+            break;
+        case ID_LS_FILTER_ORDER:
+            set_filter_order();
+            break;
+        case ID_BT_FILTER_ORDER_UP:
+            lstbox_move_up(ls_filter_order);
+            set_filter_order();
+            return TRUE; //TRUEを返すと画像処理が更新される
+        case ID_BT_FILTER_ORDER_DOWN:
+            lstbox_move_down(ls_filter_order);
+            return TRUE; //TRUEを返すと画像処理が更新される
             break;
         case ID_CX_COLORSPACE_COLORMATRIX_FROM: // コンボボックス
             switch (HIWORD(wparam)) {
@@ -1187,7 +1269,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     RECT rc, dialog_rc;
     GetWindowRect(hwnd, &dialog_rc);
 
-    const int columns = 2;
+    const int columns = 3;
     const int col_width = dialog_rc.right - dialog_rc.left;
 
     //clfilterのチェックボックス
@@ -1259,25 +1341,50 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     GetWindowRect(child_hwnd[checkbox_idx + CLFILTER_CHECK_LOG_TO_FILE], &rc);
     SetWindowPos(child_hwnd[checkbox_idx + CLFILTER_CHECK_LOG_TO_FILE], HWND_TOP, 218, cb_log_level_y+4, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
 
-    //リサイズ
-    const int cb_resize_y = cb_filed_y + 28;
-    GetWindowRect(child_hwnd[checkbox_idx + CLFILTER_CHECK_RESIZE_ENABLE], &rc);
-    SetWindowPos(child_hwnd[checkbox_idx + CLFILTER_CHECK_RESIZE_ENABLE], HWND_TOP, rc.left - dialog_rc.left, cb_resize_y, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
+    //フィルタのリスト
+    const int list_filter_order_y = cb_filed_y + 28;
+    lb_filter_order = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, 8 + AVIUTL_1_10_OFFSET, list_filter_order_y, 60, 24, hwnd, (HMENU)ID_LB_FILTER_ORDER, hinst, NULL);
+    SendMessage(lb_filter_order, WM_SETFONT, (WPARAM)b_font, 0);
+    SendMessage(lb_filter_order, WM_SETTEXT, 0, (LPARAM)"フィルタ順序");
 
-    lb_proc_mode = CreateWindow("static", "", SS_SIMPLE|WS_CHILD|WS_VISIBLE, 8 + AVIUTL_1_10_OFFSET, cb_resize_y+24, 60, 24, hwnd, (HMENU)ID_LB_RESIZE_RES, hinst, NULL);
+    static const int bt_filter_order_width = 40;
+    static const int list_filter_oder_x = 8;
+    static const int list_filter_oder_width = col_width - bt_filter_order_width - 48;
+    static const int list_filter_oder_height = 400;
+    ls_filter_order = CreateWindow("LISTBOX", "clinfo", WS_CHILD | WS_VISIBLE | WS_GROUP | WS_BORDER | WS_BORDER | WS_VSCROLL | LBS_NOTIFY, list_filter_oder_x, list_filter_order_y +24, list_filter_oder_width, list_filter_oder_height, hwnd, (HMENU)ID_LS_FILTER_ORDER, hinst, NULL);
+    SendMessage(ls_filter_order, WM_SETFONT, (WPARAM)b_font, 0);
+
+    bt_filter_order_up = CreateWindow("BUTTON", "↑", WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, list_filter_oder_x + list_filter_oder_width + 8, list_filter_order_y + list_filter_oder_height / 2 - 24, bt_filter_order_width, 22, hwnd, (HMENU)ID_BT_FILTER_ORDER_UP, hinst, NULL);
+    SendMessage(bt_filter_order_up, WM_SETFONT, (WPARAM)b_font, 0);
+
+    bt_filter_order_down = CreateWindow("BUTTON", "↓", WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, list_filter_oder_x + list_filter_oder_width + 8, list_filter_order_y + list_filter_oder_height / 2, bt_filter_order_width, 22, hwnd, (HMENU)ID_BT_FILTER_ORDER_DOWN, hinst, NULL);
+    SendMessage(bt_filter_order_down, WM_SETFONT, (WPARAM)b_font, 0);
+
+    for (size_t ifilter = 0; ifilter < filterList.size(); ifilter++) {
+        SendMessage(ls_filter_order, LB_INSERTSTRING, ifilter, (LPARAM)filterList[ifilter].first);
+        SendMessage(ls_filter_order, LB_SETITEMDATA, ifilter, (LPARAM)filterList[ifilter].second);
+    }
+
+    //リサイズ
+    int col = 1;
+    const int cb_resize_y = list_filter_order_y;
+    GetWindowRect(child_hwnd[checkbox_idx + CLFILTER_CHECK_RESIZE_ENABLE], &rc);
+    SetWindowPos(child_hwnd[checkbox_idx + CLFILTER_CHECK_RESIZE_ENABLE], HWND_TOP, col * col_width + rc.left - dialog_rc.left, cb_resize_y, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
+
+    lb_proc_mode = CreateWindow("static", "", SS_SIMPLE|WS_CHILD|WS_VISIBLE, col * col_width + 8 + AVIUTL_1_10_OFFSET, cb_resize_y+24, 60, 24, hwnd, (HMENU)ID_LB_RESIZE_RES, hinst, NULL);
     SendMessage(lb_proc_mode, WM_SETFONT, (WPARAM)b_font, 0);
     SendMessage(lb_proc_mode, WM_SETTEXT, 0, (LPARAM)"サイズ");
 
-    cx_resize_res = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, 68, cb_resize_y+24, 145, 100, hwnd, (HMENU)ID_CX_RESIZE_RES, hinst, NULL);
+    cx_resize_res = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, col * col_width + 68, cb_resize_y+24, 145, 100, hwnd, (HMENU)ID_CX_RESIZE_RES, hinst, NULL);
     SendMessage(cx_resize_res, WM_SETFONT, (WPARAM)b_font, 0);
 
-    bt_resize_res_add = CreateWindow("BUTTON", "追加", WS_CHILD|WS_VISIBLE|WS_GROUP|WS_TABSTOP|BS_PUSHBUTTON|BS_VCENTER, 214, cb_resize_y+24, 32, 22, hwnd, (HMENU)ID_BT_RESIZE_RES_ADD, hinst, NULL);
+    bt_resize_res_add = CreateWindow("BUTTON", "追加", WS_CHILD|WS_VISIBLE|WS_GROUP|WS_TABSTOP|BS_PUSHBUTTON|BS_VCENTER, col * col_width + 214, cb_resize_y+24, 32, 22, hwnd, (HMENU)ID_BT_RESIZE_RES_ADD, hinst, NULL);
     SendMessage(bt_resize_res_add, WM_SETFONT, (WPARAM)b_font, 0);
 
-    bt_resize_res_del = CreateWindow("BUTTON", "削除", WS_CHILD|WS_VISIBLE|WS_GROUP|WS_TABSTOP|BS_PUSHBUTTON|BS_VCENTER, 246, cb_resize_y+24, 32, 22, hwnd, (HMENU)ID_BT_RESIZE_RES_DEL, hinst, NULL);
+    bt_resize_res_del = CreateWindow("BUTTON", "削除", WS_CHILD|WS_VISIBLE|WS_GROUP|WS_TABSTOP|BS_PUSHBUTTON|BS_VCENTER, col * col_width + 246, cb_resize_y+24, 32, 22, hwnd, (HMENU)ID_BT_RESIZE_RES_DEL, hinst, NULL);
     SendMessage(bt_resize_res_del, WM_SETFONT, (WPARAM)b_font, 0);
 
-    cx_resize_algo = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, 68, cb_resize_y+48, 145, 100, hwnd, (HMENU)ID_CX_RESIZE_ALGO, hinst, NULL);
+    cx_resize_algo = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, col * col_width + 68, cb_resize_y+48, 145, 100, hwnd, (HMENU)ID_CX_RESIZE_ALGO, hinst, NULL);
     SendMessage(cx_resize_algo, WM_SETFONT, (WPARAM)b_font, 0);
 
     update_cx_resize_res_items(fp);
@@ -1291,7 +1398,6 @@ void init_dialog(HWND hwnd, FILTER *fp) {
 
     int y_pos_max = 0;
     // --- 最初の列 -----------------------------------------
-    int col = 0;
     int y_pos = cb_resize_y + track_bar_delta_y * 3 + 8;
     int cx_y_pos = 0;
     //colorspace
@@ -1322,7 +1428,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     y_pos_max = std::max(y_pos_max, y_pos);
     // --- 次の列 -----------------------------------------
 
-    col = 1;
+    col = 2;
     y_pos = cb_resize_y;
     //unsharp
     move_group(y_pos, col, col_width, CLFILTER_CHECK_UNSHARP_ENABLE, CLFILTER_CHECK_UNSHARP_MAX, CLFILTER_TRACK_UNSHARP_FIRST, CLFILTER_TRACK_UNSHARP_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
@@ -1347,6 +1453,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     SetWindowPos(hwnd, HWND_TOP, 0, 0, (dialog_rc.right - dialog_rc.left) * columns, y_pos_max + 24, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOZORDER);
 
     update_cx(fp);
+    set_filter_order();
 }
 
 //---------------------------------------------------------------------
@@ -1372,6 +1479,12 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp) {
     prm.hModule = fp->dll_hinst;
     prm.log_level = cl_exdata.log_level;
     prm.log_to_file = fp->check[CLFILTER_CHECK_LOG_TO_FILE] != 0;
+
+    //フィルタ順序
+    for (int i = 0; i < _countof(cl_exdata.filterOrder); i++) {
+        if (cl_exdata.filterOrder[i] == clFilter::UNKNOWN) break;
+        prm.filterOrder.push_back(cl_exdata.filterOrder[i]);
+    }
 
     //リサイズ
     prm.resize_algo        = (RGY_VPP_RESIZE_ALGO)cl_exdata.resize_algo;

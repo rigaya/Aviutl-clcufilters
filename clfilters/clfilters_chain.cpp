@@ -112,6 +112,7 @@ void clFilterFrameBuffer::out_to_next() { m_out = (m_out + 1) % m_frame.size(); 
 
 clFilterChainParam::clFilterChainParam() :
     hModule(NULL),
+    filterOrder(),
     colorspace(),
     nnedi(),
     smooth(),
@@ -150,19 +151,31 @@ bool clFilterChainParam::operator!=(const clFilterChainParam &x) const {
 }
 
 std::vector<clFilter> clFilterChainParam::getFilterChain(const bool resizeRequired) const {
-    std::vector<clFilter>  filters;
-    if (colorspace.enable) filters.push_back(clFilter::COLORSPACE);
-    if (nnedi.enable)      filters.push_back(clFilter::NNEDI);
-    if (smooth.enable)     filters.push_back(clFilter::SMOOTH);
-    if (knn.enable)        filters.push_back(clFilter::KNN);
-    if (pmd.enable)        filters.push_back(clFilter::PMD);
-    if (resizeRequired)    filters.push_back(clFilter::RESIZE);
-    if (unsharp.enable)    filters.push_back(clFilter::UNSHARP);
-    if (edgelevel.enable)  filters.push_back(clFilter::EDGELEVEL);
-    if (warpsharp.enable)  filters.push_back(clFilter::WARPSHARP);
-    if (tweak.enable)      filters.push_back(clFilter::TWEAK);
-    if (deband.enable)     filters.push_back(clFilter::DEBAND);
-    return filters;
+    std::vector<clFilter> allFilterOrder = filterOrder; // 指定の順序
+    // 指定の順序にないフィルタを追加
+    for (const auto& f : filterList) {
+        if (std::find(allFilterOrder.begin(), allFilterOrder.end(), f.second) == allFilterOrder.end()) {
+            allFilterOrder.push_back(f.second);
+        }
+    }
+    // 有効なフィルタだけを抽出
+    std::vector<clFilter> enabledFilterOrder;
+    for (const auto filterType : allFilterOrder) {
+        if (  (colorspace.enable && filterType == clFilter::COLORSPACE)
+           || (nnedi.enable      && filterType == clFilter::NNEDI)
+           || (smooth.enable     && filterType == clFilter::SMOOTH)
+           || (knn.enable        && filterType == clFilter::KNN)
+           || (pmd.enable        && filterType == clFilter::PMD)
+           || (resizeRequired    && filterType == clFilter::RESIZE)
+           || (unsharp.enable    && filterType == clFilter::UNSHARP)
+           || (edgelevel.enable  && filterType == clFilter::EDGELEVEL)
+           || (warpsharp.enable  && filterType == clFilter::WARPSHARP)
+           || (tweak.enable      && filterType == clFilter::TWEAK)
+           || (deband.enable     && filterType == clFilter::DEBAND)) {
+            enabledFilterOrder.push_back(filterType);
+        }
+    }
+    return enabledFilterOrder;
 }
 
 clFilterChain::clFilterChain() :

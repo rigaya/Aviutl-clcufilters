@@ -50,10 +50,28 @@ enum class clFilter {
     WARPSHARP,
     TWEAK,
     DEBAND,
+    FILTER_MAX,
+};
+
+static const int FILTER_NAME_MAX_LENGTH = 1024;
+
+static const std::array<std::pair<const TCHAR*, clFilter>, ((int)clFilter::FILTER_MAX - (int)clFilter::UNKNOWN-1)> filterList = {
+    std::make_pair(_T("色空間変換"),          clFilter::COLORSPACE),
+    std::make_pair(_T("nnedi"),               clFilter::NNEDI),
+    std::make_pair(_T("ノイズ除去 (knn)"),    clFilter::KNN),
+    std::make_pair(_T("ノイズ除去 (pmd)"),    clFilter::PMD),
+    std::make_pair(_T("ノイズ除去 (smooth)"), clFilter::SMOOTH),
+    std::make_pair(_T("リサイズ"),            clFilter::RESIZE),
+    std::make_pair(_T("unsharp"),             clFilter::UNSHARP),
+    std::make_pair(_T("エッジレベル調整"),    clFilter::EDGELEVEL),
+    std::make_pair(_T("warpsharp"),           clFilter::WARPSHARP),
+    std::make_pair(_T("色調補正"),            clFilter::TWEAK),
+    std::make_pair(_T("バンディング低減"),    clFilter::DEBAND)
 };
 
 struct clFilterChainParam {
     HMODULE hModule;
+    std::vector<clFilter> filterOrder;
     VppColorspace colorspace;
     VppNnedi nnedi;
     VppSmooth smooth;
