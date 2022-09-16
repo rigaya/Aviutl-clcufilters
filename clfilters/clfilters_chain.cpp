@@ -610,7 +610,7 @@ RGY_ERR clFilterChain::sendInFrame(const RGYFrameInfo *pInputFrame) {
         PrintMes(RGY_LOG_ERROR, _T("failed to queue map input buffer: %s.\n"), get_err_mes(err));
         return err;
     }
-    frameDevIn->mapEvent().wait();
+    frameDevIn->mapWait();
     copyFramePropWithoutCsp(&frameDevIn->frame, pInputFrame);
 
     {
@@ -648,7 +648,7 @@ RGY_ERR clFilterChain::getOutFrame(RGYFrameInfo *pOutputFrame) {
     if (!frameDevOut) {
         return RGY_ERR_OUT_OF_RANGE;
     }
-    frameDevOut->mapEvent().wait();
+    frameDevOut->mapWait();
     copyFramePropWithoutCsp(pOutputFrame, &frameDevOut->frame);
     {
         auto& frameHostOut = frameDevOut->mappedHost();
@@ -693,7 +693,7 @@ RGY_ERR clFilterChain::proc(const int frameID, const int outWidth, const int out
         return err;
     }
 
-    frameDevIn->mapEvent().wait();
+    frameDevIn->mapWait();
 
     //通常は、最後のひとつ前のフィルタまで実行する
     //上書き型のフィルタが最後の場合は、そのフィルタまで実行する(最後はコピーが必須)

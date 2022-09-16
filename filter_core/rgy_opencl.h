@@ -62,6 +62,7 @@
 #include <unordered_map>
 #include <vector>
 #include <array>
+#include <deque>
 #include <memory>
 #include <future>
 #include <typeindex>
@@ -414,8 +415,8 @@ public:
         *event_ = nullptr;
     }
 
-    void wait() const {
-        clWaitForEvents(1, &(*event_));
+    RGY_ERR wait() const {
+        return err_cl_to_rgy(clWaitForEvents(1, event_.get()));
     }
     void reset() {
         if (*event_ != nullptr) {
@@ -425,7 +426,7 @@ public:
     }
     cl_event *reset_ptr() {
         reset();
-        return &(*event_);
+        return event_.get();
     }
     RGY_ERR getProfilingTimeStart(uint64_t& time);
     RGY_ERR getProfilingTimeEnd(uint64_t& time);
@@ -434,14 +435,16 @@ public:
     RGY_ERR getProfilingTimeComplete(uint64_t& time);
     cl_event &operator()() { return *event_; }
     const cl_event &operator()() const { return *event_; }
-    const cl_event *ptr() const { return &(*event_); }
-    static void wait(std::vector<RGYOpenCLEvent>& events) {
+    const cl_event *ptr() const { return event_.get(); }
+    static RGY_ERR wait(std::vector<RGYOpenCLEvent>& events) {
+        auto err = CL_SUCCESS;
         if (events.size() > 0) {
             std::vector<cl_event> clevents(events.size());
             for (size_t i = 0; i < events.size(); i++)
                 clevents[i] = events[i]();
-            clWaitForEvents((int)events.size(), clevents.data());
+            err = clWaitForEvents((int)events.size(), clevents.data());
         }
+        return err_cl_to_rgy(err);
     }
     RGYOpenCLEventInfo getInfo() const;
 private:
@@ -570,8 +573,7 @@ public:
     RGY_ERR unmap(RGYOpenCLQueue &queue);
     RGY_ERR unmap(RGYOpenCLQueue &queue, const std::vector<RGYOpenCLEvent> &wait_events);
 
-    const RGYOpenCLEvent &event() const { return m_eventMap; }
-    RGYOpenCLEvent &event() { return m_eventMap; }
+    RGY_ERR map_wait() { return RGYOpenCLEvent::wait(m_eventMap); };
     const RGYFrameInfo& host() const { return m_host; }
 protected:
     RGY_ERR unmap(cl_command_queue queue, const std::vector<RGYOpenCLEvent> &wait_events);
@@ -580,7 +582,7 @@ protected:
     RGYFrameInfo m_dev;
     cl_command_queue m_queue;
     RGYFrameInfo m_host;
-    RGYOpenCLEvent m_eventMap;
+    std::vector<RGYOpenCLEvent> m_eventMap;
 };
 
 enum RGYCLFrameInteropType {
@@ -604,7 +606,7 @@ public:
     RGY_ERR queueMapBuffer(RGYOpenCLQueue &queue, cl_map_flags map_flags, const std::vector<RGYOpenCLEvent> &wait_events = {}, const RGYCLMapBlock block_map = RGY_CL_MAP_BLOCK_NONE);
     RGY_ERR unmapBuffer();
     RGY_ERR unmapBuffer(RGYOpenCLQueue &queue, const std::vector<RGYOpenCLEvent> &wait_events = {});
-    const RGYOpenCLEvent &mapEvent() const { return m_mapped->event(); }
+    RGY_ERR mapWait() const { return m_mapped->map_wait(); }
     const RGYFrameInfo &mappedHost() const { return m_mapped->host(); }
     RGYCLMemObjInfo getMemObjectInfo() const;
     void resetMappedFrame() { m_mapped.reset(); }
@@ -1031,6 +1033,27 @@ enum class RGYFrameCopyMode {
     FIELD_BOTTOM
 };
 
+class RGYCLFramePool;
+
+struct RGYCLImageFromBufferDeleter {
+    RGYCLImageFromBufferDeleter();
+    RGYCLImageFromBufferDeleter(RGYCLFramePool *pool);
+    void operator()(RGYCLFrame *frame);
+private:
+    RGYCLFramePool *m_pool;
+};
+
+class RGYCLFramePool {
+public:
+    RGYCLFramePool();
+    ~RGYCLFramePool();
+    void clear();
+    void add(RGYCLFrame *frame);
+    std::unique_ptr<RGYCLFrame, RGYCLImageFromBufferDeleter> get(const RGYFrameInfo &frame, const bool normalized, const cl_mem_flags flags);
+private:
+    std::deque<std::unique_ptr<RGYCLFrame>> m_pool;
+};
+
 class RGYOpenCLContext {
 public:
     RGYOpenCLContext(shared_ptr<RGYOpenCLPlatform> platform, shared_ptr<RGYLog> pLog);
@@ -1055,8 +1078,9 @@ public:
     RGYOpenCLQueue createQueue(const cl_device_id devid, const cl_command_queue_properties properties);
     std::unique_ptr<RGYCLBuf> createBuffer(size_t size, cl_mem_flags flags = CL_MEM_READ_WRITE, void *host_ptr = nullptr);
     std::unique_ptr<RGYCLBuf> copyDataToBuffer(const void *host_ptr, size_t size, cl_mem_flags flags = CL_MEM_READ_WRITE, cl_command_queue queue = 0);
-    RGY_ERR createImageFromPlane(cl_mem& image, cl_mem buffer, int bit_depth, int channel_order, bool normalized, int pitch, int width, int height, cl_mem_flags flags);
-    RGY_ERR createImageFromFrameBuffer(std::unique_ptr<RGYCLFrame>& imgFrame, const RGYFrameInfo &frame, bool normalized, cl_mem_flags flags);
+    RGY_ERR createImageFromPlane(cl_mem& image, const cl_mem buffer, const int bit_depth, const int channel_order, const bool normalized, const int pitch, const int width, const int height, const cl_mem_flags flags);
+    RGY_ERR createImageFromFrame(RGYFrameInfo& frameImage, const RGYFrameInfo& frame, const bool normalized, const bool cl_image2d_from_buffer_support, const cl_mem_flags flags);
+    std::unique_ptr<RGYCLFrame, RGYCLImageFromBufferDeleter> createImageFromFrameBuffer(const RGYFrameInfo &frame, const bool normalized, const cl_mem_flags flags, RGYCLFramePool *imgpool);
     std::unique_ptr<RGYCLFrame> createFrameBuffer(const int width, const int height, const RGY_CSP csp, const int bitdepth, const cl_mem_flags flags = CL_MEM_READ_WRITE);
     std::unique_ptr<RGYCLFrame> createFrameBuffer(const RGYFrameInfo &frame, cl_mem_flags flags = CL_MEM_READ_WRITE);
     std::unique_ptr<RGYCLFrameInterop> createFrameFromD3D9Surface(void *surf, HANDLE shared_handle, const RGYFrameInfo &frame, RGYOpenCLQueue& queue, cl_mem_flags flags = CL_MEM_READ_WRITE);
