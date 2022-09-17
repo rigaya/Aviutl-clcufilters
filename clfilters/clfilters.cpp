@@ -194,11 +194,60 @@ static void cl_exdata_set_default() {
     cl_exdata.deband_sample = deband.sample;
 }
 
+
+//---------------------------------------------------------------------
+//        ラベル
+//---------------------------------------------------------------------
+#if !CLFILTERS_EN
+static const char *LB_WND_OPENCL_UNAVAIL = "フィルタは無効です: OpenCLを使用できません。";
+static const char *LB_WND_OPENCL_AVAIL = "OpenCL 有効";
+static const char *LB_CX_OPENCL_DEVICE = "デバイス選択";
+static const char *LB_CX_LOG_LEVEL = "ログ出力";
+static const char *LB_CX_FILTER_ORDER = "フィルタ順序";
+static const char *LB_CX_RESIZE_SIZE = "サイズ";
+static const char *LB_BT_RESIZE_ADD = "追加";
+static const char *LB_BT_RESIZE_DELETE = "削除";
+static const char *TX_RESIZE_SIZE = "サイズ";
+static const char *TX_RESIZE_ADD = "追加";
+static const char *TX_RESIZE_DELETE = "削除";
+static const char *LB_CX_NNEDI_FIELD = "field";
+static const char *LB_CX_NNEDI_NNS = "nns";
+static const char *LB_CX_NNEDI_NSIZE = "nsize";
+static const char *LB_CX_NNEDI_QUALITY = "品質";
+static const char *LB_CX_NNEDI_PRESCREEN = "前処理";
+static const char *LB_CX_NNEDI_ERRORTYPE = "errortype";
+static const char *LB_CX_SMOOTH_QUALITY = "品質";
+static const char *LB_CX_KNN_RADIUS = "適用半径";
+static const char *LB_CX_UNSHARP_RADIUS = "範囲";
+static const char *LB_CX_WARPSHARP_BLUR = "ブラー";
+static const char *LB_CX_DEBAND_SAMPLE = "sample";
+#else
+static const char *LB_WND_OPENCL_UNAVAIL = "Filter disabled, OpenCL could not be used.";
+static const char *LB_WND_OPENCL_AVAIL = "OpenCL Enabled";
+static const char *LB_CX_OPENCL_DEVICE = "Device";
+static const char *LB_CX_LOG_LEVEL = "Log";
+static const char *LB_CX_FILTER_ORDER = "Filter Order";
+static const char *LB_CX_RESIZE_SIZE = "Size";
+static const char *LB_BT_RESIZE_ADD = "Add";
+static const char *LB_BT_RESIZE_DELETE = "Delete";
+static const char *LB_CX_NNEDI_FIELD = "field";
+static const char *LB_CX_NNEDI_NNS = "nns";
+static const char *LB_CX_NNEDI_NSIZE = "nsize";
+static const char *LB_CX_NNEDI_QUALITY = "quality";
+static const char *LB_CX_NNEDI_PRESCREEN = "prescreen";
+static const char *LB_CX_NNEDI_ERRORTYPE = "errortype";
+static const char *LB_CX_SMOOTH_QUALITY = "quality";
+static const char *LB_CX_KNN_RADIUS = "radius";
+static const char *LB_CX_UNSHARP_RADIUS = "radius";
+static const char *LB_CX_WARPSHARP_BLUR = "blur";
+static const char *LB_CX_DEBAND_SAMPLE = "sample";
+#endif
+
 //---------------------------------------------------------------------
 //        フィルタ構造体定義
 //---------------------------------------------------------------------
 //  トラックバーの名前
-const TCHAR *track_name[] = {
+const TCHAR *track_name_ja[] = {
     //リサイズ
     "入力ピーク輝度", "目標輝度", //colorspace
 #if ENABLE_HDR2SDR_DESAT
@@ -213,6 +262,28 @@ const TCHAR *track_name[] = {
     "輝度", "コントラスト", "ガンマ", "彩度", "色相", //tweak
     "range", "Y", "C", "ditherY", "ditherC" //バンディング低減
 };
+const TCHAR *track_name_en[] = {
+    //リサイズ
+    "srcpeak", "ldr_nits", //colorspace
+#if ENABLE_HDR2SDR_DESAT
+    "desat_base", "desat_strength", "desat_exp", //colorspace
+#endif //#if ENABLE_HDR2SDR_DESAT
+    "QP", // smooth
+    "strength", "lerp", "th_lerp", //knn
+    "apply cnt", "strength", "threshold", //pmd
+    "weight", "threshold", //unsharp
+    "strength", "threshold", "black", "white", //エッジレベル調整
+    "threshold", "depth", //warpsharp
+    "bright", "contrast", "gamma", "saturation", "hue", //tweak
+    "range", "Y", "C", "ditherY", "ditherC" //バンディング低減
+};
+static_assert(_countof(track_name_ja) == _countof(track_name_en), "TRACK_N check");
+
+#if CLFILTERS_EN
+const TCHAR **track_name = track_name_en;
+#else
+const TCHAR **track_name = track_name_ja;
+#endif
 
 enum {
     CLFILTER_TRACK_COLORSPACE_FIRST = 0,
@@ -327,7 +398,7 @@ int track_e[] = {
 };
 
 //  トラックバーの数
-#define    TRACK_N    (_countof(track_name))
+#define    TRACK_N    (_countof(track_name_ja))
 static_assert(TRACK_N <= 32, "TRACK_N check");
 static_assert(TRACK_N == CLFILTER_TRACK_MAX, "TRACK_N check");
 static_assert(TRACK_N == _countof(track_default), "track_default check");
@@ -335,7 +406,7 @@ static_assert(TRACK_N == _countof(track_s), "track_s check");
 static_assert(TRACK_N == _countof(track_e), "track_e check");
 
 //  チェックボックスの名前
-const TCHAR *check_name[] = {
+const TCHAR *check_name_ja[] = {
 #if ENABLE_FIELD
     "フィールド処理",
 #endif //#if ENABLE_FIELD
@@ -352,6 +423,30 @@ const TCHAR *check_name[] = {
     "バンディング低減", "ブラー処理を先に", "毎フレーム乱数を生成",
     "nnedi"
 };
+const TCHAR *check_name_en[] = {
+#if ENABLE_FIELD
+    "process field",
+#endif //#if ENABLE_FIELD
+    "log to file", // log to file
+    "resize",
+    "colorspace", "matrix", "colorprim", "transfer", "range",
+    "smooth",
+    "knn",
+    "pmd",
+    "unsharp",
+    "edgelevel",
+    "warpsharp", "type [off:13x13, on:5x5]", "chroma",
+    "tweak",
+    "deband", "blurfirst", "rand_each_frame",
+    "nnedi"
+};
+static_assert(_countof(check_name_ja) == _countof(check_name_en), "CHECK_N check");
+
+#if CLFILTERS_EN
+const TCHAR **check_name = check_name_en;
+#else
+const TCHAR **check_name = check_name_ja;
+#endif
 
 enum {
 #if ENABLE_FIELD
@@ -423,7 +518,7 @@ int check_default[] = {
     0 //nnedi
 };
 //  チェックボックスの数
-#define    CHECK_N    (_countof(check_name))
+#define    CHECK_N    (_countof(check_name_ja))
 static_assert(CHECK_N <= 32, "CHECK_N check");
 static_assert(CHECK_N == CLFILTER_CHECK_MAX, "CHECK_N check");
 static_assert(CHECK_N == _countof(check_default), "track_default check");
@@ -1265,7 +1360,6 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     int nCount = 0;
     EnumChildWindows(hwnd, EnumChildProc, (LPARAM)&nCount);
 
-
     RECT rc, dialog_rc;
     GetWindowRect(hwnd, &dialog_rc);
 
@@ -1293,7 +1387,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     const int cb_opencl_platform_y = 8;
     lb_opencl_device = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, 8, cb_opencl_platform_y, 60, 24, hwnd, (HMENU)ID_LB_RESIZE_RES, hinst, NULL);
     SendMessage(lb_opencl_device, WM_SETFONT, (WPARAM)b_font, 0);
-    SendMessage(lb_opencl_device, WM_SETTEXT, 0, (LPARAM)"デバイス選択");
+    SendMessage(lb_opencl_device, WM_SETTEXT, 0, (LPARAM)LB_CX_OPENCL_DEVICE);
 
     cx_opencl_device = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 68, cb_opencl_platform_y, 205, 100, hwnd, (HMENU)ID_CX_OPENCL_DEVICE, hinst, NULL);
     SendMessage(cx_opencl_device, WM_SETFONT, (WPARAM)b_font, 0);
@@ -1317,7 +1411,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     const int cb_log_level_y = cb_opencl_platform_y+24;
     lb_log_level = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, 8, cb_log_level_y, 60, 24, hwnd, (HMENU)ID_LB_LOG_LEVEL, hinst, NULL);
     SendMessage(lb_log_level, WM_SETFONT, (WPARAM)b_font, 0);
-    SendMessage(lb_log_level, WM_SETTEXT, 0, (LPARAM)"ログ出力");
+    SendMessage(lb_log_level, WM_SETTEXT, 0, (LPARAM)LB_CX_LOG_LEVEL);
 
     cx_log_level = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 68, cb_log_level_y, 145, 100, hwnd, (HMENU)ID_CX_LOG_LEVEL, hinst, NULL);
     SendMessage(cx_log_level, WM_SETFONT, (WPARAM)b_font, 0);
@@ -1345,7 +1439,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     const int list_filter_order_y = cb_filed_y + 28;
     lb_filter_order = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, 8 + AVIUTL_1_10_OFFSET, list_filter_order_y, 60, 24, hwnd, (HMENU)ID_LB_FILTER_ORDER, hinst, NULL);
     SendMessage(lb_filter_order, WM_SETFONT, (WPARAM)b_font, 0);
-    SendMessage(lb_filter_order, WM_SETTEXT, 0, (LPARAM)"フィルタ順序");
+    SendMessage(lb_filter_order, WM_SETTEXT, 0, (LPARAM)LB_CX_FILTER_ORDER);
 
     static const int bt_filter_order_width = 40;
     static const int list_filter_oder_x = 8;
@@ -1373,15 +1467,15 @@ void init_dialog(HWND hwnd, FILTER *fp) {
 
     lb_proc_mode = CreateWindow("static", "", SS_SIMPLE|WS_CHILD|WS_VISIBLE, col * col_width + 8 + AVIUTL_1_10_OFFSET, cb_resize_y+24, 60, 24, hwnd, (HMENU)ID_LB_RESIZE_RES, hinst, NULL);
     SendMessage(lb_proc_mode, WM_SETFONT, (WPARAM)b_font, 0);
-    SendMessage(lb_proc_mode, WM_SETTEXT, 0, (LPARAM)"サイズ");
+    SendMessage(lb_proc_mode, WM_SETTEXT, 0, (LPARAM)LB_CX_RESIZE_SIZE);
 
     cx_resize_res = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, col * col_width + 68, cb_resize_y+24, 145, 100, hwnd, (HMENU)ID_CX_RESIZE_RES, hinst, NULL);
     SendMessage(cx_resize_res, WM_SETFONT, (WPARAM)b_font, 0);
 
-    bt_resize_res_add = CreateWindow("BUTTON", "追加", WS_CHILD|WS_VISIBLE|WS_GROUP|WS_TABSTOP|BS_PUSHBUTTON|BS_VCENTER, col * col_width + 214, cb_resize_y+24, 32, 22, hwnd, (HMENU)ID_BT_RESIZE_RES_ADD, hinst, NULL);
+    bt_resize_res_add = CreateWindow("BUTTON", LB_BT_RESIZE_ADD, WS_CHILD|WS_VISIBLE|WS_GROUP|WS_TABSTOP|BS_PUSHBUTTON|BS_VCENTER, col * col_width + 214, cb_resize_y+24, 32, 22, hwnd, (HMENU)ID_BT_RESIZE_RES_ADD, hinst, NULL);
     SendMessage(bt_resize_res_add, WM_SETFONT, (WPARAM)b_font, 0);
 
-    bt_resize_res_del = CreateWindow("BUTTON", "削除", WS_CHILD|WS_VISIBLE|WS_GROUP|WS_TABSTOP|BS_PUSHBUTTON|BS_VCENTER, col * col_width + 246, cb_resize_y+24, 32, 22, hwnd, (HMENU)ID_BT_RESIZE_RES_DEL, hinst, NULL);
+    bt_resize_res_del = CreateWindow("BUTTON", LB_BT_RESIZE_DELETE, WS_CHILD|WS_VISIBLE|WS_GROUP|WS_TABSTOP|BS_PUSHBUTTON|BS_VCENTER, col * col_width + 246, cb_resize_y+24, 32, 22, hwnd, (HMENU)ID_BT_RESIZE_RES_DEL, hinst, NULL);
     SendMessage(bt_resize_res_del, WM_SETFONT, (WPARAM)b_font, 0);
 
     cx_resize_algo = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, col * col_width + 68, cb_resize_y+48, 145, 100, hwnd, (HMENU)ID_CX_RESIZE_ALGO, hinst, NULL);
@@ -1406,21 +1500,21 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     //nnedi
     move_group(y_pos, col, col_width, CLFILTER_CHECK_NNEDI_ENABLE, CLFILTER_CHECK_NNEDI_MAX, CLFILTER_TRACK_NNEDI_FIRST, CLFILTER_TRACK_NNEDI_MAX, track_bar_delta_y, ADD_CX_FIRST, 0, cx_y_pos, checkbox_idx, dialog_rc);
     y_pos -= track_bar_delta_y / 2;
-    add_combobox(cx_nnedi_field,     ID_CX_NNEDI_FIELD,     lb_nnedi_field,     ID_LB_NNEDI_FIELD,    "field",      col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_field+2, 2);
-    add_combobox(cx_nnedi_nns,       ID_CX_NNEDI_NNS,       lb_nnedi_nns,       ID_LB_NNEDI_NNS,       "nns",       col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_nns);
-    add_combobox(cx_nnedi_nsize,     ID_CX_NNEDI_NSIZE,     lb_nnedi_nsize,     ID_LB_NNEDI_NSIZE,     "nsize",     col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_nsize);
-    add_combobox(cx_nnedi_quality,   ID_CX_NNEDI_QUALITY,   lb_nnedi_quality,   ID_LB_NNEDI_QUALITY,   "品質",      col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_quality);
-    add_combobox(cx_nnedi_prescreen, ID_CX_NNEDI_PRESCREEN, lb_nnedi_prescreen, ID_LB_NNEDI_PRESCREEN, "前処理",    col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_pre_screen);
-    add_combobox(cx_nnedi_errortype, ID_CX_NNEDI_ERRORTYPE, lb_nnedi_errortype, ID_LB_NNEDI_ERRORTYPE, "errortype", col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_error_type);
+    add_combobox(cx_nnedi_field,     ID_CX_NNEDI_FIELD,     lb_nnedi_field,     ID_LB_NNEDI_FIELD,     LB_CX_NNEDI_FIELD,     col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_field+2, 2);
+    add_combobox(cx_nnedi_nns,       ID_CX_NNEDI_NNS,       lb_nnedi_nns,       ID_LB_NNEDI_NNS,       LB_CX_NNEDI_NNS,       col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_nns);
+    add_combobox(cx_nnedi_nsize,     ID_CX_NNEDI_NSIZE,     lb_nnedi_nsize,     ID_LB_NNEDI_NSIZE,     LB_CX_NNEDI_NSIZE,     col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_nsize);
+    add_combobox(cx_nnedi_quality,   ID_CX_NNEDI_QUALITY,   lb_nnedi_quality,   ID_LB_NNEDI_QUALITY,   LB_CX_NNEDI_QUALITY,   col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_quality);
+    add_combobox(cx_nnedi_prescreen, ID_CX_NNEDI_PRESCREEN, lb_nnedi_prescreen, ID_LB_NNEDI_PRESCREEN, LB_CX_NNEDI_PRESCREEN, col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_pre_screen);
+    add_combobox(cx_nnedi_errortype, ID_CX_NNEDI_ERRORTYPE, lb_nnedi_errortype, ID_LB_NNEDI_ERRORTYPE, LB_CX_NNEDI_ERRORTYPE, col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_error_type);
     y_pos += track_bar_delta_y / 2;
 
     //smooth
     move_group(y_pos, col, col_width, CLFILTER_CHECK_SMOOTH_ENABLE, CLFILTER_CHECK_SMOOTH_MAX, CLFILTER_TRACK_SMOOTH_FIRST, CLFILTER_TRACK_SMOOTH_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
-    add_combobox(cx_smooth_quality, ID_CX_SMOOTH_QUALITY, lb_smooth_quality, ID_LB_SMOOTH_QUALITY, "品質", col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_smooth_quality);
+    add_combobox(cx_smooth_quality, ID_CX_SMOOTH_QUALITY, lb_smooth_quality, ID_LB_SMOOTH_QUALITY, LB_CX_SMOOTH_QUALITY, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_smooth_quality);
 
     //knn
     move_group(y_pos, col, col_width, CLFILTER_CHECK_KNN_ENABLE, CLFILTER_CHECK_KNN_MAX, CLFILTER_TRACK_KNN_FIRST, CLFILTER_TRACK_KNN_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
-    add_combobox(cx_knn_radius, ID_CX_KNN_RADIUS, lb_knn_radius, ID_LB_KNN_RADIUS, "適用半径", col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_raduis);
+    add_combobox(cx_knn_radius, ID_CX_KNN_RADIUS, lb_knn_radius, ID_LB_KNN_RADIUS, LB_CX_KNN_RADIUS, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_raduis);
 
     //pmd
     move_group(y_pos, col, col_width, CLFILTER_CHECK_PMD_ENABLE, CLFILTER_CHECK_PMD_MAX, CLFILTER_TRACK_PMD_FIRST, CLFILTER_TRACK_PMD_MAX, track_bar_delta_y, ADD_CX_FIRST, 0, cx_y_pos, checkbox_idx, dialog_rc);
@@ -1432,21 +1526,21 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     y_pos = cb_resize_y;
     //unsharp
     move_group(y_pos, col, col_width, CLFILTER_CHECK_UNSHARP_ENABLE, CLFILTER_CHECK_UNSHARP_MAX, CLFILTER_TRACK_UNSHARP_FIRST, CLFILTER_TRACK_UNSHARP_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
-    add_combobox(cx_unsharp_radius, ID_CX_UNSHARP_RADIUS, lb_unsharp_radius, ID_LB_UNSHARP_RADIUS, "範囲", col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_raduis);
+    add_combobox(cx_unsharp_radius, ID_CX_UNSHARP_RADIUS, lb_unsharp_radius, ID_LB_UNSHARP_RADIUS, LB_CX_UNSHARP_RADIUS, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_raduis);
 
     //エッジレベル調整
     move_group(y_pos, col, col_width, CLFILTER_CHECK_EDGELEVEL_ENABLE, CLFILTER_CHECK_EDGELEVEL_MAX, CLFILTER_TRACK_EDGELEVEL_FIRST, CLFILTER_TRACK_EDGELEVEL_MAX, track_bar_delta_y, ADD_CX_FIRST, 0, cx_y_pos, checkbox_idx, dialog_rc);
 
     //warpsharp
     move_group(y_pos, col, col_width, CLFILTER_CHECK_WARPSHARP_ENABLE, CLFILTER_CHECK_WARPSHARP_MAX, CLFILTER_TRACK_WARPSHARP_FIRST, CLFILTER_TRACK_WARPSHARP_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
-    add_combobox(cx_warpsharp_blur, ID_CX_WARPSHARP_BLUR, lb_warpsharp_blur, ID_LB_WARPSHARP_BLUR, "ブラー", col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_1_to_10);
+    add_combobox(cx_warpsharp_blur, ID_CX_WARPSHARP_BLUR, lb_warpsharp_blur, ID_LB_WARPSHARP_BLUR, LB_CX_WARPSHARP_BLUR, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_1_to_10);
 
     //tweak
     move_group(y_pos, col, col_width, CLFILTER_CHECK_TWEAK_ENABLE, CLFILTER_CHECK_TWEAK_MAX, CLFILTER_TRACK_TWEAK_FIRST, CLFILTER_TRACK_TWEAK_MAX, track_bar_delta_y, ADD_CX_FIRST, 0, cx_y_pos, checkbox_idx, dialog_rc);
 
     //バンディング
     move_group(y_pos, col, col_width, CLFILTER_CHECK_DEBAND_ENABLE, CLFILTER_CHECK_DEBAND_MAX, CLFILTER_TRACK_DEBAND_FIRST, CLFILTER_TRACK_DEBAND_MAX, track_bar_delta_y, ADD_CX_AFTER_TRACK, 1, cx_y_pos, checkbox_idx, dialog_rc);
-    add_combobox(cx_deband_sample, ID_CX_DEBAND_SAMPLE, lb_deband_sample, ID_LB_DEBAND_SAMPLE, "sample", col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_deband);
+    add_combobox(cx_deband_sample, ID_CX_DEBAND_SAMPLE, lb_deband_sample, ID_LB_DEBAND_SAMPLE, LB_CX_DEBAND_SAMPLE, col, col_width, cx_y_pos, b_font, hwnd, hinst, (CLFILTERS_EN) ? list_vpp_deband_en : list_vpp_deband);
     
     y_pos_max = std::max(y_pos_max, y_pos);
 
@@ -1610,12 +1704,12 @@ BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
         std::string mes = AUF_FULL_NAME;
         mes += ": ";
         if (clfilter->init(cl_exdata.cl_dev_id.s.platform, cl_exdata.cl_dev_id.s.device, CL_DEVICE_TYPE_GPU, cl_exdata.log_level, fp->check[CLFILTER_CHECK_LOG_TO_FILE] != 0)) {
-            mes += "フィルタは無効です: OpenCLを使用できません。";
+            mes += LB_WND_OPENCL_UNAVAIL;
             SendMessage(fp->hwnd, WM_SETTEXT, 0, (LPARAM)mes.c_str());
             return FALSE;
         }
         const auto dev_name = clfilter->getDeviceName();
-        mes += (dev_name.length() == 0) ? "OpenCL 有効" : dev_name;
+        mes += (dev_name.length() == 0) ? LB_WND_OPENCL_AVAIL : dev_name;
         SendMessage(fp->hwnd, WM_SETTEXT, 0, (LPARAM)mes.c_str());
         is_saving = FALSE;
     }

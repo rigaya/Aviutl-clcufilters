@@ -55,19 +55,49 @@ enum class clFilter {
 
 static const int FILTER_NAME_MAX_LENGTH = 1024;
 
+#if !CLFILTERS_EN
+static const char *FILTER_NAME_COLORSPACE = _T("色空間変換");
+static const char *FILTER_NAME_NNEDI      = _T("nnedi");
+static const char *FILTER_NAME_KNN        = _T("ノイズ除去 (knn)");
+static const char *FILTER_NAME_PMD        = _T("ノイズ除去 (pmd)");
+static const char *FILTER_NAME_SMOOTH     = _T("ノイズ除去 (smooth)");
+static const char *FILTER_NAME_RESIZE     = _T("リサイズ");
+static const char *FILTER_NAME_UNSHARP    = _T("unsharp");
+static const char *FILTER_NAME_EDGELEVEL  = _T("エッジレベル調整");
+static const char *FILTER_NAME_WARPSHARP  = _T("warpsharp");
+static const char *FILTER_NAME_TWEAK      = _T("色調補正");
+static const char *FILTER_NAME_DEBAND     = _T("バンディング低減");
+#else
+static const char *FILTER_NAME_COLORSPACE = _T("colorspace");
+static const char *FILTER_NAME_NNEDI      = _T("nnedi");
+static const char *FILTER_NAME_KNN        = _T("knn");
+static const char *FILTER_NAME_PMD        = _T("pmd");
+static const char *FILTER_NAME_SMOOTH     = _T("smooth");
+static const char *FILTER_NAME_RESIZE     = _T("resize");
+static const char *FILTER_NAME_UNSHARP    = _T("unsharp");
+static const char *FILTER_NAME_EDGELEVEL  = _T("edgelevel");
+static const char *FILTER_NAME_WARPSHARP  = _T("warpsharp");
+static const char *FILTER_NAME_TWEAK      = _T("tweak");
+static const char *FILTER_NAME_DEBAND     = _T("deband");
+#endif
+
+#define FILTER_NAME(x) std::make_pair(FILTER_NAME_ ## x, clFilter::x)
+
 static const std::array<std::pair<const TCHAR*, clFilter>, ((int)clFilter::FILTER_MAX - (int)clFilter::UNKNOWN-1)> filterList = {
-    std::make_pair(_T("色空間変換"),          clFilter::COLORSPACE),
-    std::make_pair(_T("nnedi"),               clFilter::NNEDI),
-    std::make_pair(_T("ノイズ除去 (knn)"),    clFilter::KNN),
-    std::make_pair(_T("ノイズ除去 (pmd)"),    clFilter::PMD),
-    std::make_pair(_T("ノイズ除去 (smooth)"), clFilter::SMOOTH),
-    std::make_pair(_T("リサイズ"),            clFilter::RESIZE),
-    std::make_pair(_T("unsharp"),             clFilter::UNSHARP),
-    std::make_pair(_T("エッジレベル調整"),    clFilter::EDGELEVEL),
-    std::make_pair(_T("warpsharp"),           clFilter::WARPSHARP),
-    std::make_pair(_T("色調補正"),            clFilter::TWEAK),
-    std::make_pair(_T("バンディング低減"),    clFilter::DEBAND)
+    FILTER_NAME(COLORSPACE),
+    FILTER_NAME(NNEDI),
+    FILTER_NAME(KNN),
+    FILTER_NAME(PMD),
+    FILTER_NAME(SMOOTH),
+    FILTER_NAME(RESIZE),
+    FILTER_NAME(UNSHARP),
+    FILTER_NAME(EDGELEVEL),
+    FILTER_NAME(WARPSHARP),
+    FILTER_NAME(TWEAK),
+    FILTER_NAME(DEBAND)
 };
+
+#undef FILTER_NAME
 
 struct clFilterChainParam {
     HMODULE hModule;

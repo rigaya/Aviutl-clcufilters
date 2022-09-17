@@ -44,10 +44,15 @@
 * 	add_res_dlg()		コールバックプロシージャ
 *===================================================================*/
 BOOL CALLBACK add_res_dlg(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam) {
-
+#if !CLFILTERS_EN
+    static const char *DLG_CAPTION = "cufilter リサイズ 解像度追加";
+#else
+    static const char *DLG_CAPTION = "cufilter resize add resolution";
+#endif
     switch (msg) {
     case WM_INITDIALOG:
         SetDlgItemText(hdlg, ID_TX_RESIZE_RES_ADD, (const char*)"");
+        SendMessage(hdlg, WM_SETTEXT, 0, (LPARAM)DLG_CAPTION);
         return TRUE;
     case WM_COMMAND:
         switch (LOWORD(wParam)) {
@@ -56,11 +61,19 @@ BOOL CALLBACK add_res_dlg(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam) {
             uint32_t w = 0, h = 0;
             GetDlgItemText(hdlg, ID_TX_RESIZE_RES_ADD, str, sizeof(str));
             if (2 != sscanf_s(str, "%dx%d", &w, &h)) {
+#if !CLFILTERS_EN
                 MessageBox(hdlg, "誤った書式で指定されています。\n1280x720など、<幅>x<高さ>の書式で指定してください。", MB_OK, MB_ICONEXCLAMATION);
+#else
+                MessageBox(hdlg, "Please set in format <width>x<height>, such as 1920x1080.", MB_OK, MB_ICONEXCLAMATION);
+#endif
                 return FALSE;
             }
             if (w >= (1<<15) || (h >= (1<<15))) {
+#if !CLFILTERS_EN
                 MessageBox(hdlg, "解像度が大きすぎます。32767以下の値で指定してください。", MB_OK, MB_ICONEXCLAMATION);
+#else
+                MessageBox(hdlg, "Too large width or height, should be below 32767.", MB_OK, MB_ICONEXCLAMATION);
+#endif
                 return FALSE;
             }
             EndDialog(hdlg, ((w & 0xffff) << 16) | (h & 0xffff));
