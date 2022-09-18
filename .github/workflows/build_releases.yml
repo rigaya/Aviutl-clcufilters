@@ -48,6 +48,12 @@ jobs:
         include:
           - arch: x86
             platform: Win32
+            configuration: Release
+            release_name: clfilters
+          - arch: x86
+            platform: Win32
+            configuration: ReleaseEN
+            release_name: clfilters_en
     
     steps:
       - name: Checkout
@@ -68,14 +74,14 @@ jobs:
       - name: MSBuild
         run: |
           set OPENCL_HEADERS=${{ github.workspace }}\..\openclheaders
-          msbuild clfilters.sln /t:build /p:configuration=Release /p:Platform=${{ matrix.arch }} -maxcpucount
+          msbuild clfilters.sln /t:build /p:configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.arch }} -maxcpucount
 
       - name: Create Archieve
         id: archieve
         run: |
           mkdir clfilters_release
           copy _build\${{ matrix.platform }}\Release\clfilters.auf clfilters_release
-          7z a -mx9 clfilters_${{ needs.get_version_name.outputs.version_name }}.zip .\clfilters_release\*
+          7z a -mx9 ${{ matrix.release_name }}_${{ needs.get_version_name.outputs.version_name }}.zip .\clfilters_release\*
 
       - name: Check Version
         id: check_ver
@@ -90,4 +96,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: .\clfilters_${{ needs.get_version_name.outputs.version_name }}.zip
+          files: .\${{ matrix.release_name }}_${{ needs.get_version_name.outputs.version_name }}.zip
