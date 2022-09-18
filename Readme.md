@@ -111,6 +111,11 @@ GPUのメモリ確保はCPU以上に遅いので、なるべく確保したメ�
 
 quiet以外を選択した場合、ログは[patch.aul](https://www.nicovideo.jp/watch/sm39491708)等により表示可能なコンソールウィンドウに出力されます。また、「ファイルに出力」のチェックを入れることで、"cufilter.auf.log"にファイル出力することも可能です。
 
+### フィルタ順序  
+![フィルタ順序](./data/clfilters_filter_order.png)
+
+フィルタの適用順を並べ替えることができます。適用順を入れ替えたいフィルタを選択し、上下ボタンで移動してください。
+
 ### 色空間変換  
 指定の色空間変換を行う。
 
@@ -369,9 +374,6 @@ nnediによるインタレ解除を行う。基本的には片方フィールド
 ## 課題
 
 clfilters には下記の課題があります。
-
-- フィルタの順序が固定  
-  そのうちフィルタの順序を変更可能にしたいです。
 
 - NVIDIAのGPU等、[cl_khr_image2d_from_buffer](https://www.khronos.org/registry/OpenCL/sdk/3.0/docs/man/html/cl_khr_image2d_from_buffer.html) というKHR拡張がサポートされない環境でメモリコピーが多発する  
   OpenCL 2.0でこの拡張は標準になったので、いろいろなフィルタを cl_khr_image2d_from_buffer ありきで実装してきたのですが、
