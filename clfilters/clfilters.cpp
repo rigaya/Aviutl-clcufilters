@@ -1407,61 +1407,22 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     bt_opencl_info = CreateWindow("BUTTON", "clinfo", WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, 278, cb_opencl_platform_y, 48, 22, hwnd, (HMENU)ID_BT_OPENCL_INFO, hinst, NULL);
     SendMessage(bt_opencl_info, WM_SETFONT, (WPARAM)b_font, 0);
 
-    //log_level
-    const int cb_log_level_y = cb_opencl_platform_y+24;
-    lb_log_level = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, 8, cb_log_level_y, 60, 24, hwnd, (HMENU)ID_LB_LOG_LEVEL, hinst, NULL);
-    SendMessage(lb_log_level, WM_SETFONT, (WPARAM)b_font, 0);
-    SendMessage(lb_log_level, WM_SETTEXT, 0, (LPARAM)LB_CX_LOG_LEVEL);
-
-    cx_log_level = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 68, cb_log_level_y, 145, 100, hwnd, (HMENU)ID_CX_LOG_LEVEL, hinst, NULL);
-    SendMessage(cx_log_level, WM_SETFONT, (WPARAM)b_font, 0);
-
-    for (const auto& log_level : RGY_LOG_LEVEL_STR) {
-        set_combo_item(cx_log_level, log_level.second, log_level.first);
-    }
-
     //checkboxの移動
     const int checkbox_idx = 1+5*CLFILTER_TRACK_MAX;
 #if ENABLE_FIELD
     //フィールド処理
-    const int cb_filed_y = cb_log_level_y + 24;
+    const int cb_field_y = cb_opencl_platform_y + 24;
     GetWindowRect(child_hwnd[checkbox_idx + CLFILTER_CHECK_FIELD], &rc);
     SetWindowPos(child_hwnd[checkbox_idx + CLFILTER_CHECK_FIELD], HWND_TOP, rc.left - dialog_rc.left, cb_filed_y, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
 #else
-    const int cb_filed_y = cb_log_level_y;
+    const int cb_field_y = cb_opencl_platform_y;
 #endif //#if ENABLE_FIELD
 
-    // log to file
-    GetWindowRect(child_hwnd[checkbox_idx + CLFILTER_CHECK_LOG_TO_FILE], &rc);
-    SetWindowPos(child_hwnd[checkbox_idx + CLFILTER_CHECK_LOG_TO_FILE], HWND_TOP, 218, cb_log_level_y+4, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
-
-    //フィルタのリスト
-    const int list_filter_order_y = cb_filed_y + 28;
-    lb_filter_order = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, 8 + AVIUTL_1_10_OFFSET, list_filter_order_y, 60, 24, hwnd, (HMENU)ID_LB_FILTER_ORDER, hinst, NULL);
-    SendMessage(lb_filter_order, WM_SETFONT, (WPARAM)b_font, 0);
-    SendMessage(lb_filter_order, WM_SETTEXT, 0, (LPARAM)LB_CX_FILTER_ORDER);
-
-    static const int bt_filter_order_width = 40;
-    static const int list_filter_oder_x = 8;
-    static const int list_filter_oder_width = col_width - bt_filter_order_width - 48;
-    static const int list_filter_oder_height = 400;
-    ls_filter_order = CreateWindow("LISTBOX", "clinfo", WS_CHILD | WS_VISIBLE | WS_GROUP | WS_BORDER | WS_BORDER | WS_VSCROLL | LBS_NOTIFY, list_filter_oder_x, list_filter_order_y +24, list_filter_oder_width, list_filter_oder_height, hwnd, (HMENU)ID_LS_FILTER_ORDER, hinst, NULL);
-    SendMessage(ls_filter_order, WM_SETFONT, (WPARAM)b_font, 0);
-
-    bt_filter_order_up = CreateWindow("BUTTON", "↑", WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, list_filter_oder_x + list_filter_oder_width + 8, list_filter_order_y + list_filter_oder_height / 2 - 24, bt_filter_order_width, 22, hwnd, (HMENU)ID_BT_FILTER_ORDER_UP, hinst, NULL);
-    SendMessage(bt_filter_order_up, WM_SETFONT, (WPARAM)b_font, 0);
-
-    bt_filter_order_down = CreateWindow("BUTTON", "↓", WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, list_filter_oder_x + list_filter_oder_width + 8, list_filter_order_y + list_filter_oder_height / 2, bt_filter_order_width, 22, hwnd, (HMENU)ID_BT_FILTER_ORDER_DOWN, hinst, NULL);
-    SendMessage(bt_filter_order_down, WM_SETFONT, (WPARAM)b_font, 0);
-
-    for (size_t ifilter = 0; ifilter < filterList.size(); ifilter++) {
-        SendMessage(ls_filter_order, LB_INSERTSTRING, ifilter, (LPARAM)filterList[ifilter].first);
-        SendMessage(ls_filter_order, LB_SETITEMDATA, ifilter, (LPARAM)filterList[ifilter].second);
-    }
+    const int cb_row_start_y_pos = cb_field_y + 28;
 
     //リサイズ
-    int col = 1;
-    const int cb_resize_y = list_filter_order_y;
+    int col = 0;
+    const int cb_resize_y = cb_row_start_y_pos;
     GetWindowRect(child_hwnd[checkbox_idx + CLFILTER_CHECK_RESIZE_ENABLE], &rc);
     SetWindowPos(child_hwnd[checkbox_idx + CLFILTER_CHECK_RESIZE_ENABLE], HWND_TOP, col * col_width + rc.left - dialog_rc.left, cb_resize_y, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
 
@@ -1522,8 +1483,8 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     y_pos_max = std::max(y_pos_max, y_pos);
     // --- 次の列 -----------------------------------------
 
-    col = 2;
-    y_pos = cb_resize_y;
+    col = 1;
+    y_pos = cb_row_start_y_pos;
     //unsharp
     move_group(y_pos, col, col_width, CLFILTER_CHECK_UNSHARP_ENABLE, CLFILTER_CHECK_UNSHARP_MAX, CLFILTER_TRACK_UNSHARP_FIRST, CLFILTER_TRACK_UNSHARP_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
     add_combobox(cx_unsharp_radius, ID_CX_UNSHARP_RADIUS, lb_unsharp_radius, ID_LB_UNSHARP_RADIUS, LB_CX_UNSHARP_RADIUS, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_raduis);
@@ -1543,6 +1504,58 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     add_combobox(cx_deband_sample, ID_CX_DEBAND_SAMPLE, lb_deband_sample, ID_LB_DEBAND_SAMPLE, LB_CX_DEBAND_SAMPLE, col, col_width, cx_y_pos, b_font, hwnd, hinst, (CLFILTERS_EN) ? list_vpp_deband_en : list_vpp_deband);
     
     y_pos_max = std::max(y_pos_max, y_pos);
+
+    // --- 次の列 -----------------------------------------
+    col = 2;
+    y_pos = cb_row_start_y_pos;
+
+    //log_level
+    const int cb_log_level_x = rc.left - dialog_rc.left + col * col_width;
+    const int cb_log_level_y = cb_opencl_platform_y;
+    static const int LB_LOG_LEVEL_W = 60;
+    lb_log_level = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, cb_log_level_x, cb_log_level_y, LB_LOG_LEVEL_W, 24, hwnd, (HMENU)ID_LB_LOG_LEVEL, hinst, NULL);
+    SendMessage(lb_log_level, WM_SETFONT, (WPARAM)b_font, 0);
+    SendMessage(lb_log_level, WM_SETTEXT, 0, (LPARAM)LB_CX_LOG_LEVEL);
+
+    static const int CX_LOG_LEVEL_W = 145;
+    cx_log_level = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, cb_log_level_x + LB_LOG_LEVEL_W, cb_log_level_y, CX_LOG_LEVEL_W, 100, hwnd, (HMENU)ID_CX_LOG_LEVEL, hinst, NULL);
+    SendMessage(cx_log_level, WM_SETFONT, (WPARAM)b_font, 0);
+
+    for (const auto& log_level : RGY_LOG_LEVEL_STR) {
+        set_combo_item(cx_log_level, log_level.second, log_level.first);
+    }
+
+    // log to file
+    GetWindowRect(child_hwnd[checkbox_idx + CLFILTER_CHECK_LOG_TO_FILE], &rc);
+    SetWindowPos(child_hwnd[checkbox_idx + CLFILTER_CHECK_LOG_TO_FILE], HWND_TOP, cb_log_level_x + LB_LOG_LEVEL_W + CX_LOG_LEVEL_W, cb_log_level_y + 4, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
+
+    //フィルタのリスト
+    const int list_filter_oder_x = rc.left - dialog_rc.left + col * col_width;
+    const int list_filter_order_y = cb_row_start_y_pos;
+    lb_filter_order = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, list_filter_oder_x + AVIUTL_1_10_OFFSET, list_filter_order_y, 60, 24, hwnd, (HMENU)ID_LB_FILTER_ORDER, hinst, NULL);
+    SendMessage(lb_filter_order, WM_SETFONT, (WPARAM)b_font, 0);
+    SendMessage(lb_filter_order, WM_SETTEXT, 0, (LPARAM)LB_CX_FILTER_ORDER);
+
+    static const int bt_filter_order_width = 40;
+    static const int list_filter_oder_width = col_width - bt_filter_order_width - 48;
+    static const int list_filter_oder_height = 400;
+    y_pos = list_filter_order_y + list_filter_oder_height;
+    ls_filter_order = CreateWindow("LISTBOX", "clinfo", WS_CHILD | WS_VISIBLE | WS_GROUP | WS_BORDER | WS_BORDER | WS_VSCROLL | LBS_NOTIFY, list_filter_oder_x, list_filter_order_y + 24, list_filter_oder_width, list_filter_oder_height, hwnd, (HMENU)ID_LS_FILTER_ORDER, hinst, NULL);
+    SendMessage(ls_filter_order, WM_SETFONT, (WPARAM)b_font, 0);
+
+    bt_filter_order_up = CreateWindow("BUTTON", "↑", WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, list_filter_oder_x + list_filter_oder_width + 8, list_filter_order_y + list_filter_oder_height / 2 - 24, bt_filter_order_width, 22, hwnd, (HMENU)ID_BT_FILTER_ORDER_UP, hinst, NULL);
+    SendMessage(bt_filter_order_up, WM_SETFONT, (WPARAM)b_font, 0);
+
+    bt_filter_order_down = CreateWindow("BUTTON", "↓", WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, list_filter_oder_x + list_filter_oder_width + 8, list_filter_order_y + list_filter_oder_height / 2, bt_filter_order_width, 22, hwnd, (HMENU)ID_BT_FILTER_ORDER_DOWN, hinst, NULL);
+    SendMessage(bt_filter_order_down, WM_SETFONT, (WPARAM)b_font, 0);
+
+    for (size_t ifilter = 0; ifilter < filterList.size(); ifilter++) {
+        SendMessage(ls_filter_order, LB_INSERTSTRING, ifilter, (LPARAM)filterList[ifilter].first);
+        SendMessage(ls_filter_order, LB_SETITEMDATA, ifilter, (LPARAM)filterList[ifilter].second);
+    }
+
+    y_pos_max = std::max(y_pos_max, y_pos);
+    //---- 列追加終わり ------------------------------------------
 
     SetWindowPos(hwnd, HWND_TOP, 0, 0, (dialog_rc.right - dialog_rc.left) * columns, y_pos_max + 24, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOZORDER);
 
