@@ -1962,11 +1962,21 @@ tstring RGYOpenCLContext::getSupportedImageFormatsStr(const cl_mem_object_type i
 }
 
 std::string RGYOpenCLContext::cspCopyOptions(const RGYFrameInfo& dst, const RGYFrameInfo& src) const {
-    const auto options = strsprintf("-D MEM_TYPE_SRC=%d -D MEM_TYPE_DST=%d -D in_bit_depth=%d -D out_bit_depth=%d",
+    const auto options = strsprintf("-D MEM_TYPE_SRC=%d -D MEM_TYPE_DST=%d -D in_bit_depth=%d -D out_bit_depth=%d"
+        " -D RGY_MATRIX_ST170_M=%d"
+        " -D RGY_MATRIX_ST240_M=%d"
+        " -D RGY_MATRIX_BT2020_NCL=%d"
+        " -D RGY_MATRIX_BT2020_CL=%d"
+        " -D RGY_MATRIX_BT709=%d",
         src.mem_type,
         dst.mem_type,
         RGY_CSP_BIT_DEPTH[src.csp],
-        RGY_CSP_BIT_DEPTH[dst.csp]);
+        RGY_CSP_BIT_DEPTH[dst.csp],
+        RGY_MATRIX_ST170_M,
+        RGY_MATRIX_ST240_M,
+        RGY_MATRIX_BT2020_NCL,
+        RGY_MATRIX_BT2020_CL,
+        RGY_MATRIX_BT709);
     return options;
 }
 
