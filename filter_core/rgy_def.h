@@ -586,6 +586,35 @@ struct VideoVUIInfo {
         apply_auto_color_characteristic(colorrange, list_colorrange,  inputHeight, input.colorrange);
         apply_auto_color_characteristic(chromaloc,  list_chromaloc,   inputHeight, input.chromaloc);
     }
+    void setDescriptPreset() {
+        descriptpresent =
+           get_cx_value(list_colormatrix, _T("undef")) != (int)matrix
+        || get_cx_value(list_colorprim,   _T("undef")) != (int)colorprim
+        || get_cx_value(list_transfer,    _T("undef")) != (int)transfer;
+    }
+
+    void setIfUnset(const VideoVUIInfo &x) {
+        const auto defaultVUI = VideoVUIInfo();
+        if (colorprim == defaultVUI.colorprim) {
+            colorprim = x.colorprim;
+        }
+        if (matrix == defaultVUI.matrix) {
+            matrix = x.matrix;
+        }
+        if (transfer == defaultVUI.transfer) {
+            transfer = x.transfer;
+        }
+        if (format == defaultVUI.format) {
+            format = x.format;
+        }
+        if (colorrange == defaultVUI.colorrange) {
+            colorrange = x.colorrange;
+        }
+        if (chromaloc == defaultVUI.chromaloc) {
+            chromaloc = x.chromaloc;
+        }
+        setDescriptPreset();
+    }
 
     bool operator==(const VideoVUIInfo &x) const {
         return descriptpresent == x.descriptpresent
