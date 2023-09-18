@@ -34,6 +34,7 @@
 #define CL_EXTERN
 #include "rgy_opencl.h"
 #include "rgy_resource.h"
+#include "rgy_filesystem.h"
 
 #if ENABLE_OPENCL
 
@@ -257,15 +258,16 @@ std::vector<cl_event> toVec(const std::vector<RGYOpenCLEvent>& wait_list) {
     return events;
 }
 
+#if defined(_WIN32) || defined(_WIN64)
+static const std::array<const TCHAR *, 1> opencl_dll_names = { _T("OpenCL.dll") };
+#else
+static const std::array<const TCHAR *, 2> opencl_dll_names = { _T("libOpenCL.so"), _T("libOpenCL.so.1") };
+#endif
+
 int initOpenCLGlobal() {
     if (RGYOpenCL::openCLHandle != nullptr) {
         return 0;
     }
-#if defined(_WIN32) || defined(_WIN64)
-    static const std::array<const TCHAR *, 1> opencl_dll_names = { _T("OpenCL.dll") };
-#else
-    static const std::array<const TCHAR *, 2> opencl_dll_names = { _T("libOpenCL.so"), _T("libOpenCL.so.1") };
-#endif
     for (const auto dll_name : opencl_dll_names) {
         if ((RGYOpenCL::openCLHandle = RGY_LOAD_LIBRARY(dll_name)) != nullptr) {
             break;
@@ -348,6 +350,65 @@ int initOpenCLGlobal() {
     LOAD_NO_CHECK(clGetKernelSubGroupInfo);
     LOAD_NO_CHECK(clGetKernelSubGroupInfoKHR);
     return 0;
+}
+
+#if defined(_WIN32) || defined(_WIN64)
+tstring vendorOpenCLDLL() {
+#if ENCODER_NVENC
+#if _M_IX86
+    return _T("nvopencl32.dll");
+#else
+    return _T("nvopencl64.dll");
+#endif
+#elif ENCODER_QSV
+#if _M_IX86
+    return _T("igdrcl32.dll");
+#else
+    return _T("igdrcl64.dll");
+#endif
+#elif ENCODER_VCEENC
+#if _M_IX86
+    return _T("amdocl.dll");
+#else
+    return _T("amdocl64.dll");
+#endif
+#else
+    return _T("");
+#endif
+}
+#endif
+
+tstring checkOpenCLDLL() {
+    tstring str;
+    std::unique_ptr<std::remove_pointer_t<HMODULE>, module_deleter> handle;
+    for (const auto dll_name : opencl_dll_names) {
+        handle = std::unique_ptr<std::remove_pointer_t<HMODULE>, module_deleter>(RGY_LOAD_LIBRARY(dll_name), module_deleter());
+        if (handle) {
+            str += tstring(_T("Load success: ")) + dll_name;
+#if defined(_WIN32) || defined(_WIN64)
+            str += _T(" (") + getModulePath(handle.get()) + _T(")");
+#endif
+            str += _T("\n");
+            break;
+        }
+    }
+    handle.reset();
+#if defined(_WIN32) || defined(_WIN64)
+    if (vendorOpenCLDLL().length() > 0) {
+        const auto filelist = get_file_list_with_filter(_T(R"(C:\Windows\System32\DriverStore\FileRepository)"), vendorOpenCLDLL());
+        str += _T("\n");
+        if (filelist.size()) {
+            str += vendorOpenCLDLL() + _T(" found on following path...\n");
+            for (const auto& file : filelist) {
+                str += _T("  ") + file + _T("\n");
+            }
+            str += _T("\n");
+        } else {
+            str += vendorOpenCLDLL() + _T(" not found.\n");
+        }
+    }
+#endif
+    return str;
 }
 
 static const auto RGY_CLCOMMANDTYPE_TO_STR = make_array<std::pair<cl_mem_object_type, const TCHAR *>>(
@@ -860,7 +921,7 @@ RGYOpenCLPlatform::RGYOpenCLPlatform(cl_platform_id platform, shared_ptr<RGYLog>
     }
 
 
-RGY_ERR RGYOpenCLPlatform::createDeviceListD3D11(cl_device_type device_type, void *d3d11dev) {
+RGY_ERR RGYOpenCLPlatform::createDeviceListD3D11(cl_device_type device_type, void *d3d11dev, const bool tryMode) {
 #if !ENABLE_RGY_OPENCL_D3D11
     return RGY_ERR_UNSUPPORTED;
 #else
@@ -886,14 +947,13 @@ RGY_ERR RGYOpenCLPlatform::createDeviceListD3D11(cl_device_type device_type, voi
             if ((ret = err_cl_to_rgy(clGetDeviceIDsFromD3D11KHR(m_platform, CL_D3D11_DEVICE_KHR, d3d11dev, select_dev_type, 0, NULL, &device_count))) != RGY_ERR_NONE) {
                 select_dev_type = CL_ALL_DEVICES_FOR_D3D11_KHR;
                 if ((ret = err_cl_to_rgy(clGetDeviceIDsFromD3D11KHR(m_platform, CL_D3D11_DEVICE_KHR, d3d11dev, select_dev_type, 0, NULL, &device_count))) != RGY_ERR_NONE) {
-                    CL_LOG(RGY_LOG_ERROR, _T("Error (clGetDeviceIDsFromD3D11KHR): %s\n"), get_err_mes(ret));
+                    CL_LOG((tryMode) ? RGY_LOG_DEBUG : RGY_LOG_ERROR, _T("Error (clGetDeviceIDsFromD3D11KHR): %s\n"), get_err_mes(ret));
                     return ret;
                 }
             }
             CL_LOG(RGY_LOG_DEBUG, _T("D3D11 device count = %d\n"), device_count);
         } catch (...) {
             CL_LOG(RGY_LOG_ERROR, _T("Crush (clGetDeviceIDsFromD3D11KHR)\n"));
-            RGYOpenCL::openCLCrush = true; //クラッシュフラグを立てる
             return RGY_ERR_OPENCL_CRUSH;
         }
         if (device_count > 0) {
@@ -902,7 +962,6 @@ RGY_ERR RGYOpenCLPlatform::createDeviceListD3D11(cl_device_type device_type, voi
                 ret = err_cl_to_rgy(clGetDeviceIDsFromD3D11KHR(m_platform, CL_D3D11_DEVICE_KHR, d3d11dev, select_dev_type, device_count, devs.data(), &device_count));
             } catch (...) {
                 CL_LOG(RGY_LOG_ERROR, _T("Crush (clGetDeviceIDsFromD3D11KHR)\n"));
-                RGYOpenCL::openCLCrush = true; //クラッシュフラグを立てる
                 return RGY_ERR_OPENCL_CRUSH;
             }
             if (ret == RGY_ERR_NONE) {
@@ -918,7 +977,7 @@ RGY_ERR RGYOpenCLPlatform::createDeviceListD3D11(cl_device_type device_type, voi
 #endif
 }
 
-RGY_ERR RGYOpenCLPlatform::createDeviceListD3D9(cl_device_type device_type, void *d3d9dev) {
+RGY_ERR RGYOpenCLPlatform::createDeviceListD3D9(cl_device_type device_type, void *d3d9dev, const bool tryMode) {
 #if !ENABLE_RGY_OPENCL_D3D9
     return RGY_ERR_UNSUPPORTED;
 #else
@@ -945,12 +1004,14 @@ RGY_ERR RGYOpenCLPlatform::createDeviceListD3D9(cl_device_type device_type, void
                 ret = err_cl_to_rgy(clGetDeviceIDsFromDX9MediaAdapterKHR(m_platform, 1, &type, &d3d9dev, CL_PREFERRED_DEVICES_FOR_DX9_MEDIA_ADAPTER_KHR, device_count, devs.data(), &device_count));
                 if (ret != RGY_ERR_NONE || device_count == 0) {
                     device_count = 1;
-                    ret = err_cl_to_rgy(clGetDeviceIDsFromDX9MediaAdapterKHR(m_platform, 1, &type, &d3d9dev, CL_ALL_DEVICES_FOR_DX9_MEDIA_ADAPTER_KHR, device_count, devs.data(), &device_count));
+                    if ((ret = err_cl_to_rgy(clGetDeviceIDsFromDX9MediaAdapterKHR(m_platform, 1, &type, &d3d9dev, CL_ALL_DEVICES_FOR_DX9_MEDIA_ADAPTER_KHR, device_count, devs.data(), &device_count))) != RGY_ERR_NONE) {
+                        CL_LOG((tryMode) ? RGY_LOG_DEBUG : RGY_LOG_ERROR, _T("Error (clGetDeviceIDsFromD3D11KHR): %s\n"), get_err_mes(ret));
+                        return ret;
+                    }
                 }
             }
             catch (...) {
                 CL_LOG(RGY_LOG_ERROR, _T("Crush (clGetDeviceIDsFromDX9MediaAdapterKHR)\n"));
-                RGYOpenCL::openCLCrush = true; //クラッシュフラグを立てる
                 return RGY_ERR_OPENCL_CRUSH;
             }
             if (ret == RGY_ERR_NONE) {
@@ -999,7 +1060,7 @@ RGY_ERR RGYOpenCLPlatform::createDeviceListD3D9(cl_device_type device_type, void
 #endif
 }
 
-RGY_ERR RGYOpenCLPlatform::createDeviceListVA(cl_device_type device_type, void *vadev) {
+RGY_ERR RGYOpenCLPlatform::createDeviceListVA(cl_device_type device_type, void *vadev, const bool tryMode) {
 #if !ENABLE_RGY_OPENCL_VA
     UNREFERENCED_PARAMETER(device_type);
     UNREFERENCED_PARAMETER(vadev);
@@ -1025,7 +1086,7 @@ RGY_ERR RGYOpenCLPlatform::createDeviceListVA(cl_device_type device_type, void *
             if ((ret = err_cl_to_rgy(clGetDeviceIDsFromVA_APIMediaAdapterINTEL(m_platform, CL_VA_API_DISPLAY_INTEL, vadev, select_dev_type, 0, NULL, &device_count))) != RGY_ERR_NONE) {
                 select_dev_type = CL_ALL_DEVICES_FOR_VA_API_INTEL;
                 if ((ret = err_cl_to_rgy(clGetDeviceIDsFromVA_APIMediaAdapterINTEL(m_platform, CL_VA_API_DISPLAY_INTEL, vadev, select_dev_type, 0, NULL, &device_count))) != RGY_ERR_NONE) {
-                    CL_LOG(RGY_LOG_ERROR, _T("Error (clGetDeviceIDsFromVA_APIMediaAdapterINTEL): %s\n"), get_err_mes(ret));
+                    CL_LOG((tryMode) ? RGY_LOG_DEBUG : RGY_LOG_ERROR, _T("Error (clGetDeviceIDsFromVA_APIMediaAdapterINTEL): %s\n"), get_err_mes(ret));
                     return ret;
                 }
             }
@@ -2765,7 +2826,7 @@ std::vector<shared_ptr<RGYOpenCLPlatform>> RGYOpenCL::getPlatforms(const char *v
             if (m_log->getLogLevel(RGY_LOGT_OPENCL) <= RGY_LOG_DEBUG) {
                 CL_LOG(RGY_LOG_DEBUG, _T("OpenCL platform #%d[%p]: %s\n"), i, platforms[i], platform->info().print().c_str());
             }
-            if (vendor == nullptr || platform->isVendor(vendor)) {
+            if (vendor == nullptr || strlen(vendor) == 0 || platform->isVendor(vendor)) {
                 CL_LOG(RGY_LOG_DEBUG, _T("Add platform #%d[%p] to list.\n"), i, platforms[i]);
                 platform_list.push_back(std::move(platform));
             }
@@ -2782,7 +2843,9 @@ tstring getOpenCLInfo(const cl_device_type device_type) {
     RGYOpenCL cl(log);
     auto platforms = cl.getPlatforms(nullptr);
     if (platforms.size() == 0) {
-        return _T("No OpenCL Platform found on this system.");
+        tstring str = _T("No OpenCL Platform found on this system.\n\n");
+        str += checkOpenCLDLL();
+        return str;
     }
 
     tstring str;

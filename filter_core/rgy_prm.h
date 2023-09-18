@@ -45,24 +45,27 @@ static const int DEFAULT_IGNORE_DECODE_ERROR = 10;
 #if ENCODER_NVENC
 #define ENABLE_VPP_FILTER_COLORSPACE   (ENABLE_NVRTC)
 #else
-#define ENABLE_VPP_FILTER_COLORSPACE   (ENCODER_QSV   || ENCODER_VCEENC ||                  CLFILTERS_AUF)
+#define ENABLE_VPP_FILTER_COLORSPACE   (ENCODER_QSV   || ENCODER_VCEENC || ENCODER_MPP ||                  CLFILTERS_AUF)
 #endif
-#define ENABLE_VPP_FILTER_AFS          (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC)
-#define ENABLE_VPP_FILTER_NNEDI        (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || CLFILTERS_AUF)
-#define ENABLE_VPP_FILTER_YADIF        (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC)
+#define ENABLE_VPP_FILTER_AFS          (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || ENCODER_MPP)
+#define ENABLE_VPP_FILTER_NNEDI        (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || ENCODER_MPP || CLFILTERS_AUF)
+#define ENABLE_VPP_FILTER_YADIF        (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || ENCODER_MPP)
 #define ENABLE_VPP_FILTER_RFF          (ENCODER_NVENC)
 #define ENABLE_VPP_FILTER_SELECT_EVERY (ENCODER_NVENC)
-#define ENABLE_VPP_FILTER_DECIMATE     (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC)
-#define ENABLE_VPP_FILTER_MPDECIMATE   (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC)
-#define ENABLE_VPP_FILTER_PAD          (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || CLFILTERS_AUF)
-#define ENABLE_VPP_FILTER_PMD          (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || CLFILTERS_AUF)
-#define ENABLE_VPP_FILTER_SMOOTH       (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || CLFILTERS_AUF)
-#define ENABLE_VPP_FILTER_CONVOLUTION3D (ENCODER_QSV  || ENCODER_NVENC || ENCODER_VCEENC)
-#define ENABLE_VPP_FILTER_UNSHARP      (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || CLFILTERS_AUF)
-#define ENABLE_VPP_FILTER_WARPSHARP    (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || CLFILTERS_AUF)
-#define ENABLE_VPP_FILTER_EDGELEVEL    (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || CLFILTERS_AUF)
-#define ENABLE_VPP_FILTER_TWEAK        (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || CLFILTERS_AUF)
-#define ENABLE_VPP_FILTER_DEBAND       (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || CLFILTERS_AUF)
+#define ENABLE_VPP_FILTER_DECIMATE     (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || ENCODER_MPP)
+#define ENABLE_VPP_FILTER_MPDECIMATE   (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || ENCODER_MPP)
+#define ENABLE_VPP_FILTER_PAD          (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || ENCODER_MPP || CLFILTERS_AUF)
+#define ENABLE_VPP_FILTER_PMD          (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || ENCODER_MPP || CLFILTERS_AUF)
+#define ENABLE_VPP_FILTER_SMOOTH       (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || ENCODER_MPP || CLFILTERS_AUF)
+#define ENABLE_VPP_FILTER_CONVOLUTION3D (ENCODER_QSV  || ENCODER_NVENC || ENCODER_VCEENC || ENCODER_MPP)
+#define ENABLE_VPP_FILTER_UNSHARP      (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || ENCODER_MPP || CLFILTERS_AUF)
+#define ENABLE_VPP_FILTER_WARPSHARP    (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || ENCODER_MPP || CLFILTERS_AUF)
+#define ENABLE_VPP_FILTER_EDGELEVEL    (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || ENCODER_MPP || CLFILTERS_AUF)
+#define ENABLE_VPP_FILTER_CURVES       (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || ENCODER_MPP)
+#define ENABLE_VPP_FILTER_TWEAK        (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || ENCODER_MPP || CLFILTERS_AUF)
+#define ENABLE_VPP_FILTER_OVERLAY      (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || ENCODER_MPP)
+#define ENABLE_VPP_FILTER_DEBAND       (ENCODER_QSV   || ENCODER_NVENC || ENCODER_VCEENC || ENCODER_MPP || CLFILTERS_AUF)
+#define ENABLE_VPP_FILTER_DELOGO_MULTIADD  (                 ENCODER_NVENC)
 
 static const TCHAR* VMAF_DEFAULT_MODEL_VERSION = _T("vmaf_v0.6.1");
 
@@ -110,6 +113,7 @@ static const int   FILTER_DEFAULT_AFS_TIMECODE = 0;
 static const bool  FILTER_DEFAULT_AFS_LOG = false;
 
 static const int   FILTER_DEFAULT_DECIMATE_CYCLE = 5;
+static const int   FILTER_DEFAULT_DECIMATE_DROP = 1;
 static const float FILTER_DEFAULT_DECIMATE_THRE_DUP = 1.1f;
 static const float FILTER_DEFAULT_DECIMATE_THRE_SC = 15.0f;
 static const int   FILTER_DEFAULT_DECIMATE_BLOCK_X = 32;
@@ -200,12 +204,19 @@ const CX_DESC list_vpp_denoise[] = {
     { _T("pmd"),     2 },
     { _T("smooth"),  3 },
     { _T("convolution3d"),  5 },
+#if ENCODER_VCEENC
+    { _T("preprocess"), 4 },
+#endif
+#if ENCODER_NVENC
+    { _T("nvvfx-denoise"), 6 },
+    { _T("nvvfx-artifact-reduction"), 7 },
+#endif
     { NULL, 0 }
 };
 
 const CX_DESC list_vpp_detail_enahance[] = {
     { _T("none"),       0 },
-#if ENCODER_QSV
+#if ENCODER_QSV || ENCODER_VCEENC
     { _T("detail-enhance"), 4 },
 #endif
     { _T("unsharp"),    1 },
@@ -243,6 +254,7 @@ enum RGY_VPP_RESIZE_MODE {
 enum RGY_VPP_RESIZE_ALGO {
     RGY_VPP_RESIZE_AUTO,
     RGY_VPP_RESIZE_BILINEAR,
+    RGY_VPP_RESIZE_BICUBIC,
 #if ENCODER_NVENC
     RGY_VPP_RESIZE_NEAREST,
 #endif
@@ -271,9 +283,43 @@ enum RGY_VPP_RESIZE_ALGO {
     RGY_VPP_RESIZE_NPPI_INTER_LANCZOS3_ADVANCED,       /**<  Generic Lanczos filtering with order 3. */
     RGY_VPP_RESIZE_NPPI_SMOOTH_EDGE, /**<  Smooth edge filtering. */
     RGY_VPP_RESIZE_NPPI_MAX,
+
+    RGY_VPP_RESIZE_NVVFX_SUPER_RES,
+    RGY_VPP_RESIZE_NVVFX_MAX,
+#endif
+#if ENCODER_VCEENC
+    RGY_VPP_RESIZE_AMF_BILINEAR,
+    RGY_VPP_RESIZE_AMF_BICUBIC,
+    RGY_VPP_RESIZE_AMF_FSR,
+    RGY_VPP_RESIZE_AMF_POINT,
+    RGY_VPP_RESIZE_AMF_MAX,
+#endif
+#if ENCODER_MPP
+    RGY_VPP_RESIZE_RGA_NEAREST,
+    RGY_VPP_RESIZE_RGA_BILINEAR,
+    RGY_VPP_RESIZE_RGA_BICUBIC,
+    RGY_VPP_RESIZE_RGA_MAX,
 #endif
     RGY_VPP_RESIZE_UNKNOWN,
 };
+
+static bool isNppResizeFiter(const RGY_VPP_RESIZE_ALGO interp) {
+#if ENCODER_NVENC && (!defined(_M_IX86) || FOR_AUO)
+    return RGY_VPP_RESIZE_OPENCL_CUDA_MAX < interp && interp < RGY_VPP_RESIZE_NPPI_MAX;
+#else
+    UNREFERENCED_PARAMETER(interp);
+    return false;
+#endif
+}
+
+static bool isNvvfxResizeFiter(const RGY_VPP_RESIZE_ALGO interp) {
+#if ENCODER_NVENC && (!defined(_M_IX86) || FOR_AUO)
+    return RGY_VPP_RESIZE_NPPI_MAX < interp && interp < RGY_VPP_RESIZE_NVVFX_MAX;
+#else
+    UNREFERENCED_PARAMETER(interp);
+    return false;
+#endif
+}
 
 enum RGY_VPP_RESIZE_TYPE {
     RGY_VPP_RESIZE_TYPE_NONE,
@@ -284,6 +330,12 @@ enum RGY_VPP_RESIZE_TYPE {
 #endif
 #if ENCODER_NVENC && (!defined(_M_IX86) || FOR_AUO)
     RGY_VPP_RESIZE_TYPE_NPPI,
+#endif
+#if ENCODER_VCEENC
+    RGY_VPP_RESIZE_TYPE_AMF,
+#endif
+#if ENCODER_MPP
+    RGY_VPP_RESIZE_TYPE_RGA,
 #endif
     RGY_VPP_RESIZE_TYPE_UNKNOWN,
 };
@@ -303,6 +355,7 @@ const CX_DESC list_vpp_resize_mode[] = {
 const CX_DESC list_vpp_resize[] = {
     { _T("auto"),     RGY_VPP_RESIZE_AUTO },
     { _T("bilinear"), RGY_VPP_RESIZE_BILINEAR },
+    { _T("bicubic"),  RGY_VPP_RESIZE_BICUBIC },
 #if ENCODER_NVENC
     { _T("nearest"),  RGY_VPP_RESIZE_NEAREST },
 #endif
@@ -333,6 +386,18 @@ const CX_DESC list_vpp_resize[] = {
     { _T("super"),         RGY_VPP_RESIZE_NPPI_INTER_SUPER },
     { _T("lanczos"),       RGY_VPP_RESIZE_NPPI_INTER_LANCZOS },
     //{ _T("smooth_edge"),   RGY_VPP_RESIZE_NPPI_SMOOTH_EDGE },
+    { _T("nvvfx-superres"),  RGY_VPP_RESIZE_NVVFX_SUPER_RES },
+#endif
+#if ENCODER_VCEENC
+    { _T("amf_bilinear"), RGY_VPP_RESIZE_AMF_BILINEAR },
+    { _T("amf_bicubic"),  RGY_VPP_RESIZE_AMF_BICUBIC },
+    { _T("amf_fsr"),      RGY_VPP_RESIZE_AMF_FSR },
+    { _T("amf_point"),    RGY_VPP_RESIZE_AMF_POINT },
+#endif
+#if ENCODER_MPP
+    { _T("rga_nearest"),  RGY_VPP_RESIZE_RGA_NEAREST },
+    { _T("rga_bilinear"), RGY_VPP_RESIZE_RGA_BILINEAR },
+    { _T("rga_bicubic"),  RGY_VPP_RESIZE_RGA_BICUBIC },
 #endif
     { NULL, 0 }
 };
@@ -340,6 +405,7 @@ const CX_DESC list_vpp_resize[] = {
 const CX_DESC list_vpp_resize_help[] = {
     { _T("auto"),     RGY_VPP_RESIZE_AUTO },
     { _T("bilinear"), RGY_VPP_RESIZE_BILINEAR },
+    { _T("bicubic"),  RGY_VPP_RESIZE_BICUBIC },
 #if ENCODER_NVENC
     { _T("nearest"),  RGY_VPP_RESIZE_NEAREST },
 #endif
@@ -366,6 +432,17 @@ const CX_DESC list_vpp_resize_help[] = {
     { _T("super"),         RGY_VPP_RESIZE_NPPI_INTER_SUPER },
     { _T("lanczos"),       RGY_VPP_RESIZE_NPPI_INTER_LANCZOS },
     //{ _T("smooth_edge"),   RGY_VPP_RESIZE_NPPI_SMOOTH_EDGE },
+#endif
+#if ENCODER_VCEENC
+    { _T("amf_bilinear"), RGY_VPP_RESIZE_AMF_BILINEAR },
+    { _T("amf_bicubic"),  RGY_VPP_RESIZE_AMF_BICUBIC },
+    { _T("amf_fsr"),      RGY_VPP_RESIZE_AMF_FSR },
+    { _T("amf_point"),    RGY_VPP_RESIZE_AMF_POINT },
+#endif
+#if ENCODER_MPP
+    { _T("rga_nearest"),  RGY_VPP_RESIZE_RGA_NEAREST },
+    { _T("rga_bilinear"), RGY_VPP_RESIZE_RGA_BILINEAR },
+    { _T("rga_bicubic"),  RGY_VPP_RESIZE_RGA_BICUBIC },
 #endif
     { NULL, 0 }
 };
@@ -668,9 +745,9 @@ static const auto FILTER_DEFAULT_LUT3D_INTERP = LUT3DInterp::Tetrahedral;
 const CX_DESC list_vpp_colorspace_lut3d_interp[] = {
     { _T("nearest"),     (int)LUT3DInterp::Nearest     },
     { _T("trilinear"),   (int)LUT3DInterp::Trilinear   },
+    { _T("tetrahedral"), (int)LUT3DInterp::Tetrahedral },
     { _T("pyramid"),     (int)LUT3DInterp::Pyramid     },
     { _T("prism"),       (int)LUT3DInterp::Prism       },
-    { _T("tetrahedral"), (int)LUT3DInterp::Tetrahedral },
     { NULL, 0 }
 };
 
@@ -706,6 +783,8 @@ struct VppDelogo {
     bool autoNR;
     int NRArea;
     int NRValue;
+    float multiaddDepthMin;
+    float multiaddDepthMax;
     bool log;
 
     VppDelogo();
@@ -877,6 +956,7 @@ const CX_DESC list_vpp_decimate_block[] = {
 struct VppDecimate {
     bool enable;
     int cycle;
+    int drop;
     float threDuplicate;
     float threSceneChange;
     int blockX;
@@ -995,6 +1075,7 @@ struct VppSubburn {
     float contrast;
     double ts_offset;
     bool vid_ts_offset;
+    bool forced_subs_only;
 
     VppSubburn();
     bool operator==(const VppSubburn &x) const;
@@ -1070,6 +1151,57 @@ struct VppTransform {
     tstring print() const;
 };
 
+
+enum class VppCurvesPreset {
+    NONE,
+    COLOR_NEGATIVE,
+    PROCESS,
+    DARKER,
+    LIGHTER,
+    INCREASE_CONTRAST,
+    LINEAR_CONTRAST,
+    MEDIUM_CONTRAST,
+    STRONG_CONTRAST,
+    NEGATIVE,
+    VINTAGE
+};
+
+const CX_DESC list_vpp_curves_preset[] = {
+    { _T("none"),              (int)VppCurvesPreset::NONE },
+    { _T("color_negative"),    (int)VppCurvesPreset::COLOR_NEGATIVE      },
+    { _T("process"),           (int)VppCurvesPreset::PROCESS  },
+    { _T("darker"),            (int)VppCurvesPreset::DARKER  },
+    { _T("lighter"),           (int)VppCurvesPreset::LIGHTER  },
+    { _T("increase_contrast"), (int)VppCurvesPreset::INCREASE_CONTRAST  },
+    { _T("linear_contrast"),   (int)VppCurvesPreset::LINEAR_CONTRAST  },
+    { _T("medium_contrast"),   (int)VppCurvesPreset::MEDIUM_CONTRAST  },
+    { _T("strong_contrast"),   (int)VppCurvesPreset::STRONG_CONTRAST  },
+    { _T("negative"),          (int)VppCurvesPreset::NEGATIVE  },
+    { _T("vintage"),           (int)VppCurvesPreset::VINTAGE  },
+    { NULL, 0 }
+};
+
+struct VppCurveParams {
+    tstring r, g, b, m;
+
+    VppCurveParams();
+    VppCurveParams(const tstring& r_, const tstring& g_, const tstring& b_, const tstring& m_);
+    bool operator==(const VppCurveParams &x) const;
+    bool operator!=(const VppCurveParams &x) const;
+};
+
+struct VppCurves {
+    bool enable;
+    VppCurvesPreset preset;
+    VppCurveParams prm;
+    tstring all;
+
+    VppCurves();
+    bool operator==(const VppCurves &x) const;
+    bool operator!=(const VppCurves &x) const;
+    tstring print() const;
+};
+
 struct VppDeband {
     bool enable;
     int range;
@@ -1086,6 +1218,48 @@ struct VppDeband {
     VppDeband();
     bool operator==(const VppDeband &x) const;
     bool operator!=(const VppDeband &x) const;
+    tstring print() const;
+};
+
+enum class VppOverlayAlphaMode {
+    Override,
+    Mul,
+    LumaKey,
+};
+
+const CX_DESC list_vpp_overlay_alpha_mode[] = {
+    { _T("override"),  (int)VppOverlayAlphaMode::Override },
+    { _T("mul"),       (int)VppOverlayAlphaMode::Mul      },
+    { _T("lumakey"),   (int)VppOverlayAlphaMode::LumaKey  },
+    { NULL, 0 }
+};
+
+struct VppOverlayAlphaKey {
+    float threshold;
+    float tolerance;
+    float shoftness;
+
+    VppOverlayAlphaKey();
+    bool operator==(const VppOverlayAlphaKey &x) const;
+    bool operator!=(const VppOverlayAlphaKey &x) const;
+    tstring print() const;
+};
+
+struct VppOverlay {
+    bool enable;
+    tstring inputFile;
+    int posX;
+    int posY;
+    int width;
+    int height;
+    float alpha; // 不透明度 透明(0.0 - 1.0)透明
+    VppOverlayAlphaMode alphaMode;
+    VppOverlayAlphaKey lumaKey;
+    bool loop;
+
+    VppOverlay();
+    bool operator==(const VppOverlay &x) const;
+    bool operator!=(const VppOverlay &x) const;
     tstring print() const;
 };
 
@@ -1110,9 +1284,11 @@ struct RGYParamVpp {
     VppUnsharp unsharp;
     VppEdgelevel edgelevel;
     VppWarpsharp warpsharp;
+    VppCurves curves;
     VppTweak tweak;
     VppTransform transform;
     VppDeband deband;
+    std::vector<VppOverlay> overlay;
     bool checkPerformance;
 
     RGYParamVpp();
@@ -1157,6 +1333,8 @@ struct AudioSelect {
 
 struct AudioSource {
     tstring filename;
+    tstring format;
+    RGYOptList inputOpt; //入力オプション
     std::map<int, AudioSelect> select;
 
     AudioSource();
@@ -1184,6 +1362,8 @@ struct SubtitleSelect {
 
 struct SubSource {
     tstring filename;
+    tstring format;
+    RGYOptList inputOpt; //入力オプション
     std::map<int, SubtitleSelect> select;
 
     SubSource();
@@ -1230,6 +1410,7 @@ struct RGYVideoQualityMetric {
 };
 
 using AttachmentSelect = DataSelect;
+using AttachmentSource = SubSource;
 
 struct GPUAutoSelectMul {
     float cores;
@@ -1267,6 +1448,7 @@ struct RGYParamCommon {
     std::vector<tstring> videoMetadata;
     std::vector<tstring> formatMetadata;
     float seekSec;               //指定された秒数分先頭を飛ばす
+    float seekToSec;
     int nSubtitleSelectCount;
     SubtitleSelect **ppSubtitleSelectList;
     std::vector<SubSource> subSource;
@@ -1277,6 +1459,7 @@ struct RGYParamCommon {
     DataSelect **ppDataSelectList;
     int        nAttachmentSelectCount;
     AttachmentSelect **ppAttachmentSelectList;
+    std::vector<AttachmentSource> attachmentSource;
     int audioResampler;
     int inputRetry;
     double demuxAnalyzeSec;
@@ -1292,13 +1475,20 @@ struct RGYParamCommon {
     C2AFormat caption2ass;
     int audioIgnoreDecodeError;
     RGYOptList muxOpt;
+    bool allowOtherNegativePts;
     bool disableMp4Opt;
+    bool debugDirectAV1Out;
+    bool debugRawOut;
+    tstring outReplayFile;
+    RGY_CODEC outReplayCodec;
     tstring chapterFile;
     tstring keyFile;
     TCHAR *AVInputFormat;
     RGYAVSync AVSyncMode;     //avsyncの方法 (NV_AVSYNC_xxx)
     bool timecode;
     tstring timecodeFile;
+    tstring tcfileIn;
+    rgy_rational<int> timebase;
     RGYHEVCBsf hevcbsf;
 
     RGYVideoQualityMetric metric;
@@ -1327,6 +1517,7 @@ struct RGYParamControl {
     uint32_t parentProcessID;
     bool lowLatency;
     GPUAutoSelectMul gpuSelect;
+    bool skipHWEncodeCheck;
     bool skipHWDecodeCheck;
     tstring avsdll;
     bool enableOpenCL;

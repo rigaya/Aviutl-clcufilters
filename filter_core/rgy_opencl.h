@@ -41,6 +41,10 @@
 #define ENABLE_RGY_OPENCL_D3D9  ENABLE_D3D9
 #define ENABLE_RGY_OPENCL_D3D11 ENABLE_D3D11
 #define ENABLE_RGY_OPENCL_VA    0
+#elif ENCODER_MPP
+#define ENABLE_RGY_OPENCL_D3D9  0
+#define ENABLE_RGY_OPENCL_D3D11 0
+#define ENABLE_RGY_OPENCL_VA    0
 #else
 #define ENABLE_RGY_OPENCL_D3D9  1
 #define ENABLE_RGY_OPENCL_D3D11 1
@@ -70,6 +74,7 @@
 #include "rgy_def.h"
 #include "rgy_log.h"
 #include "rgy_util.h"
+#include "rgy_frame.h"
 #include "convert_csp.h"
 
 #ifndef CL_EXTERN
@@ -337,6 +342,8 @@ CL_EXTERN cl_int(CL_API_CALL* f_clEnqueueReleaseVA_APIMediaSurfacesINTEL)(cl_com
 #define clEnqueueAcquireVA_APIMediaSurfacesINTEL f_clEnqueueAcquireVA_APIMediaSurfacesINTEL
 #define clEnqueueReleaseVA_APIMediaSurfacesINTEL f_clEnqueueReleaseVA_APIMediaSurfacesINTEL
 #endif //ENABLE_RGY_OPENCL_VA
+
+tstring checkOpenCLDLL();
 
 MAP_PAIR_0_1_PROTO(err, rgy, RGY_ERR, cl, cl_int);
 
@@ -777,9 +784,9 @@ public:
     RGYOpenCLPlatform(cl_platform_id platform, shared_ptr<RGYLog> pLog);
     virtual ~RGYOpenCLPlatform() {};
     RGY_ERR createDeviceList(cl_device_type device_type);
-    RGY_ERR createDeviceListD3D9(cl_device_type device_type, void *d3d9dev);
-    RGY_ERR createDeviceListD3D11(cl_device_type device_type, void *d3d11dev);
-    RGY_ERR createDeviceListVA(cl_device_type device_type, void *devVA);
+    RGY_ERR createDeviceListD3D9(cl_device_type device_type, void *d3d9dev, const bool tryMode = false);
+    RGY_ERR createDeviceListD3D11(cl_device_type device_type, void *d3d11dev, const bool tryMode = false);
+    RGY_ERR createDeviceListVA(cl_device_type device_type, void *devVA, const bool tryMode = false);
     RGY_ERR loadSubGroupKHR();
     RGYOpenCLSubGroupSupport checkSubGroupSupport(const cl_device_id devid);
     cl_platform_id get() const { return m_platform; };

@@ -1450,6 +1450,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     set_combo_item(cx_resize_algo, "lanczos3", RGY_VPP_RESIZE_LANCZOS3);
     set_combo_item(cx_resize_algo, "lanczos4", RGY_VPP_RESIZE_LANCZOS4);
     set_combo_item(cx_resize_algo, "bilinear", RGY_VPP_RESIZE_BILINEAR);
+    set_combo_item(cx_resize_algo, "bicubic",  RGY_VPP_RESIZE_BICUBIC);
 
     int y_pos_max = 0;
     // --- 最初の列 -----------------------------------------

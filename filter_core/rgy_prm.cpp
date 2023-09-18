@@ -55,6 +55,14 @@ RGY_VPP_RESIZE_TYPE getVppResizeType(RGY_VPP_RESIZE_ALGO resize) {
     } else if (resize < RGY_VPP_RESIZE_NPPI_MAX) {
         return RGY_VPP_RESIZE_TYPE_NPPI;
 #endif
+#if ENCODER_VCEENC
+    } else if (resize < RGY_VPP_RESIZE_AMF_MAX) {
+        return RGY_VPP_RESIZE_TYPE_AMF;
+#endif
+#if ENCODER_MPP
+    } else if (resize < RGY_VPP_RESIZE_RGA_MAX) {
+        return RGY_VPP_RESIZE_TYPE_RGA;
+#endif
     } else {
         return RGY_VPP_RESIZE_TYPE_UNKNOWN;
     }
@@ -200,6 +208,8 @@ VppDelogo::VppDelogo() :
     autoNR(false),
     NRArea(0),
     NRValue(0),
+    multiaddDepthMin(0.0f),
+    multiaddDepthMax(128.0f),
     log(false) {
 }
 
@@ -218,6 +228,8 @@ bool VppDelogo::operator==(const VppDelogo& x) const {
         && autoNR == x.autoNR
         && NRArea == x.NRArea
         && NRValue == x.NRValue
+        && multiaddDepthMin == x.multiaddDepthMin
+        && multiaddDepthMax == x.multiaddDepthMax
         && log == x.log;
 }
 bool VppDelogo::operator!=(const VppDelogo& x) const {
@@ -229,6 +241,9 @@ tstring VppDelogo::print() const {
     switch (mode) {
     case DELOGO_MODE_ADD:
         str += _T(", add");
+        break;
+    case DELOGO_MODE_ADD_MULTI:
+        str += _T(", multi_add");
         break;
     case DELOGO_MODE_REMOVE:
     default:
@@ -257,6 +272,9 @@ tstring VppDelogo::print() const {
     }
     if (NRArea) {
         str += strsprintf(_T(", nr_area=%d"), NRArea);
+    }
+    if (mode == DELOGO_MODE_ADD_MULTI) {
+        str += strsprintf(_T(", multi_add_depth=%.1f-%.1f"), multiaddDepthMin, multiaddDepthMax);
     }
     return str;
 }
@@ -584,6 +602,7 @@ tstring VppSelectEvery::print() const {
 VppDecimate::VppDecimate() :
     enable(false),
     cycle(FILTER_DEFAULT_DECIMATE_CYCLE),
+    drop(FILTER_DEFAULT_DECIMATE_DROP),
     threDuplicate(FILTER_DEFAULT_DECIMATE_THRE_DUP),
     threSceneChange(FILTER_DEFAULT_DECIMATE_THRE_SC),
     blockX(FILTER_DEFAULT_DECIMATE_BLOCK_X),
@@ -610,9 +629,9 @@ bool VppDecimate::operator!=(const VppDecimate& x) const {
 }
 
 tstring VppDecimate::print() const {
-    return strsprintf(_T("decimate: cycle %d, threDup %.2f, threSC %.2f\n")
+    return strsprintf(_T("decimate: cycle %d, drop %d, threDup %.2f, threSC %.2f\n")
         _T("                         block %dx%d, chroma %s, log %s"),
-        cycle,
+        cycle, drop,
         threDuplicate, threSceneChange,
         blockX, blockY,
         /*preProcessed ? _T("on") : _T("off"),*/
@@ -810,7 +829,8 @@ VppSubburn::VppSubburn() :
     brightness(FILTER_DEFAULT_TWEAK_BRIGHTNESS),
     contrast(FILTER_DEFAULT_TWEAK_CONTRAST),
     ts_offset(0.0),
-    vid_ts_offset(true) {
+    vid_ts_offset(true),
+    forced_subs_only(false) {
 }
 
 bool VppSubburn::operator==(const VppSubburn &x) const {
@@ -825,7 +845,8 @@ bool VppSubburn::operator==(const VppSubburn &x) const {
         && brightness == x.brightness
         && contrast == x.contrast
         && ts_offset == x.ts_offset
-        && vid_ts_offset == x.vid_ts_offset;
+        && vid_ts_offset == x.vid_ts_offset
+        && forced_subs_only == x.forced_subs_only;
 }
 bool VppSubburn::operator!=(const VppSubburn &x) const {
     return !(*this == x);
@@ -851,6 +872,9 @@ tstring VppSubburn::print() const {
     }
     if (!vid_ts_offset) {
         str += _T(", vid_ts_offset off");
+    }
+    if (forced_subs_only) {
+        str += _T(", forced_subs_only");
     }
     return str;
 }
@@ -956,6 +980,50 @@ tstring VppTweak::print() const {
         brightness, contrast, saturation, gamma, hue, swapuv ? _T("on") : _T("off"));
 }
 
+VppCurveParams::VppCurveParams() : r(), g(), b(), m() {};
+VppCurveParams::VppCurveParams(const tstring& r_, const tstring& g_, const tstring& b_, const tstring& m_) :
+    r(r_), g(g_), b(b_), m(m_) {};
+
+bool VppCurveParams::operator==(const VppCurveParams &x) const {
+    return r == x.r
+        && g == x.g
+        && b == x.b
+        && m == x.m;
+
+}
+bool VppCurveParams::operator!=(const VppCurveParams &x) const {
+    return !(*this == x);
+}
+
+VppCurves::VppCurves() :
+    enable(false),
+    preset(VppCurvesPreset::NONE),
+    prm(),
+    all() {
+}
+
+bool VppCurves::operator==(const VppCurves &x) const {
+    return enable == x.enable
+        && preset == x.preset
+        && prm == x.prm
+        && all == x.all;
+}
+bool VppCurves::operator!=(const VppCurves &x) const {
+    return !(*this == x);
+}
+
+tstring VppCurves::print() const {
+    tstring str    = _T("curves: ");
+    tstring indent = _T("                               ");
+    if (preset != VppCurvesPreset::NONE) str += tstring(_T("preset ")) + get_cx_desc(list_vpp_curves_preset, (int)preset);
+    if (prm.r.length() > 0) str += _T("\n") + indent + _T("r ") + prm.r;
+    if (prm.g.length() > 0) str += _T("\n") + indent + _T("g ") + prm.g;
+    if (prm.b.length() > 0) str += _T("\n") + indent + _T("b ") + prm.b;
+    if (prm.m.length() > 0) str += _T("\n") + indent + _T("master ") + prm.m;
+    if (all.length() > 0)   str += _T("\n") + indent + _T("all ") + all;
+    return str;
+}
+
 VppTransform::VppTransform() :
     enable(false),
     transpose(false),
@@ -1016,6 +1084,86 @@ tstring VppTransform::print() const {
             ON_OFF(transpose), ON_OFF(flipX), ON_OFF(flipY));
     }
 #undef ON_OFF
+}
+
+VppOverlayAlphaKey::VppOverlayAlphaKey() :
+    threshold(0.0f),
+    tolerance(0.1f),
+    shoftness(0.0f) {
+
+}
+
+bool VppOverlayAlphaKey::operator==(const VppOverlayAlphaKey &x) const {
+    return threshold == x.threshold
+        && tolerance == x.tolerance
+        && shoftness == x.shoftness;
+}
+bool VppOverlayAlphaKey::operator!=(const VppOverlayAlphaKey &x) const {
+    return !(*this == x);
+}
+
+tstring VppOverlayAlphaKey::print() const {
+    return strsprintf(_T("threshold %.2f, tolerance %.2f, shoftness %.2f"),
+        threshold, tolerance, shoftness);
+}
+
+VppOverlay::VppOverlay() :
+    enable(false),
+    inputFile(),
+    posX(0),
+    posY(0),
+    width(0),
+    height(0),
+    alpha(0.0f),
+    alphaMode(VppOverlayAlphaMode::Override),
+    lumaKey(),
+    loop(false) {
+
+}
+
+bool VppOverlay::operator==(const VppOverlay &x) const {
+    return enable == x.enable
+        && inputFile == x.inputFile
+        && posX == x.posX
+        && posY == x.posY
+        && width == x.width
+        && height == x.height
+        && alpha == x.alpha
+        && alphaMode == x.alphaMode
+        && lumaKey == x.lumaKey
+        && loop == x.loop;
+}
+bool VppOverlay::operator!=(const VppOverlay &x) const {
+    return !(*this == x);
+}
+
+tstring VppOverlay::print() const {
+    tstring alphaStr = _T("auto");
+    if (alphaMode == VppOverlayAlphaMode::LumaKey) {
+        alphaStr = (alpha > 0.0f) ? strsprintf(_T("%.2f "), alpha) : _T("");
+        alphaStr += _T("lumakey ") + lumaKey.print();
+    } else {
+        if (alpha > 0.0f) {
+            switch (alphaMode) {
+            case VppOverlayAlphaMode::Override:
+                alphaStr = strsprintf(_T("%.2f"), alpha);
+                break;
+            case VppOverlayAlphaMode::Mul:
+                alphaStr = strsprintf(_T("*%.2f"), alpha);
+                break;
+            default:
+                break;
+            }
+        }
+    }
+    return strsprintf(_T("overlay: %s\n")
+        _T("                        pos (%d,%d), size %dx%d, loop %s\n")
+        _T("                        alpha %s"),
+        inputFile.c_str(),
+        posX, posY,
+        width, height,
+        (loop) ? _T("on") : _T("off"),
+        alphaStr.c_str());
 }
 
 VppDeband::VppDeband() :
@@ -1081,9 +1229,11 @@ RGYParamVpp::RGYParamVpp() :
     unsharp(),
     edgelevel(),
     warpsharp(),
+    curves(),
     tweak(),
     transform(),
     deband(),
+    overlay(),
     checkPerformance(false) {
 
 }
@@ -1114,6 +1264,8 @@ AudioSelect::AudioSelect() :
 
 AudioSource::AudioSource() :
     filename(),
+    format(),
+    inputOpt(),
     select() {
 
 }
@@ -1134,6 +1286,8 @@ SubtitleSelect::SubtitleSelect() :
 
 SubSource::SubSource() :
     filename(),
+    format(),
+    inputOpt(),
     select() {
 
 }
@@ -1233,6 +1387,7 @@ RGYParamCommon::RGYParamCommon() :
     videoMetadata(),
     formatMetadata(),
     seekSec(0.0f),               //指定された秒数分先頭を飛ばす
+    seekToSec(0.0f),
     nSubtitleSelectCount(0),
     ppSubtitleSelectList(nullptr),
     subSource(),
@@ -1243,6 +1398,7 @@ RGYParamCommon::RGYParamCommon() :
     ppDataSelectList(nullptr),
     nAttachmentSelectCount(0),
     ppAttachmentSelectList(nullptr),
+    attachmentSource(),
     audioResampler(RGY_RESAMPLER_SWR),
     inputRetry(0),
     demuxAnalyzeSec(-1),
@@ -1258,12 +1414,19 @@ RGYParamCommon::RGYParamCommon() :
     caption2ass(FORMAT_INVALID),
     audioIgnoreDecodeError(DEFAULT_IGNORE_DECODE_ERROR),
     muxOpt(),
+    allowOtherNegativePts(false),
     disableMp4Opt(false),
+    debugDirectAV1Out(false),
+    debugRawOut(false),
+    outReplayFile(),
+    outReplayCodec(RGY_CODEC_UNKNOWN),
     chapterFile(),
     AVInputFormat(nullptr),
     AVSyncMode(RGY_AVSYNC_ASSUME_CFR),     //avsyncの方法 (RGY_AVSYNC_xxx)
     timecode(false),
     timecodeFile(),
+    tcfileIn(),
+    timebase({ 0, 0 }),
     hevcbsf(RGYHEVCBsf::INTERNAL),
     metric() {
 
@@ -1291,6 +1454,7 @@ RGYParamControl::RGYParamControl() :
     parentProcessID(0),
     lowLatency(false),
     gpuSelect(),
+    skipHWEncodeCheck(false),
     skipHWDecodeCheck(false),
     avsdll(),
     enableOpenCL(true),
