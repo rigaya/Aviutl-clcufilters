@@ -614,14 +614,14 @@ RGY_ERR clFilterChain::sendInFrame(const RGYFrameInfo *pInputFrame) {
     copyFramePropWithoutCsp(&frameDevIn->frame, pInputFrame);
 
     {
-        auto& frameHostIn = frameDevIn->mappedHost();
+        auto frameHostIn = frameDevIn->mappedHost();
 
         //YC48->YUV444(16bit)
         int crop[4] = { 0 };
         m_convert_yc48_to_yuv444_16->run(false,
-            (void **)frameHostIn.ptr, (const void **)&pInputFrame->ptr[0],
+            frameHostIn->ptr().data(), (const void **)&pInputFrame->ptr[0],
             pInputFrame->width, pInputFrame->pitch[0], pInputFrame->pitch[0],
-            frameHostIn.pitch[0], pInputFrame->height, frameHostIn.height, crop);
+            frameHostIn->pitch(0), pInputFrame->height, frameHostIn->height(), crop);
     }
 
     if ((err = frameDevIn->unmapBuffer()) != RGY_ERR_NONE) {
@@ -651,13 +651,13 @@ RGY_ERR clFilterChain::getOutFrame(RGYFrameInfo *pOutputFrame) {
     frameDevOut->mapWait();
     copyFramePropWithoutCsp(pOutputFrame, &frameDevOut->frame);
     {
-        auto& frameHostOut = frameDevOut->mappedHost();
+        auto frameHostOut = frameDevOut->mappedHost();
         //YUV444(16bit)->YC48
         int crop[4] = { 0 };
         m_convert_yuv444_16_to_yc48->run(false,
-            (void **)&pOutputFrame->ptr[0], (const void **)frameHostOut.ptr,
-            frameHostOut.width, frameHostOut.pitch[0], frameHostOut.pitch[0],
-            pOutputFrame->pitch[0], frameHostOut.height, pOutputFrame->height, crop);
+            (void **)&pOutputFrame->ptr[0], (const void **)frameHostOut->ptr().data(),
+            frameHostOut->width(), frameHostOut->pitch(0), frameHostOut->pitch(0),
+            pOutputFrame->pitch[0], frameHostOut->height(), pOutputFrame->height, crop);
     }
     auto err = frameDevOut->unmapBuffer();
     if (err != RGY_ERR_NONE) {
