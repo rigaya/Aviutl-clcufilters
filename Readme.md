@@ -6,7 +6,7 @@ clfilters.auf は、Aviutl用のOpenCLによるGPUフィルタです。
 
 ## 想定動作環境
 
-Windows 8.1/10/11 (x86/x64)  
+Windows 10/11 (x86/x64)  
 Aviutl 1.00 以降  
 Intel / NVIDIA / AMD のGPUドライバのインストールされた環境  
 
