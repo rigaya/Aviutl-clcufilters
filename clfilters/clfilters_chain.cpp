@@ -338,6 +338,7 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         param->hModule = m_prm.hModule;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
+        param->timebase = rgy_rational<int>(); // bobで使用するが、clfiltersではbobはサポートしない
         param->bOutOverwrite = false;
         auto sts = filter->init(param, m_log);
         if (sts != RGY_ERR_NONE) {
