@@ -270,6 +270,7 @@ nnediによるインタレ解除を行う。基本的には片方フィールド
   | lanczos3 | 6x6 lanczos補間 |
   | lanczos4 | 8x8 lanczos補間 |
   | bilinear | 線形補間 |
+  | bicubic  |  双三次補間 |
 
 
 ### unsharp  
