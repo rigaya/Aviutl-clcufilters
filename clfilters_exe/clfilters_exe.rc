@@ -1,0 +1,102 @@
+﻿// -----------------------------------------------------------------------------------------
+// clfilters by rigaya
+// -----------------------------------------------------------------------------------------
+//
+// The MIT License
+//
+// Copyright (c) 2022 rigaya
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+//
+// ------------------------------------------------------------------------------------------
+
+#include <winres.h>
+#include "clfilters_version.h"
+
+RGY_FILTER_CL               EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter.cl"
+RGY_FILTER_RESIZE_CL        EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_resize.cl"
+//RGY_FILTER_CONVOLUTION3D_CL EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_convolution3d.cl"
+//RGY_FILTER_DELOGO_CL        EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_delogo.cl"
+RGY_FILTER_DENOISE_KNN_CL   EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_denoise_knn.cl"
+RGY_FILTER_DENOISE_PMD_CL   EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_denoise_pmd.cl"
+//RGY_FILTER_DECIMATE_CL      EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_decimate.cl"
+//RGY_FILTER_MPDECIMATE_CL    EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_mpdecimate.cl"
+RGY_FILTER_SMOOTH_CL        EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_smooth.cl"
+//RGY_FILTER_SUBBURN_CL       EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_subburn.cl"
+RGY_FILTER_UNSHARP_CL       EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_unsharp.cl"
+RGY_FILTER_EDGELEVEL_CL     EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_edgelevel.cl"
+RGY_FILTER_WARPSHARP_CL     EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_warpsharp.cl"
+RGY_FILTER_TWEAK_CL         EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_tweak.cl"
+RGY_FILTER_TRANSFORM_CL     EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_transform.cl"
+RGY_FILTER_PAD_CL           EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_pad.cl"
+
+RGY_FILTER_COLORSPACE_CL    EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_colorspace_func.h"
+
+RGY_FILTER_DEBAND_CL                 EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_deband.cl"
+RGY_FILTER_DEBAND_GEN_RAND_CL        EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_deband_gen_rand.cl"
+RGY_FILTER_CLRNG_CLH                 EXE_DATA DISCARDABLE "..\\clRNG\\src\\include\\clRNG\\clRNG.clh"
+RGY_FILTER_CLRNG_MRG31K3P_CLH        EXE_DATA DISCARDABLE "..\\clRNG\\src\\include\\clRNG\\mrg31k3p.clh"
+RGY_FILTER_CLRNG_MRG31K3P_PRIVATE_CH EXE_DATA DISCARDABLE "..\\clRNG\\src\\include\\clRNG\\private\\mrg31k3p.c.h"
+
+//RGY_FILTER_AFS_FILTER_CL     EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_afs_filter.cl"
+//RGY_FILTER_AFS_MERGE_CL      EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_afs_merge.cl"
+//RGY_FILTER_AFS_ANALYZE_CL    EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_afs_analyze.cl"
+//RGY_FILTER_AFS_SYNTHESIZE_CL EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_afs_synthesize.cl"
+
+RGY_FILTER_NNEDI_K0_CL     EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_nnedi_k0.cl"
+RGY_FILTER_NNEDI_K1_CL     EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_nnedi_k1.cl"
+RGY_FILTER_NNEDI_COMMON_CL EXE_DATA DISCARDABLE "..\\filter_core\\rgy_filter_nnedi_common.cl"
+NNEDI_WEIGHTBIN            EXE_DATA DISCARDABLE "..\\resource\\nnedi3_weights.bin"
+
+
+//
+// Version Information
+//
+
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     VER_FILEVERSION
+PRODUCTVERSION  VER_PRODUCTVERSION
+FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+FILEFLAGS       ( VER_DEBUG | VER_PRIVATE )
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_DLL
+FILESUBTYPE     VFT_APP
+BEGIN
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x411, 1200
+    END
+
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "041104b0"
+        BEGIN
+            VALUE "Comments",         VER_STR_COMMENTS
+            VALUE "CompanyName",      VER_STR_COMPANYNAME
+            VALUE "FileDescription",  VER_STR_FILEDESCRIPTION
+            VALUE "FileVersion",      VER_STR_FILEVERSION
+            VALUE "InternalName",     VER_STR_INTERNALNAME
+            VALUE "OriginalFileName", VER_STR_ORIGINALFILENAME
+            VALUE "LegalCopyright",   VER_STR_LEGALCOPYRIGHT
+            VALUE "ProductName",      VER_STR_PRODUCTNAME
+            VALUE "ProductVersion",   VER_STR_PRODUCTVERSION
+        END
+    END
+END

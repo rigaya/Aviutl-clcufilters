@@ -15,31 +15,26 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="clfilters.cpp">
+    <ClCompile Include="clfilters_exe.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="clfilters_add_res.cpp">
+    <ClCompile Include="clfilters_exe_cmd.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="clfilters_auf.cpp">
+    <ClCompile Include="clfilters_chain.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="clfilters.def">
-      <Filter>ソース ファイル</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="clfilters.h">
+    <ClInclude Include="clfilters_exe_cmd.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="clfilters_auf.h">
+    <ClInclude Include="clfilters_chain.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="clfilters.rc">
+    <ResourceCompile Include="clfilters_exe.rc">
       <Filter>リソース ファイル</Filter>
     </ResourceCompile>
   </ItemGroup>

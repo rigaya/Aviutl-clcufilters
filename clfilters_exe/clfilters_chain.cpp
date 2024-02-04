@@ -28,6 +28,8 @@
 
 #include "clfilters_version.h"
 #include "clfilters_chain.h"
+#include "clfilters_chain_prm.h"
+#include "rgy_cmd.h"
 #include "rgy_filter_colorspace.h"
 #include "rgy_filter_nnedi.h"
 #include "rgy_filter_denoise_knn.h"
@@ -40,22 +42,6 @@
 #include "rgy_filter_tweak.h"
 
 static const TCHAR *LOG_FILE_NAME = "clfilters.auf.log";
-
-static const auto CLFILTER_TO_STR = make_array<std::pair<clFilter, tstring>>(
-    std::make_pair(clFilter::UNKNOWN,    _T("unknown")),
-    std::make_pair(clFilter::COLORSPACE, _T("colorspace")),
-    std::make_pair(clFilter::NNEDI,      _T("nnedi")),
-    std::make_pair(clFilter::KNN,        _T("knn")),
-    std::make_pair(clFilter::PMD,        _T("pmd")),
-    std::make_pair(clFilter::SMOOTH,     _T("smooth")),
-    std::make_pair(clFilter::RESIZE,     _T("resize")),
-    std::make_pair(clFilter::UNSHARP,    _T("unsharp")),
-    std::make_pair(clFilter::EDGELEVEL,  _T("edgelevel")),
-    std::make_pair(clFilter::WARPSHARP,  _T("warpsharp")),
-    std::make_pair(clFilter::TWEAK,      _T("tweak")),
-    std::make_pair(clFilter::DEBAND,     _T("deband"))
-);
-MAP_PAIR_0_1(clfilter, cl, clFilter, str, tstring, CLFILTER_TO_STR, clFilter::UNKNOWN, _T("unknown"));
 
 clFilterFrameBuffer::clFilterFrameBuffer(std::shared_ptr<RGYOpenCLContext> cl) :
     m_cl(cl),
@@ -110,73 +96,6 @@ RGYCLFrame *clFilterFrameBuffer::get_out(const int frameID) {
 void clFilterFrameBuffer::in_to_next() { m_in = (m_in + 1) % m_frame.size(); }
 void clFilterFrameBuffer::out_to_next() { m_out = (m_out + 1) % m_frame.size(); }
 
-clFilterChainParam::clFilterChainParam() :
-    hModule(NULL),
-    filterOrder(),
-    colorspace(),
-    nnedi(),
-    smooth(),
-    knn(),
-    pmd(),
-    resize_algo(RGY_VPP_RESIZE_SPLINE36),
-    resize_mode(RGY_VPP_RESIZE_MODE_DEFAULT),
-    unsharp(),
-    edgelevel(),
-    warpsharp(),
-    tweak(),
-    deband(),
-    log_level(RGY_LOG_QUIET),
-    log_to_file(false) {
-
-}
-
-bool clFilterChainParam::operator==(const clFilterChainParam &x) const {
-    return hModule == x.hModule
-        && colorspace == x.colorspace
-        && smooth == x.smooth
-        && knn == x.knn
-        && pmd == x.pmd
-        && resize_algo == x.resize_algo
-        && resize_mode == x.resize_mode
-        && unsharp == x.unsharp
-        && edgelevel == x.edgelevel
-        && warpsharp == x.warpsharp
-        && tweak == x.tweak
-        && deband == x.deband
-        && log_level == x.log_level
-        && log_to_file == x.log_to_file;
-}
-bool clFilterChainParam::operator!=(const clFilterChainParam &x) const {
-    return !(*this == x);
-}
-
-std::vector<clFilter> clFilterChainParam::getFilterChain(const bool resizeRequired) const {
-    std::vector<clFilter> allFilterOrder = filterOrder; // 指定の順序
-    // 指定の順序にないフィルタを追加
-    for (const auto& f : filterList) {
-        if (std::find(allFilterOrder.begin(), allFilterOrder.end(), f.second) == allFilterOrder.end()) {
-            allFilterOrder.push_back(f.second);
-        }
-    }
-    // 有効なフィルタだけを抽出
-    std::vector<clFilter> enabledFilterOrder;
-    for (const auto filterType : allFilterOrder) {
-        if (  (colorspace.enable && filterType == clFilter::COLORSPACE)
-           || (nnedi.enable      && filterType == clFilter::NNEDI)
-           || (smooth.enable     && filterType == clFilter::SMOOTH)
-           || (knn.enable        && filterType == clFilter::KNN)
-           || (pmd.enable        && filterType == clFilter::PMD)
-           || (resizeRequired    && filterType == clFilter::RESIZE)
-           || (unsharp.enable    && filterType == clFilter::UNSHARP)
-           || (edgelevel.enable  && filterType == clFilter::EDGELEVEL)
-           || (warpsharp.enable  && filterType == clFilter::WARPSHARP)
-           || (tweak.enable      && filterType == clFilter::TWEAK)
-           || (deband.enable     && filterType == clFilter::DEBAND)) {
-            enabledFilterOrder.push_back(filterType);
-        }
-    }
-    return enabledFilterOrder;
-}
 
 clFilterChain::clFilterChain() :
     m_log(),
@@ -307,15 +226,15 @@ RGY_ERR clFilterChain::initOpenCL(const int platformID, const int deviceID, cons
     return RGY_ERR_NONE;
 }
 
-RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RGYFrameInfo& inputFrame, const clFilter filterType, const int resizeWidth, const int resizeHeight) {
+RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RGYFrameInfo& inputFrame, const VppType filterType, const int resizeWidth, const int resizeHeight) {
     // colorspace
-    if (filterType == clFilter::COLORSPACE) {
+    if (filterType == VppType::CL_COLORSPACE) {
         if (!filter) {
             //フィルタチェーンに追加
             filter.reset(new RGYFilterColorspace(m_cl));
         }
         std::shared_ptr<RGYFilterParamColorspace> param(new RGYFilterParamColorspace());
-        param->colorspace = m_prm.colorspace;
+        param->colorspace = m_prm.vpp.colorspace;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = false;
@@ -328,13 +247,13 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         inputFrame = param->frameOut;
     }
     // nnedi
-    if (filterType == clFilter::NNEDI) {
+    if (filterType == VppType::CL_NNEDI) {
         if (!filter) {
             //フィルタチェーンに追加
             filter.reset(new RGYFilterNnedi(m_cl));
         }
         std::shared_ptr<RGYFilterParamNnedi> param(new RGYFilterParamNnedi());
-        param->nnedi = m_prm.nnedi;
+        param->nnedi = m_prm.vpp.nnedi;
         param->hModule = m_prm.hModule;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
@@ -349,13 +268,13 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         inputFrame = param->frameOut;
     }
     //ノイズ除去 (knn)
-    if (filterType == clFilter::KNN) {
+    if (filterType == VppType::CL_DENOISE_KNN) {
         if (!filter) {
             //フィルタチェーンに追加
             filter.reset(new RGYFilterDenoiseKnn(m_cl));
         }
         std::shared_ptr<RGYFilterParamDenoiseKnn> param(new RGYFilterParamDenoiseKnn());
-        param->knn = m_prm.knn;
+        param->knn = m_prm.vpp.knn;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = false;
@@ -368,13 +287,13 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         inputFrame = param->frameOut;
     }
     //ノイズ除去 (pmd)
-    if (filterType == clFilter::PMD) {
+    if (filterType == VppType::CL_DENOISE_PMD) {
         if (!filter) {
             //フィルタチェーンに追加
             filter.reset(new RGYFilterDenoisePmd(m_cl));
         }
         std::shared_ptr<RGYFilterParamDenoisePmd> param(new RGYFilterParamDenoisePmd());
-        param->pmd = m_prm.pmd;
+        param->pmd = m_prm.vpp.pmd;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = false;
@@ -387,13 +306,13 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         inputFrame = param->frameOut;
     }
     //ノイズ除去 (smooth)
-    if (filterType == clFilter::SMOOTH) {
+    if (filterType == VppType::CL_DENOISE_SMOOTH) {
         if (!filter) {
             //フィルタチェーンに追加
             filter.reset(new RGYFilterSmooth(m_cl));
         }
         std::shared_ptr<RGYFilterParamSmooth> param(new RGYFilterParamSmooth());
-        param->smooth = m_prm.smooth;
+        param->smooth = m_prm.vpp.smooth;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = false;
@@ -407,13 +326,13 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
     }
 
     //リサイズ
-    if (filterType == clFilter::RESIZE) {
+    if (filterType == VppType::CL_RESIZE) {
         if (!filter) {
             //フィルタチェーンに追加
             filter.reset(new RGYFilterResize(m_cl));
         }
         std::shared_ptr<RGYFilterParamResize> param(new RGYFilterParamResize());
-        param->interp = m_prm.resize_algo;
+        param->interp = m_prm.vpp.resize_algo;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->frameOut.width = resizeWidth;
@@ -428,15 +347,13 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         inputFrame = param->frameOut;
     }
     //unsharp
-    if (filterType == clFilter::UNSHARP) {
+    if (filterType == VppType::CL_UNSHARP) {
         if (!filter) {
             //フィルタチェーンに追加
             filter.reset(new RGYFilterUnsharp(m_cl));
         }
         std::shared_ptr<RGYFilterParamUnsharp> param(new RGYFilterParamUnsharp());
-        param->unsharp.radius = m_prm.unsharp.radius;
-        param->unsharp.weight = m_prm.unsharp.weight;
-        param->unsharp.threshold = m_prm.unsharp.threshold;
+        param->unsharp = m_prm.vpp.unsharp;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = false;
@@ -449,13 +366,13 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         inputFrame = param->frameOut;
     }
     //edgelevel
-    if (filterType == clFilter::EDGELEVEL) {
+    if (filterType == VppType::CL_EDGELEVEL) {
         if (!filter) {
             //フィルタチェーンに追加
             filter.reset(new RGYFilterEdgelevel(m_cl));
         }
         std::shared_ptr<RGYFilterParamEdgelevel> param(new RGYFilterParamEdgelevel());
-        param->edgelevel = m_prm.edgelevel;
+        param->edgelevel = m_prm.vpp.edgelevel;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = false;
@@ -468,13 +385,13 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         inputFrame = param->frameOut;
     }
     //warpsharp
-    if (filterType == clFilter::WARPSHARP) {
+    if (filterType == VppType::CL_WARPSHARP) {
         if (!filter) {
             //フィルタチェーンに追加
             filter.reset(new RGYFilterWarpsharp(m_cl));
         }
         std::shared_ptr<RGYFilterParamWarpsharp> param(new RGYFilterParamWarpsharp());
-        param->warpsharp = m_prm.warpsharp;
+        param->warpsharp = m_prm.vpp.warpsharp;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = false;
@@ -487,13 +404,13 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         inputFrame = param->frameOut;
     }
     //tweak
-    if (filterType == clFilter::TWEAK) {
+    if (filterType == VppType::CL_TWEAK) {
         if (!filter) {
             //フィルタチェーンに追加
             filter.reset(new RGYFilterTweak(m_cl));
         }
         std::shared_ptr<RGYFilterParamTweak> param(new RGYFilterParamTweak());
-        param->tweak = m_prm.tweak;
+        param->tweak = m_prm.vpp.tweak;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = true;
@@ -506,13 +423,13 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         inputFrame = param->frameOut;
     }
     //deband
-    if (filterType == clFilter::DEBAND) {
+    if (filterType == VppType::CL_DEBAND) {
         if (!filter) {
             //フィルタチェーンに追加
             filter.reset(new RGYFilterDeband(m_cl));
         }
         std::shared_ptr<RGYFilterParamDeband> param(new RGYFilterParamDeband());
-        param->deband = m_prm.deband;
+        param->deband = m_prm.vpp.deband;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = false;
@@ -527,16 +444,16 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
     return RGY_ERR_NONE;
 }
 
-tstring clFilterChain::printFilterChain(const std::vector<clFilter>& filterChain) const {
+tstring clFilterChain::printFilterChain(const std::vector<VppType>& filterChain) const {
     tstring str;
     for (auto& filter : filterChain) {
         if (str.length() > 0) str += _T(", ");
-        str += clfilter_cl_to_str(filter);
+        str += vppfilter_type_to_str(filter);
     }
     return str;
 }
 
-bool clFilterChain::filterChainEqual(const std::vector<clFilter>& target) const {
+bool clFilterChain::filterChainEqual(const std::vector<VppType>& target) const {
     if (m_filters.size() != target.size()) {
         return false;
     }
@@ -669,7 +586,7 @@ RGY_ERR clFilterChain::getOutFrame(RGYFrameInfo *pOutputFrame) {
     return RGY_ERR_NONE;
 }
 
-RGY_ERR clFilterChain::proc(const int frameID, const int outWidth, const int outHeight, const clFilterChainParam& prm) {
+RGY_ERR clFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
     if (!m_cl) {
         return RGY_ERR_NULL_PTR;
     }
@@ -680,15 +597,15 @@ RGY_ERR clFilterChain::proc(const int frameID, const int outWidth, const int out
         return RGY_ERR_OUT_OF_RANGE;
     }
     m_cl->setModuleHandle(prm.hModule);
-    m_log->setLogLevel(prm.log_level, RGY_LOGT_ALL);
+    m_log->setLogLevelAll(prm.log_level);
     m_log->setLogFile(prm.log_to_file ? LOG_FILE_NAME : nullptr);
     m_prm = prm;
 
-    auto frameDevOut = m_frameOut->get_in(outWidth, outHeight);
+    auto frameDevOut = m_frameOut->get_in(prm.outWidth, prm.outHeight);
     m_frameOut->in_to_next();
 
     //フィルタチェーン更新
-    auto err = filterChainCreate(&frameDevIn->frame, outWidth, outHeight);
+    auto err = filterChainCreate(&frameDevIn->frame, prm.outWidth, prm.outHeight);
     if (err != RGY_ERR_NONE) {
         PrintMes(RGY_LOG_ERROR, _T("failed to update filter chain.\n"));
         return err;

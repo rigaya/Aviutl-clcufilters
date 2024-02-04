@@ -37,13 +37,11 @@ const TCHAR *RGYHDR10Plus::HDR10PLUS_GEN_EXE_NAME =  _T("hdr10plus_gen");
 #endif
 
 RGYHDR10Plus::RGYHDR10Plus() :
-    m_proc(), m_pipes(),
-    m_fpStdOut(std::unique_ptr<FILE, decltype(&fclose)>(nullptr, fclose)),
-    m_buffer(std::make_pair(-1, vector<uint8_t>())){
+    m_proc(),
+    m_buffer(std::make_pair(-1, vector<uint8_t>())) {
 }
 
 RGYHDR10Plus::~RGYHDR10Plus() {
-    m_fpStdOut.reset();
     m_proc.reset();
 }
 
@@ -69,39 +67,25 @@ RGY_ERR RGYHDR10Plus::init(const tstring &inputJson) {
     args.push_back(_T("-o"));
     args.push_back(_T("-"));
 
-    m_pipes.stdOut.mode = PIPE_MODE_ENABLE;
-    m_pipes.stdOut.bufferSize = 1024;
-
     m_proc = createRGYPipeProcess();
-    m_proc->init();
-    if (m_proc->run(args, nullptr, &m_pipes, 0, true, true)) {
+    m_proc->init(PIPE_MODE_DISABLE, PIPE_MODE_ENABLE | PIPE_MODE_ENABLE_FP, PIPE_MODE_DISABLE);
+    if (m_proc->run(args, nullptr, 0, true, true)) {
         return RGY_ERR_RUN_PROCESS;
-    }
-#if defined(_WIN32) || defined(_WIN64)
-    m_fpStdOut = std::unique_ptr<FILE, decltype(&fclose)>(_fdopen(_open_osfhandle((intptr_t)m_pipes.stdOut.h_read, _O_BINARY), "rb"), fclose);
-#else
-    m_fpStdOut = std::unique_ptr<FILE, decltype(&fclose)>(m_pipes.f_stdout, fclose);
-#endif
-    if (!m_fpStdOut) {
-        return RGY_ERR_INVALID_HANDLE;
     }
     return RGY_ERR_NONE;
 }
 
 const vector<uint8_t> *RGYHDR10Plus::getData(int iframe) {
-    if (!m_fpStdOut) {
-        return nullptr;
-    }
     while (m_buffer.first != iframe) {
         m_buffer.second.clear();
         int header[2];
-        if (fread(header, sizeof(header[0]), _countof(header), m_fpStdOut.get()) != _countof(header)) {
+        if (m_proc->stdOutFpRead(header, sizeof(header)) != sizeof(header)) {
             return nullptr;
         }
         const int frameNum = header[0];
         const int dataSize = header[1];
         m_buffer.second.resize(dataSize, 0);
-        if (fread(m_buffer.second.data(), 1, m_buffer.second.size(), m_fpStdOut.get()) != m_buffer.second.size()) {
+        if (m_proc->stdOutFpRead(m_buffer.second.data(), m_buffer.second.size()) != m_buffer.second.size()) {
             return nullptr;
         }
         m_buffer.first = frameNum;

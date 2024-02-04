@@ -36,92 +36,7 @@
 #include "rgy_filter.h"
 #include "convert_csp.h"
 #include "convert_csp_func.h"
-
-enum class clFilter {
-    UNKNOWN = 0,
-    COLORSPACE,
-    NNEDI,
-    KNN,
-    PMD,
-    SMOOTH,
-    RESIZE,
-    UNSHARP,
-    EDGELEVEL,
-    WARPSHARP,
-    TWEAK,
-    DEBAND,
-    FILTER_MAX,
-};
-
-static const int FILTER_NAME_MAX_LENGTH = 1024;
-
-#if !CLFILTERS_EN
-static const char *FILTER_NAME_COLORSPACE = _T("色空間変換");
-static const char *FILTER_NAME_NNEDI      = _T("nnedi");
-static const char *FILTER_NAME_KNN        = _T("ノイズ除去 (knn)");
-static const char *FILTER_NAME_PMD        = _T("ノイズ除去 (pmd)");
-static const char *FILTER_NAME_SMOOTH     = _T("ノイズ除去 (smooth)");
-static const char *FILTER_NAME_RESIZE     = _T("リサイズ");
-static const char *FILTER_NAME_UNSHARP    = _T("unsharp");
-static const char *FILTER_NAME_EDGELEVEL  = _T("エッジレベル調整");
-static const char *FILTER_NAME_WARPSHARP  = _T("warpsharp");
-static const char *FILTER_NAME_TWEAK      = _T("色調補正");
-static const char *FILTER_NAME_DEBAND     = _T("バンディング低減");
-#else
-static const char *FILTER_NAME_COLORSPACE = _T("colorspace");
-static const char *FILTER_NAME_NNEDI      = _T("nnedi");
-static const char *FILTER_NAME_KNN        = _T("knn");
-static const char *FILTER_NAME_PMD        = _T("pmd");
-static const char *FILTER_NAME_SMOOTH     = _T("smooth");
-static const char *FILTER_NAME_RESIZE     = _T("resize");
-static const char *FILTER_NAME_UNSHARP    = _T("unsharp");
-static const char *FILTER_NAME_EDGELEVEL  = _T("edgelevel");
-static const char *FILTER_NAME_WARPSHARP  = _T("warpsharp");
-static const char *FILTER_NAME_TWEAK      = _T("tweak");
-static const char *FILTER_NAME_DEBAND     = _T("deband");
-#endif
-
-#define FILTER_NAME(x) std::make_pair(FILTER_NAME_ ## x, clFilter::x)
-
-static const std::array<std::pair<const TCHAR*, clFilter>, ((int)clFilter::FILTER_MAX - (int)clFilter::UNKNOWN-1)> filterList = {
-    FILTER_NAME(COLORSPACE),
-    FILTER_NAME(NNEDI),
-    FILTER_NAME(KNN),
-    FILTER_NAME(PMD),
-    FILTER_NAME(SMOOTH),
-    FILTER_NAME(RESIZE),
-    FILTER_NAME(UNSHARP),
-    FILTER_NAME(EDGELEVEL),
-    FILTER_NAME(WARPSHARP),
-    FILTER_NAME(TWEAK),
-    FILTER_NAME(DEBAND)
-};
-
-#undef FILTER_NAME
-
-struct clFilterChainParam {
-    HMODULE hModule;
-    std::vector<clFilter> filterOrder;
-    VppColorspace colorspace;
-    VppNnedi nnedi;
-    VppSmooth smooth;
-    VppKnn knn;
-    VppPmd pmd;
-    RGY_VPP_RESIZE_ALGO resize_algo;
-    RGY_VPP_RESIZE_MODE resize_mode;
-    VppUnsharp unsharp;
-    VppEdgelevel edgelevel;
-    VppWarpsharp warpsharp;
-    VppDeband deband;
-    VppTweak tweak;
-    RGYLogLevel log_level;
-    bool log_to_file;
-
-    clFilterChainParam();
-    bool operator==(const clFilterChainParam &x) const;
-    bool operator!=(const clFilterChainParam &x) const;
-    std::vector<clFilter> getFilterChain(const bool resizeRequired) const;
-};
+#include "clfilters_chain_prm.h"
 
 class clFilterFrameBuffer {
 public:
@@ -152,7 +67,7 @@ public:
 
     void resetPipeline();
     RGY_ERR sendInFrame(const RGYFrameInfo *pInputFrame);
-    RGY_ERR proc(const int frameID, const int outWidth, const int outHeight, const clFilterChainParam& prm);
+    RGY_ERR proc(const int frameID, const clFilterChainParam& prm);
     RGY_ERR getOutFrame(RGYFrameInfo *pOutputFrame);
     int getNextOutFrameId() const;
 
@@ -163,11 +78,11 @@ public:
 private:
     void close();
     RGY_ERR initOpenCL(const int platformID, const int deviceID, const cl_device_type device_type);
-    bool filterChainEqual(const std::vector<clFilter>& objchain) const;
+    bool filterChainEqual(const std::vector<VppType>& objchain) const;
     RGY_ERR filterChainCreate(const RGYFrameInfo *pInputFrame, const int outWidth, const int outHeight);
-    RGY_ERR configureOneFilter(std::unique_ptr<RGYFilter>& filter, RGYFrameInfo& inputFrame, const clFilter filterType, const int resizeWidth, const int resizeHeight);
+    RGY_ERR configureOneFilter(std::unique_ptr<RGYFilter>& filter, RGYFrameInfo& inputFrame, const VppType filterType, const int resizeWidth, const int resizeHeight);
     void PrintMes(const RGYLogLevel logLevel, const TCHAR *format, ...);
-    tstring printFilterChain(const std::vector<clFilter>& objchain) const;
+    tstring printFilterChain(const std::vector<VppType>& objchain) const;
 
     std::shared_ptr<RGYLog> m_log;
     clFilterChainParam m_prm;
@@ -178,7 +93,7 @@ private:
     std::unique_ptr<clFilterFrameBuffer> m_frameIn;
     std::unique_ptr<clFilterFrameBuffer> m_frameOut;
     RGYOpenCLQueue m_queueSendIn;
-    std::vector<std::pair<clFilter, std::unique_ptr<RGYFilter>>> m_filters;
+    std::vector<std::pair<VppType, std::unique_ptr<RGYFilter>>> m_filters;
     std::unique_ptr<RGYConvertCSP> m_convert_yc48_to_yuv444_16;
     std::unique_ptr<RGYConvertCSP> m_convert_yuv444_16_to_yc48;
 };

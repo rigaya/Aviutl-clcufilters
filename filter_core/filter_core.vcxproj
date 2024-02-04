@@ -130,8 +130,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>false</SDLCheck>
+      <WarningLevel>Level4</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
@@ -140,6 +139,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalOptions>/execution-charset:shift_jis %(AdditionalOptions)</AdditionalOptions>
       <ExceptionHandling>Async</ExceptionHandling>
+      <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -148,10 +148,9 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
@@ -168,6 +167,7 @@
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <AdditionalOptions>/execution-charset:shift_jis %(AdditionalOptions)</AdditionalOptions>
       <ExceptionHandling>Async</ExceptionHandling>
+      <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -178,10 +178,9 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseEN|Win32'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
@@ -198,6 +197,7 @@
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <AdditionalOptions>/execution-charset:shift_jis %(AdditionalOptions)</AdditionalOptions>
       <ExceptionHandling>Async</ExceptionHandling>
+      <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -208,16 +208,15 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>false</SDLCheck>
+      <WarningLevel>Level4</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalOptions>/execution-charset:shift_jis %(AdditionalOptions)</AdditionalOptions>
       <ExceptionHandling>Async</ExceptionHandling>
+      <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -226,10 +225,9 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
@@ -237,7 +235,6 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <Optimization>Full</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
@@ -246,6 +243,7 @@
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <AdditionalOptions>/execution-charset:shift_jis %(AdditionalOptions)</AdditionalOptions>
       <ExceptionHandling>Async</ExceptionHandling>
+      <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -256,10 +254,9 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseEN|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
@@ -267,7 +264,6 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <Optimization>Full</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
@@ -276,6 +272,7 @@
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <AdditionalOptions>/execution-charset:shift_jis %(AdditionalOptions)</AdditionalOptions>
       <ExceptionHandling>Async</ExceptionHandling>
+      <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -309,10 +306,12 @@
     <ClCompile Include="cpu_info.cpp" />
     <ClCompile Include="gpuz_info.cpp" />
     <ClCompile Include="gpu_info.cpp" />
+    <ClCompile Include="rgy_cmd.cpp" />
     <ClCompile Include="rgy_codepage.cpp" />
     <ClCompile Include="rgy_def.cpp" />
     <ClCompile Include="rgy_env.cpp" />
     <ClCompile Include="rgy_err.cpp" />
+    <ClCompile Include="rgy_event.cpp" />
     <ClCompile Include="rgy_filesystem.cpp" />
     <ClCompile Include="rgy_filter.cpp" />
     <ClCompile Include="rgy_filter_colorspace.cpp" />
@@ -332,6 +331,7 @@
     <ClCompile Include="rgy_frame.cpp" />
     <ClCompile Include="rgy_hdr10plus.cpp" />
     <ClCompile Include="rgy_ini.cpp" />
+    <ClCompile Include="rgy_language.cpp" />
     <ClCompile Include="rgy_log.cpp" />
     <ClCompile Include="rgy_opencl.cpp" />
     <ClCompile Include="rgy_perf_counter.cpp" />
@@ -353,11 +353,14 @@
     <ClInclude Include="gpuz_info.h" />
     <ClInclude Include="gpu_info.h" />
     <ClInclude Include="rgy_arch.h" />
+    <ClInclude Include="rgy_avutil.h" />
     <ClInclude Include="rgy_caption.h" />
+    <ClInclude Include="rgy_cmd.h" />
     <ClInclude Include="rgy_codepage.h" />
     <ClInclude Include="rgy_def.h" />
     <ClInclude Include="rgy_env.h" />
     <ClInclude Include="rgy_err.h" />
+    <ClInclude Include="rgy_event.h" />
     <ClInclude Include="rgy_filesystem.h" />
     <ClInclude Include="rgy_filter.h" />
     <ClInclude Include="rgy_filter_colorspace.h" />
@@ -375,6 +378,7 @@
     <ClInclude Include="rgy_frame.h" />
     <ClInclude Include="rgy_hdr10plus.h" />
     <ClInclude Include="rgy_ini.h" />
+    <ClInclude Include="rgy_language.h" />
     <ClInclude Include="rgy_log.h" />
     <ClInclude Include="rgy_opencl.h" />
     <ClInclude Include="rgy_osdep.h" />
@@ -383,6 +387,7 @@
     <ClInclude Include="rgy_pipe.h" />
     <ClInclude Include="rgy_prm.h" />
     <ClInclude Include="rgy_resource.h" />
+    <ClInclude Include="rgy_shared_mem.h" />
     <ClInclude Include="rgy_simd.h" />
     <ClInclude Include="rgy_status.h" />
     <ClInclude Include="rgy_tchar.h" />

@@ -37,11 +37,13 @@
 #include "filter.h"
 #include "clfilters_version.h"
 #include "clfilters.h"
-#include "clfilters_chain.h"
-#include "rgy_prm.h"
+#include "clfilters_shared.h"
+#include "clfilters_auf.h"
 
 void init_dialog(HWND hwnd, FILTER *fp);
 void update_cx(FILTER *fp);
+
+static_assert(sizeof(PIXEL_YC) == SIZE_PIXEL_YC);
 
 #define ENABLE_FIELD (0)
 #define ENABLE_HDR2SDR_DESAT (0)
@@ -110,13 +112,6 @@ enum {
 };
 
 #pragma pack(1)
-union CL_PLATFORM_DEVICE {
-    struct {
-        int16_t platform;
-        int16_t device;
-    } s;
-    int i;
-};
 
 struct CLFILTER_EXDATA {
     CL_PLATFORM_DEVICE cl_dev_id;
@@ -142,7 +137,7 @@ struct CLFILTER_EXDATA {
     int warpsharp_blur;
     int deband_sample;
 
-    clFilter filterOrder[64];
+    VppType filterOrder[64];
 
     char reserved[644];
 };
@@ -151,10 +146,8 @@ static const size_t exdatasize = sizeof(CLFILTER_EXDATA);
 static_assert(exdatasize == 1024);
 
 static CLFILTER_EXDATA cl_exdata;
-static std::unique_ptr<clFilterChain> clfilter;
-static std::vector<std::shared_ptr<RGYOpenCLPlatform>> clplatforms;
-static BOOL is_saving;
 
+static std::unique_ptr<clFiltersAuf> g_clfiltersAuf;
 
 static void cl_exdata_set_default() {
     cl_exdata.cl_dev_id.i = 0;
@@ -580,14 +573,20 @@ BOOL func_init( FILTER *fp ) {
 }
 
 BOOL func_exit( FILTER *fp ) {
-    clfilter.reset();
-    clplatforms.clear();
+    g_clfiltersAuf.reset();
     return TRUE;
 }
 
 BOOL func_update(FILTER* fp, int status) {
     update_cx(fp);
     return TRUE;
+}
+
+static void init_clfilter_exe(const FILTER *fp) {
+    SYS_INFO sys_info = { 0 };
+    fp->exfunc->get_sys_info(nullptr, &sys_info);
+    g_clfiltersAuf = std::make_unique<clFiltersAuf>();
+    g_clfiltersAuf->runProcess(fp->dll_hinst, sys_info.max_w, sys_info.max_h);
 }
 
 //---------------------------------------------------------------------
@@ -706,12 +705,12 @@ static void set_cl_exdata(const HWND hwnd, const int value) {
 }
 
 static void set_filter_order() {
-    static_assert((size_t)(clFilter::FILTER_MAX) <= _countof(cl_exdata.filterOrder));
+    static_assert((size_t)(VppType::CL_MAX) <= _countof(cl_exdata.filterOrder));
     memset(cl_exdata.filterOrder, 0, sizeof(cl_exdata.filterOrder));
 
     const int n = SendMessage(ls_filter_order, LB_GETCOUNT, 0, 0);
     for (int i = 0; i < std::min<int>(n, _countof(cl_exdata.filterOrder)); i++) {
-        const auto id = (clFilter)SendMessage(ls_filter_order, LB_GETITEMDATA, i, 0);
+        const auto id = (VppType)SendMessage(ls_filter_order, LB_GETITEMDATA, i, 0);
         cl_exdata.filterOrder[i] = id;
     }
 }
@@ -859,15 +858,26 @@ static void del_combo_item_current(FILTER *fp, HWND hwnd) {
 }
 
 static BOOL out_opencl_info(FILTER *fp) {
-    char buffer[1024] = { 0 };
-    if (fp->exfunc->dlg_get_save_name(buffer, (LPSTR)".txt", (LPSTR)"clinfo.txt")) {
-        const auto str = getOpenCLInfo(CL_DEVICE_TYPE_GPU);
-        FILE *fp = fopen(buffer, "w");
-        if (fp) {
-            fprintf(fp, "%s", str.c_str());
-            fclose(fp);
-            return TRUE;
+    char filename[4096] = { 0 };
+    if (fp->exfunc->dlg_get_save_name(filename, (LPSTR)".txt", (LPSTR)"clinfo.txt")) {
+        auto fpclinfo = std::unique_ptr<FILE, fp_deleter>(_tfopen(char_to_tstring(filename).c_str(), _T("w")), fp_deleter());
+        auto proc = createRGYPipeProcess();
+        proc->init(PIPE_MODE_DISABLE, PIPE_MODE_ENABLE | PIPE_MODE_ENABLE_FP, PIPE_MODE_DISABLE);
+        std::vector<uint8_t> buffer;
+        while (proc->stdOutRead(buffer) >= 0) {
+            if (buffer.size() > 0) {
+                auto str = std::string(buffer.data(), buffer.data() + buffer.size());
+                fprintf(fpclinfo.get(), "%s", str.c_str());
+                buffer.clear();
+            }
         }
+        proc->stdOutRead(buffer);
+        if (buffer.size() > 0) {
+            auto str = std::string(buffer.data(), buffer.data() + buffer.size());
+            fprintf(fpclinfo.get(), "%s", str.c_str());
+            buffer.clear();
+        }
+        proc->close();
     }
     return FALSE;
 }
@@ -946,18 +956,6 @@ static void update_cx(FILTER *fp) {
     select_combo_item(cx_deband_sample,               cl_exdata.deband_sample);
 }
 
-void check_clplatforms() {
-    if (clplatforms.size() > 0) {
-        return;
-    }
-    auto log = std::make_shared<RGYLog>(nullptr, RGY_LOG_ERROR);
-    RGYOpenCL cl(log);
-    clplatforms = cl.getPlatforms(nullptr);
-    for (auto& platform : clplatforms) {
-        platform->createDeviceList(CL_DEVICE_TYPE_GPU);
-    }
-}
-
 BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, FILTER *fp) {
     switch (message) {
     case WM_FILTER_FILE_OPEN:
@@ -965,7 +963,7 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
         break;
     case WM_FILTER_INIT:
         cl_exdata_set_default();
-        check_clplatforms();
+        init_clfilter_exe(fp);
         init_dialog(hwnd, fp);
         return TRUE;
     case WM_FILTER_UPDATE: // フィルタ更新
@@ -1392,15 +1390,8 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     cx_opencl_device = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 68, cb_opencl_platform_y, 205, 100, hwnd, (HMENU)ID_CX_OPENCL_DEVICE, hinst, NULL);
     SendMessage(cx_opencl_device, WM_SETFONT, (WPARAM)b_font, 0);
 
-    for (size_t ip = 0; ip < clplatforms.size(); ip++) {
-        for (size_t idev = 0; idev < clplatforms[ip]->devs().size(); idev++) {
-            CL_PLATFORM_DEVICE pd;
-            pd.s.platform = (int16_t)ip;
-            pd.s.device = (int16_t)idev;
-            const auto devInfo = clplatforms[ip]->dev(idev).info();
-            const auto devName = (devInfo.board_name_amd.length() > 0) ? devInfo.board_name_amd : devInfo.name;
-            set_combo_item(cx_opencl_device, devName.c_str(), pd.i);
-        }
+    for (const auto& pd : g_clfiltersAuf->getPlatforms()) {
+        set_combo_item(cx_opencl_device, pd.second.c_str(), pd.first.i);
     }
 
     //OpenCL info
@@ -1502,7 +1493,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
 
     //バンディング
     move_group(y_pos, col, col_width, CLFILTER_CHECK_DEBAND_ENABLE, CLFILTER_CHECK_DEBAND_MAX, CLFILTER_TRACK_DEBAND_FIRST, CLFILTER_TRACK_DEBAND_MAX, track_bar_delta_y, ADD_CX_AFTER_TRACK, 1, cx_y_pos, checkbox_idx, dialog_rc);
-    add_combobox(cx_deband_sample, ID_CX_DEBAND_SAMPLE, lb_deband_sample, ID_LB_DEBAND_SAMPLE, LB_CX_DEBAND_SAMPLE, col, col_width, cx_y_pos, b_font, hwnd, hinst, (CLFILTERS_EN) ? list_vpp_deband_en : list_vpp_deband);
+    add_combobox(cx_deband_sample, ID_CX_DEBAND_SAMPLE, lb_deband_sample, ID_LB_DEBAND_SAMPLE, LB_CX_DEBAND_SAMPLE, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_deband);
     
     y_pos_max = std::max(y_pos_max, y_pos);
 
@@ -1581,21 +1572,23 @@ void multi_thread_func(int thread_id, int thread_num, void *param1, void *param2
 
 }
 
-static clFilterChainParam func_proc_get_param(const FILTER *fp) {
+static clFilterChainParam func_proc_get_param(const FILTER *fp, const FILTER_PROC_INFO *fpip) {
     clFilterChainParam prm;
     //dllのモジュールハンドル
     prm.hModule = fp->dll_hinst;
-    prm.log_level = cl_exdata.log_level;
+    prm.log_level   = cl_exdata.log_level;
     prm.log_to_file = fp->check[CLFILTER_CHECK_LOG_TO_FILE] != 0;
+    prm.outWidth    = (fp->check[CLFILTER_CHECK_RESIZE_ENABLE]) ? resize_res[cl_exdata.resize_idx].first  : fpip->w;
+    prm.outHeight   = (fp->check[CLFILTER_CHECK_RESIZE_ENABLE]) ? resize_res[cl_exdata.resize_idx].second : fpip->h;
 
     //フィルタ順序
     for (int i = 0; i < _countof(cl_exdata.filterOrder); i++) {
-        if (cl_exdata.filterOrder[i] == clFilter::UNKNOWN) break;
-        prm.filterOrder.push_back(cl_exdata.filterOrder[i]);
+        if (cl_exdata.filterOrder[i] == VppType::VPP_NONE) break;
+        prm.vpp.filterOrder.push_back(cl_exdata.filterOrder[i]);
     }
 
     //リサイズ
-    prm.resize_algo        = (RGY_VPP_RESIZE_ALGO)cl_exdata.resize_algo;
+    prm.vpp.resize_algo        = (RGY_VPP_RESIZE_ALGO)cl_exdata.resize_algo;
 
     //colorspace
     ColorspaceConv conv;
@@ -1607,11 +1600,11 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp) {
     conv.to.colorprim    = (fp->check[CLFILTER_CHECK_COLORSPACE_COLORPRIM_ENABLE]) ? cl_exdata.csp_to.colorprim  : cl_exdata.csp_from.colorprim;
     conv.to.transfer     = (fp->check[CLFILTER_CHECK_COLORSPACE_TRANSFER_ENABLE])  ? cl_exdata.csp_to.transfer   : cl_exdata.csp_from.transfer;
     conv.to.colorrange   = (fp->check[CLFILTER_CHECK_COLORSPACE_RANGE_ENABLE])     ? cl_exdata.csp_to.colorrange : cl_exdata.csp_from.colorrange;
-    prm.colorspace.enable = fp->check[CLFILTER_CHECK_COLORSPACE_ENABLE] != 0;
-    prm.colorspace.convs.push_back(conv);
-    prm.colorspace.hdr2sdr.tonemap         = cl_exdata.hdr2sdr;
-    prm.colorspace.hdr2sdr.hdr_source_peak = (double)fp->track[CLFILTER_TRACK_COLORSPACE_SOURCE_PEAK];
-    prm.colorspace.hdr2sdr.ldr_nits        = (double)fp->track[CLFILTER_TRACK_COLORSPACE_LDR_NITS];
+    prm.vpp.colorspace.enable = fp->check[CLFILTER_CHECK_COLORSPACE_ENABLE] != 0;
+    prm.vpp.colorspace.convs.push_back(conv);
+    prm.vpp.colorspace.hdr2sdr.tonemap         = cl_exdata.hdr2sdr;
+    prm.vpp.colorspace.hdr2sdr.hdr_source_peak = (double)fp->track[CLFILTER_TRACK_COLORSPACE_SOURCE_PEAK];
+    prm.vpp.colorspace.hdr2sdr.ldr_nits        = (double)fp->track[CLFILTER_TRACK_COLORSPACE_LDR_NITS];
 #if ENABLE_HDR2SDR_DESAT
     prm.colorspace.hdr2sdr.desat_base     = (float)fp->track[CLFILTER_TRACK_COLORSPACE_DESAT_BASE] * 0.01f;
     prm.colorspace.hdr2sdr.desat_strength = (float)fp->track[CLFILTER_TRACK_COLORSPACE_DESAT_STRENGTH] * 0.01f;
@@ -1619,140 +1612,134 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp) {
 #endif //#if ENABLE_HDR2SDR_DESAT
 
     //smooth
-    prm.smooth.enable     = fp->check[CLFILTER_CHECK_SMOOTH_ENABLE] != 0;
-    prm.smooth.quality    = cl_exdata.smooth_quality;
-    prm.smooth.qp         = fp->track[CLFILTER_TRACK_SMOOTH_QP];
+    prm.vpp.smooth.enable     = fp->check[CLFILTER_CHECK_SMOOTH_ENABLE] != 0;
+    prm.vpp.smooth.quality    = cl_exdata.smooth_quality;
+    prm.vpp.smooth.qp         = fp->track[CLFILTER_TRACK_SMOOTH_QP];
 
     //knn
-    prm.knn.enable         = fp->check[CLFILTER_CHECK_KNN_ENABLE] != 0;
-    prm.knn.radius         = cl_exdata.knn_radius;
-    prm.knn.strength       = (float)fp->track[CLFILTER_TRACK_KNN_STRENGTH] * 0.01f;
-    prm.knn.lerpC          = (float)fp->track[CLFILTER_TRACK_KNN_LERP] * 0.01f;
-    prm.knn.lerp_threshold = (float)fp->track[CLFILTER_TRACK_KNN_TH_LERP] * 0.01f;
+    prm.vpp.knn.enable         = fp->check[CLFILTER_CHECK_KNN_ENABLE] != 0;
+    prm.vpp.knn.radius         = cl_exdata.knn_radius;
+    prm.vpp.knn.strength       = (float)fp->track[CLFILTER_TRACK_KNN_STRENGTH] * 0.01f;
+    prm.vpp.knn.lerpC          = (float)fp->track[CLFILTER_TRACK_KNN_LERP] * 0.01f;
+    prm.vpp.knn.lerp_threshold = (float)fp->track[CLFILTER_TRACK_KNN_TH_LERP] * 0.01f;
 
     //pmd
-    prm.pmd.enable         = fp->check[CLFILTER_CHECK_PMD_ENABLE] != 0;
-    prm.pmd.applyCount     = cl_exdata.pmd_apply_count;
-    prm.pmd.strength       = (float)fp->track[CLFILTER_TRACK_PMD_STRENGTH];
-    prm.pmd.threshold      = (float)fp->track[CLFILTER_TRACK_PMD_THRESHOLD];
+    prm.vpp.pmd.enable         = fp->check[CLFILTER_CHECK_PMD_ENABLE] != 0;
+    prm.vpp.pmd.applyCount     = cl_exdata.pmd_apply_count;
+    prm.vpp.pmd.strength       = (float)fp->track[CLFILTER_TRACK_PMD_STRENGTH];
+    prm.vpp.pmd.threshold      = (float)fp->track[CLFILTER_TRACK_PMD_THRESHOLD];
 
     //unsharp
-    prm.unsharp.enable    = fp->check[CLFILTER_CHECK_UNSHARP_ENABLE] != 0;
-    prm.unsharp.radius    = cl_exdata.unsharp_radius;
-    prm.unsharp.weight    = (float)fp->track[CLFILTER_TRACK_UNSHARP_WEIGHT] * 0.1f;
-    prm.unsharp.threshold = (float)fp->track[CLFILTER_TRACK_UNSHARP_THRESHOLD];
+    prm.vpp.unsharp.enable    = fp->check[CLFILTER_CHECK_UNSHARP_ENABLE] != 0;
+    prm.vpp.unsharp.radius    = cl_exdata.unsharp_radius;
+    prm.vpp.unsharp.weight    = (float)fp->track[CLFILTER_TRACK_UNSHARP_WEIGHT] * 0.1f;
+    prm.vpp.unsharp.threshold = (float)fp->track[CLFILTER_TRACK_UNSHARP_THRESHOLD];
 
     //edgelevel
-    prm.edgelevel.enable    = fp->check[CLFILTER_CHECK_EDGELEVEL_ENABLE] != 0;
-    prm.edgelevel.strength  = (float)fp->track[CLFILTER_TRACK_EDGELEVEL_STRENGTH];
-    prm.edgelevel.threshold = (float)fp->track[CLFILTER_TRACK_EDGELEVEL_THRESHOLD];
-    prm.edgelevel.black     = (float)fp->track[CLFILTER_TRACK_EDGELEVEL_BLACK];
-    prm.edgelevel.white     = (float)fp->track[CLFILTER_TRACK_EDGELEVEL_WHITE];
+    prm.vpp.edgelevel.enable    = fp->check[CLFILTER_CHECK_EDGELEVEL_ENABLE] != 0;
+    prm.vpp.edgelevel.strength  = (float)fp->track[CLFILTER_TRACK_EDGELEVEL_STRENGTH];
+    prm.vpp.edgelevel.threshold = (float)fp->track[CLFILTER_TRACK_EDGELEVEL_THRESHOLD];
+    prm.vpp.edgelevel.black     = (float)fp->track[CLFILTER_TRACK_EDGELEVEL_BLACK];
+    prm.vpp.edgelevel.white     = (float)fp->track[CLFILTER_TRACK_EDGELEVEL_WHITE];
 
     //warpsharp
-    prm.warpsharp.enable    = fp->check[CLFILTER_CHECK_WARPSHARP_ENABLE] != 0;
-    prm.warpsharp.threshold = (float)fp->track[CLFILTER_TRACK_WARPSHARP_THRESHOLD];
-    prm.warpsharp.blur      = cl_exdata.warpsharp_blur;
-    prm.warpsharp.type      = fp->check[CLFILTER_CHECK_WARPSHARP_SMALL_BLUR] ? 1 : 0;
-    prm.warpsharp.depth     = (float)fp->track[CLFILTER_TRACK_WARPSHARP_DEPTH];
-    prm.warpsharp.chroma    = fp->check[CLFILTER_CHECK_WARPSHARP_CHROMA_MASK] ? 1 : 0;
+    prm.vpp.warpsharp.enable    = fp->check[CLFILTER_CHECK_WARPSHARP_ENABLE] != 0;
+    prm.vpp.warpsharp.threshold = (float)fp->track[CLFILTER_TRACK_WARPSHARP_THRESHOLD];
+    prm.vpp.warpsharp.blur      = cl_exdata.warpsharp_blur;
+    prm.vpp.warpsharp.type      = fp->check[CLFILTER_CHECK_WARPSHARP_SMALL_BLUR] ? 1 : 0;
+    prm.vpp.warpsharp.depth     = (float)fp->track[CLFILTER_TRACK_WARPSHARP_DEPTH];
+    prm.vpp.warpsharp.chroma    = fp->check[CLFILTER_CHECK_WARPSHARP_CHROMA_MASK] ? 1 : 0;
 
     //tweak
-    prm.tweak.enable      = fp->check[CLFILTER_CHECK_TWEAK_ENABLE] != 0;
-    prm.tweak.brightness  = (float)fp->track[CLFILTER_TRACK_TWEAK_BRIGHTNESS] * 0.01f;
-    prm.tweak.contrast    = (float)fp->track[CLFILTER_TRACK_TWEAK_CONTRAST] * 0.01f;
-    prm.tweak.gamma       = (float)fp->track[CLFILTER_TRACK_TWEAK_GAMMA] * 0.01f;
-    prm.tweak.saturation  = (float)fp->track[CLFILTER_TRACK_TWEAK_SATURATION] * 0.01f;
-    prm.tweak.hue         = (float)fp->track[CLFILTER_TRACK_TWEAK_HUE];
+    prm.vpp.tweak.enable      = fp->check[CLFILTER_CHECK_TWEAK_ENABLE] != 0;
+    prm.vpp.tweak.brightness  = (float)fp->track[CLFILTER_TRACK_TWEAK_BRIGHTNESS] * 0.01f;
+    prm.vpp.tweak.contrast    = (float)fp->track[CLFILTER_TRACK_TWEAK_CONTRAST] * 0.01f;
+    prm.vpp.tweak.gamma       = (float)fp->track[CLFILTER_TRACK_TWEAK_GAMMA] * 0.01f;
+    prm.vpp.tweak.saturation  = (float)fp->track[CLFILTER_TRACK_TWEAK_SATURATION] * 0.01f;
+    prm.vpp.tweak.hue         = (float)fp->track[CLFILTER_TRACK_TWEAK_HUE];
 
     //deband
-    prm.deband.enable        = fp->check[CLFILTER_CHECK_DEBAND_ENABLE] != 0;
-    prm.deband.range         = fp->track[CLFILTER_TRACK_DEBAND_RANGE];
-    prm.deband.threY         = fp->track[CLFILTER_TRACK_DEBAND_Y];
-    prm.deband.threCb        = fp->track[CLFILTER_TRACK_DEBAND_C];
-    prm.deband.threCr        = fp->track[CLFILTER_TRACK_DEBAND_C];
-    prm.deband.ditherY       = fp->track[CLFILTER_TRACK_DEBAND_DITHER_Y];
-    prm.deband.ditherC       = fp->track[CLFILTER_TRACK_DEBAND_DITHER_C];
-    prm.deband.sample        = cl_exdata.deband_sample;
-    prm.deband.seed          = 1234;
-    prm.deband.blurFirst     = fp->check[CLFILTER_CHECK_DEBAND_BLUR_FIRST] != 0;
-    prm.deband.randEachFrame = fp->check[CLFILTER_CHECK_DEBAND_RAND_EACH_FRAME] != 0;
+    prm.vpp.deband.enable        = fp->check[CLFILTER_CHECK_DEBAND_ENABLE] != 0;
+    prm.vpp.deband.range         = fp->track[CLFILTER_TRACK_DEBAND_RANGE];
+    prm.vpp.deband.threY         = fp->track[CLFILTER_TRACK_DEBAND_Y];
+    prm.vpp.deband.threCb        = fp->track[CLFILTER_TRACK_DEBAND_C];
+    prm.vpp.deband.threCr        = fp->track[CLFILTER_TRACK_DEBAND_C];
+    prm.vpp.deband.ditherY       = fp->track[CLFILTER_TRACK_DEBAND_DITHER_Y];
+    prm.vpp.deband.ditherC       = fp->track[CLFILTER_TRACK_DEBAND_DITHER_C];
+    prm.vpp.deband.sample        = cl_exdata.deband_sample;
+    prm.vpp.deband.seed          = 1234;
+    prm.vpp.deband.blurFirst     = fp->check[CLFILTER_CHECK_DEBAND_BLUR_FIRST] != 0;
+    prm.vpp.deband.randEachFrame = fp->check[CLFILTER_CHECK_DEBAND_RAND_EACH_FRAME] != 0;
 
     //nnedi
-    prm.nnedi.enable        = fp->check[CLFILTER_CHECK_NNEDI_ENABLE] != 0;
-    prm.nnedi.field         = cl_exdata.nnedi_field;
-    prm.nnedi.nsize         = cl_exdata.nnedi_nsize;
-    prm.nnedi.nns           = cl_exdata.nnedi_nns;
-    prm.nnedi.quality       = cl_exdata.nnedi_quality;
-    prm.nnedi.pre_screen    = cl_exdata.nnedi_prescreen;
-    prm.nnedi.errortype     = cl_exdata.nnedi_errortype;
-    prm.nnedi.precision     = VPP_FP_PRECISION_AUTO;
+    prm.vpp.nnedi.enable        = fp->check[CLFILTER_CHECK_NNEDI_ENABLE] != 0;
+    prm.vpp.nnedi.field         = cl_exdata.nnedi_field;
+    prm.vpp.nnedi.nsize         = cl_exdata.nnedi_nsize;
+    prm.vpp.nnedi.nns           = cl_exdata.nnedi_nns;
+    prm.vpp.nnedi.quality       = cl_exdata.nnedi_quality;
+    prm.vpp.nnedi.pre_screen    = cl_exdata.nnedi_prescreen;
+    prm.vpp.nnedi.errortype     = cl_exdata.nnedi_errortype;
+    prm.vpp.nnedi.precision     = VPP_FP_PRECISION_AUTO;
 
     return prm;
 }
 
-static RGYFrameInfo func_proc_set_frame_info(const FILTER *fp, const FILTER_PROC_INFO *fpip, const int iframeID, const int width, const int height, PIXEL_YC *frame) {
-    RGYFrameInfo in;
-    //入力フレーム情報
-    in.width      = width;
-    in.height     = height;
-    in.pitch[0]   = fpip->max_w * 6;
-    in.csp        = RGY_CSP_YC48;
-#if ENABLE_FIELD
-    in.picstruct  = fp->check[CLFILTER_CHECK_FIELD] ? RGY_PICSTRUCT_INTERLACED : RGY_PICSTRUCT_FRAME;
-#else
-    in.picstruct  = RGY_PICSTRUCT_FRAME;
-#endif //#if ENABLE_FIELD
-    in.ptr[0]     = (uint8_t *)frame;
-    in.mem_type   = RGY_MEM_TYPE_CPU;
-    in.inputFrameId = iframeID;
-
-    return in;
-}
-
 BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
-    if (!clfilter
-        || clfilter->platformID() != cl_exdata.cl_dev_id.s.platform
-        || clfilter->deviceID()   != cl_exdata.cl_dev_id.s.device) {
-        clfilter = std::make_unique<clFilterChain>();
-        std::string mes = AUF_FULL_NAME;
-        mes += ": ";
-        if (clfilter->init(cl_exdata.cl_dev_id.s.platform, cl_exdata.cl_dev_id.s.device, CL_DEVICE_TYPE_GPU, cl_exdata.log_level, fp->check[CLFILTER_CHECK_LOG_TO_FILE] != 0)) {
-            mes += LB_WND_OPENCL_UNAVAIL;
-            SendMessage(fp->hwnd, WM_SETTEXT, 0, (LPARAM)mes.c_str());
-            return FALSE;
-        }
-        const auto dev_name = clfilter->getDeviceName();
-        mes += (dev_name.length() == 0) ? LB_WND_OPENCL_AVAIL : dev_name;
-        SendMessage(fp->hwnd, WM_SETTEXT, 0, (LPARAM)mes.c_str());
-        is_saving = FALSE;
-    }
-
     const int out_width  = (fp->check[CLFILTER_CHECK_RESIZE_ENABLE]) ? resize_res[cl_exdata.resize_idx].first  : fpip->w;
     const int out_height = (fp->check[CLFILTER_CHECK_RESIZE_ENABLE]) ? resize_res[cl_exdata.resize_idx].second : fpip->h;
     const bool resize_required = out_width != fpip->w || out_height != fpip->h;
-    const auto prm = func_proc_get_param(fp);
+    const auto prm = func_proc_get_param(fp, fpip);
+    g_clfiltersAuf->setLogLevel(RGY_LOG_DEBUG);
     if (prm.getFilterChain(resize_required).size() == 0) { // 適用すべきフィルタがない場合
         return TRUE; // 何もしない
     }
 
-    // 保存モード(is_saving=true)の時に、どのくらい先まで処理をしておくべきか?
-    static const int frameInOffset   = 2;
-    static const int frameProcOffset = 1;
-    static const int frameOutOffset  = 0;
-    static_assert(frameInOffset < clFilterFrameBuffer::bufSize);
     const int current_frame = fpip->frame; // 現在のフレーム番号
     const int frame_n = fpip->frame_n;
     if (fpip->frame_n <= 0 || current_frame < 0) {
         return TRUE; // 何もしない
     }
+    const BOOL ret = g_clfiltersAuf->funcProc(prm, fp, fpip);
+    std::swap(fpip->ycp_edit, fpip->ycp_temp);
+    fpip->w = out_width;
+    fpip->h = out_height;
+    return ret;
+}
+
+BOOL clFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_PROC_INFO *fpip) {
+    // exe側のis_saving, clfilter->getNextOutFrameId()を取得
+    auto sharedPrms = (clfitersSharedPrms *)m_sharedPrms->ptr();
+    auto is_saving = sharedPrms->is_saving;
+    const auto prevNextOutFrameId = sharedPrms->nextOutFrameId;
+    const auto prev_pd = sharedPrms->pd;
+    int32_t resetPipeline = FALSE;
+
+    if (   prev_pd.s.platform != cl_exdata.cl_dev_id.s.platform
+        || prev_pd.s.device != cl_exdata.cl_dev_id.s.device) {
+        std::string mes = AUF_FULL_NAME;
+        mes += ": ";
+        auto clplatform = g_clfiltersAuf->getPlatforms();
+        auto dev = std::find_if(clplatform.begin(), clplatform.end(),
+            [platform = cl_exdata.cl_dev_id.s.platform, device = cl_exdata.cl_dev_id.s.device](const std::pair<CL_PLATFORM_DEVICE, tstring>& data) {
+            return data.first.s.platform == platform && data.first.s.device == device;
+        });
+        mes += (dev == clplatform.end()) ? LB_WND_OPENCL_AVAIL : tchar_to_string(dev->second);
+        SendMessage(fp->hwnd, WM_SETTEXT, 0, (LPARAM)mes.c_str());
+        is_saving = FALSE;
+        resetPipeline = TRUE;
+    }
+
+    const int current_frame = fpip->frame; // 現在のフレーム番号
+    const int frame_n = fpip->frame_n;
+
     // どのフレームから処理を開始すべきか?
     int frameIn   = current_frame + ((is_saving) ? frameInOffset   : 0);
     int frameProc = current_frame + ((is_saving) ? frameProcOffset : 0);
     int frameOut  = current_frame + ((is_saving) ? frameOutOffset  : 0);
-    if (clfilter->getNextOutFrameId() != current_frame // 出てくる予定のフレームがずれていたらリセット
+    if (resetPipeline
+        || prevNextOutFrameId != current_frame // 出てくる予定のフレームがずれていたらリセット
         || is_saving != fp->exfunc->is_saving(fpip->editp)) { // モードが切り替わったらリセット
-        clfilter->resetPipeline();
+        resetPipeline = TRUE;
         frameIn   = current_frame;
         frameProc = current_frame;
         frameOut  = current_frame;
@@ -1760,37 +1747,56 @@ BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
     }
     fp->exfunc->set_ycp_filtering_cache_size(fp, fpip->max_w, fpip->max_h, frameInOffset+1, NULL);
 
+    // 共有メモリへの値の設定
+    sharedPrms->pd = cl_exdata.cl_dev_id;
+    sharedPrms->is_saving = is_saving;
+    sharedPrms->currentFrameId = fpip->frame;
+    sharedPrms->frame_n = fpip->frame_n;
+    sharedPrms->frameIn = frameIn;
+    sharedPrms->frameProc = frameProc;
+    sharedPrms->frameOut = frameOut;
+    sharedPrms->resetPipeLine = resetPipeline;
+    strcpy_s(sharedPrms->prms, tchar_to_string(prm.genCmd()).c_str());
+    m_log->write(RGY_LOG_TRACE, RGY_LOGT_CORE, "currentFrameId: %d, frameIn: %d, frameProc %d, frameOut %d, reset %d\n",
+        sharedPrms->currentFrameId, sharedPrms->frameIn, sharedPrms->frameProc, sharedPrms->frameOut, sharedPrms->resetPipeLine);
+
     // -- フレームの転送 -----------------------------------------------------------------
+    // 初期化
+    for (size_t i = 0; i < _countof(sharedPrms->srcFrame); i++) {
+        initPrms(&sharedPrms->srcFrame[i]);
+    }
     // frameIn の終了フレーム
     const int frameInFin = (is_saving) ? std::min(current_frame + frameInOffset, frame_n - 1) : current_frame;
     // フレーム転送の実行
-    for (; frameIn <= frameInFin; frameIn++) {
+    for (int i = 0; frameIn <= frameInFin; frameIn++, i++) {
         int width = fpip->w, height = fpip->h;
-        PIXEL_YC *ptr = (frameIn == current_frame) ? fpip->ycp_edit : (PIXEL_YC *)fp->exfunc->get_ycp_filtering_cache_ex(fp, fpip->editp, frameIn, &width, &height);
-        const RGYFrameInfo in = func_proc_set_frame_info(fp, fpip, frameIn, width, height, ptr);
-        if (clfilter->sendInFrame(&in) != RGY_ERR_NONE) {
+        const PIXEL_YC *srcptr = (frameIn == current_frame) ? fpip->ycp_edit : (PIXEL_YC *)fp->exfunc->get_ycp_filtering_cache_ex(fp, fpip->editp, frameIn, &width, &height);
+        sharedPrms->srcFrame[i].frameId = frameIn;
+        sharedPrms->srcFrame[i].width = width;
+        sharedPrms->srcFrame[i].height = height;
+        sharedPrms->srcFrame[i].pitchBytes = m_sharedFramesPitchBytes;
+        
+        char *dstptr = (char *)m_sharedFramesIn[i]->ptr();
+        for (int h = 0; h < height; h++) {
+            memcpy(dstptr + h * m_sharedFramesPitchBytes, srcptr + h * fpip->max_w, width * sizeof(PIXEL_YC));
+        }
+    }
+    // プロセス側に処理開始を通知
+    clfitersSharedMesData *message = (clfitersSharedMesData*)m_sharedMessage->ptr();
+    message->type = clfitersMes::FuncProc;
+    SetEvent(m_eventMesStart.get());
+
+    // プロセス側の処理終了を待機
+    while (WaitForSingleObject(m_eventMesEnd.get(), 100) == WAIT_TIMEOUT) {
+        // exeの生存を確認
+        if (!m_process->processAlive()) {
             return FALSE;
         }
     }
-    // -- フレームの処理 -----------------------------------------------------------------
-    if (prm != clfilter->getPrm()) { // パラメータが変更されていたら、
-        frameProc = current_frame;   // 現在のフレームから処理をやり直す
+    // 共有メモリからコピー
+    char *srcptr = (char *)m_sharedFramesOut->ptr();
+    for (int h = 0; h < prm.outHeight; h++) {
+        memcpy(fpip->ycp_temp + h * fpip->max_w, srcptr + h * m_sharedFramesPitchBytes, prm.outWidth * sizeof(PIXEL_YC));
     }
-    // frameProc の終了フレーム
-    const int frameProcFin = (is_saving) ? std::min(current_frame + frameProcOffset, frame_n - 1) : current_frame;
-    // フレーム処理の実行
-    for (; frameProc <= frameProcFin; frameProc++) {
-        if (clfilter->proc(frameProc, out_width, out_height, prm) != RGY_ERR_NONE) {
-            return FALSE;
-        }
-    }
-    // -- フレームの取得 -----------------------------------------------------------------
-    RGYFrameInfo out = func_proc_set_frame_info(fp, fpip, current_frame, out_width, out_height, fpip->ycp_temp);
-    if (clfilter->getOutFrame(&out) != RGY_ERR_NONE) {
-        return FALSE;
-    }
-    std::swap(fpip->ycp_edit, fpip->ycp_temp);
-    fpip->w = out_width;
-    fpip->h = out_height;
     return TRUE;
 }

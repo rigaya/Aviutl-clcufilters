@@ -45,6 +45,9 @@
     <ClCompile Include="rgy_status.cpp" />
     <ClCompile Include="gpuz_info.cpp" />
     <ClCompile Include="convert_csp_func.cpp" />
+    <ClCompile Include="rgy_event.cpp" />
+    <ClCompile Include="rgy_cmd.cpp" />
+    <ClCompile Include="rgy_language.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="rgy_prm.h" />
@@ -91,6 +94,11 @@
     <ClInclude Include="gpuz_info.h" />
     <ClInclude Include="convert_csp_func.h" />
     <ClInclude Include="rgy_caption.h" />
+    <ClInclude Include="rgy_shared_mem.h" />
+    <ClInclude Include="rgy_event.h" />
+    <ClInclude Include="rgy_cmd.h" />
+    <ClInclude Include="rgy_language.h" />
+    <ClInclude Include="rgy_avutil.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="rgy_filter.cl" />

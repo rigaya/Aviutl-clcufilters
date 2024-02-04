@@ -1,9 +1,10 @@
 ﻿// -----------------------------------------------------------------------------------------
-// QSVEnc/NVEnc by rigaya
+// clfilters by rigaya
 // -----------------------------------------------------------------------------------------
+//
 // The MIT License
 //
-// Copyright (c) 2019 rigaya
+// Copyright (c) 2022-2024 rigaya
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -23,31 +24,38 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// --------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------
+
 
 #pragma once
-#ifndef __RGY_HDR10PLUS_H__
-#define __RGY_HDR10PLUS_H__
+#ifndef __CLFILTERS_VERSION_H__
+#define __CLFILTERS_VERSION_H__
 
-#include <string>
-#include <memory>
-#include "rgy_err.h"
-#include "rgy_pipe.h"
-#include "rgy_util.h"
+#include "rgy_version.h"
 
-class RGYHDR10Plus {
-public:
-    static const TCHAR *HDR10PLUS_GEN_EXE_NAME;
-    RGYHDR10Plus();
-    virtual ~RGYHDR10Plus();
+#define AUF_VERSION      VER_FILEVERSION
+#define AUF_VERSION_STR  VER_STR_FILEVERSION
+#define AUF_NAME         "clfilters.auf"
+#define AUF_FULL_NAME    "clfilters"
+#define AUF_VERSION_NAME "clfilters " VER_STR_FILEVERSION
+#define AUF_VERSION_INFO AUF_VERSION_NAME
 
-    RGY_ERR init(const tstring& inputJson);
-    const vector<uint8_t> *getData(int iframe);
-    const tstring &inputJson() const { return m_inputJson; };
-protected:
-    tstring m_inputJson;
-    std::unique_ptr<RGYPipeProcess> m_proc;
-    std::pair<int, std::vector<uint8_t>> m_buffer;
-};
+#ifdef DEBUG
+#define VER_DEBUG   VS_FF_DEBUG
+#define VER_PRIVATE VS_FF_PRIVATEBUILD
+#else
+#define VER_DEBUG   0
+#define VER_PRIVATE 0
+#endif
 
-#endif //__RGY_HDR10PLUS_H__
+#define VER_STR_COMMENTS         AUF_FULL_NAME
+#define VER_STR_COMPANYNAME      ""
+#define VER_STR_FILEDESCRIPTION  AUF_FULL_NAME
+#define VER_STR_INTERNALNAME     AUF_FULL_NAME
+#define VER_STR_ORIGINALFILENAME AUF_NAME
+#define VER_STR_LEGALCOPYRIGHT   AUF_FULL_NAME
+#define VER_STR_PRODUCTNAME      "clfilters"
+#define VER_PRODUCTVERSION       VER_FILEVERSION
+#define VER_STR_PRODUCTVERSION   VER_STR_FILEVERSION
+
+#endif //__CLFILTERS_VERSION_H__

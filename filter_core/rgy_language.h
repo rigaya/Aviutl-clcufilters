@@ -1,10 +1,9 @@
 ﻿// -----------------------------------------------------------------------------------------
-// clfilters by rigaya
+// QSVEnc/NVEnc by rigaya
 // -----------------------------------------------------------------------------------------
-//
 // The MIT License
 //
-// Copyright (c) 2022 rigaya
+// Copyright (c) 2019 rigaya
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,38 +23,18 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// ------------------------------------------------------------------------------------------
-
+// -------------------------------------------------------------------------------------------
 
 #pragma once
-#ifndef __CLFILTERS_VERSION_H__
-#define __CLFILTERS_VERSION_H__
+#ifndef __RGY_LANGUAGE_H__
+#define __RGY_LANGUAGE_H__
 
-#include "rgy_version.h"
+#include <string>
 
-#define AUF_VERSION      VER_FILEVERSION
-#define AUF_VERSION_STR  VER_STR_FILEVERSION
-#define AUF_NAME         "clfilters.auf"
-#define AUF_FULL_NAME    "clfilters"
-#define AUF_VERSION_NAME "clfilters " VER_STR_FILEVERSION
-#define AUF_VERSION_INFO AUF_VERSION_NAME
+std::string rgy_lang_2letter_6391(const std::string &lang_code);
+std::string rgy_lang_3letter_6392b(const std::string&lang_code);
+std::string rgy_lang_desc(const std::string &lang_code);
+bool rgy_lang_equal(const std::string &lang1, const std::string &lang2);
+bool rgy_lang_exist(const std::string &lang_code);
 
-#ifdef DEBUG
-#define VER_DEBUG   VS_FF_DEBUG
-#define VER_PRIVATE VS_FF_PRIVATEBUILD
-#else
-#define VER_DEBUG   0
-#define VER_PRIVATE 0
-#endif
-
-#define VER_STR_COMMENTS         AUF_FULL_NAME
-#define VER_STR_COMPANYNAME      ""
-#define VER_STR_FILEDESCRIPTION  AUF_FULL_NAME
-#define VER_STR_INTERNALNAME     AUF_FULL_NAME
-#define VER_STR_ORIGINALFILENAME AUF_NAME
-#define VER_STR_LEGALCOPYRIGHT   AUF_FULL_NAME
-#define VER_STR_PRODUCTNAME      "clfilters"
-#define VER_PRODUCTVERSION       VER_FILEVERSION
-#define VER_STR_PRODUCTVERSION   VER_STR_FILEVERSION
-
-#endif //__CLFILTERS_VERSION_H__
+#endif //__RGY_LANGUAGE_H__

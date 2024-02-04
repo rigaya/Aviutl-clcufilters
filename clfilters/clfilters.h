@@ -33,5 +33,4 @@
 
 BOOL CALLBACK add_res_dlg(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam);
 
-
 #endif //__CUFILTERS_H__
