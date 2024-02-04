@@ -1558,8 +1558,16 @@ void init_dialog(HWND hwnd, FILTER *fp) {
 //---------------------------------------------------------------------
 //        フィルタ処理関数
 //---------------------------------------------------------------------
-
-void multi_thread_func(int thread_id, int thread_num, void *param1, void *param2) {
+struct mt_frame_copy_data {
+    char *src;
+    int srcPitch;
+    char *dst;
+    int dstPitch;
+    int width;
+    int height;
+    int sizeOfPix;
+};
+void multi_thread_copy(int thread_id, int thread_num, void *param1, void *param2) {
     //    thread_id    : スレッド番号 ( 0 ～ thread_num-1 )
     //    thread_num    : スレッド数 ( 1 ～ )
     //    param1        : 汎用パラメータ
@@ -1567,9 +1575,19 @@ void multi_thread_func(int thread_id, int thread_num, void *param1, void *param2
     //
     //    この関数内からWin32APIや外部関数(rgb2yc,yc2rgbは除く)を使用しないでください。
     //
-    FILTER *fp                = (FILTER *)param1;
-    FILTER_PROC_INFO *fpip    = (FILTER_PROC_INFO *)param2;
 
+    const int max_threads = 4;
+    if (thread_id >= max_threads) return;
+
+    mt_frame_copy_data *prm = (mt_frame_copy_data *)param1;
+    
+    FILTER_PROC_INFO *fpip    = (FILTER_PROC_INFO *)param1;
+    const int y_start = (prm->height * thread_id    ) / std::min(thread_num, max_threads);
+    const int y_end   = (prm->height * (thread_id+1)) / std::min(thread_num, max_threads);
+
+    for (int h = y_start; h < y_end; h++) {
+        memcpy(prm->dst + h * prm->dstPitch, prm->src + h * prm->srcPitch, prm->width * prm->sizeOfPix);
+    }
 }
 
 static clFilterChainParam func_proc_get_param(const FILTER *fp, const FILTER_PROC_INFO *fpip) {
@@ -1776,10 +1794,16 @@ BOOL clFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_PR
         sharedPrms->srcFrame[i].height = height;
         sharedPrms->srcFrame[i].pitchBytes = m_sharedFramesPitchBytes;
         
-        char *dstptr = (char *)m_sharedFramesIn[i]->ptr();
-        for (int h = 0; h < height; h++) {
-            memcpy(dstptr + h * m_sharedFramesPitchBytes, srcptr + h * fpip->max_w, width * sizeof(PIXEL_YC));
-        }
+        mt_frame_copy_data copyPrm;
+        copyPrm.src = (char *)srcptr;
+        copyPrm.srcPitch = fpip->max_w * sizeof(PIXEL_YC);
+        copyPrm.dst = (char *)m_sharedFramesIn[i]->ptr();
+        copyPrm.dstPitch = m_sharedFramesPitchBytes;
+        copyPrm.width = width;
+        copyPrm.height = height;
+        copyPrm.sizeOfPix = sizeof(PIXEL_YC);
+
+        fp->exfunc->exec_multi_thread_func(multi_thread_copy, (void *)&copyPrm, nullptr);
     }
     // プロセス側に処理開始を通知
     clfitersSharedMesData *message = (clfitersSharedMesData*)m_sharedMessage->ptr();
@@ -1794,9 +1818,14 @@ BOOL clFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_PR
         }
     }
     // 共有メモリからコピー
-    char *srcptr = (char *)m_sharedFramesOut->ptr();
-    for (int h = 0; h < prm.outHeight; h++) {
-        memcpy(fpip->ycp_temp + h * fpip->max_w, srcptr + h * m_sharedFramesPitchBytes, prm.outWidth * sizeof(PIXEL_YC));
-    }
+    mt_frame_copy_data copyPrm;
+    copyPrm.src = (char *)m_sharedFramesOut->ptr();
+    copyPrm.srcPitch = m_sharedFramesPitchBytes;
+    copyPrm.dst = (char *)fpip->ycp_temp;
+    copyPrm.dstPitch = fpip->max_w * sizeof(PIXEL_YC);
+    copyPrm.width = prm.outWidth;
+    copyPrm.height = prm.outHeight;
+    copyPrm.sizeOfPix = sizeof(PIXEL_YC);
+    fp->exfunc->exec_multi_thread_func(multi_thread_copy, (void *)&copyPrm, nullptr);
     return TRUE;
 }
