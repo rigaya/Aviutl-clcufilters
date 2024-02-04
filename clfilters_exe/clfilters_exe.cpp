@@ -48,6 +48,9 @@ public:
         }
     }
     void AddMessage(RGYLogLevel log_level, const TCHAR *format, ...) {
+        if (m_log == nullptr || log_level < m_log->getLogLevel(RGY_LOGT_CORE)) {
+            return;
+        }
         va_list args;
         va_start(args, format);
         int len = _vsctprintf(format, args) + 1; // _vscprintf doesn't count terminating '\0'
@@ -69,7 +72,7 @@ protected:
     HANDLE m_eventMesEnd;
     std::unique_ptr<RGYSharedMemWin> m_sharedMessage;
     std::unique_ptr<RGYSharedMemWin> m_sharedPrms;
-    std::vector<std::unique_ptr<RGYSharedMemWin>> m_sharedFramesIn;
+    std::array<std::unique_ptr<RGYSharedMemWin>, _countof(clfitersSharedPrms::srcFrame)> m_sharedFramesIn;
     std::unique_ptr<RGYSharedMemWin> m_sharedFramesOut;
     size_t m_ppid;
     int m_maxWidth;
@@ -93,27 +96,67 @@ clFiltersExe::clFiltersExe() :
     m_maxHeight(0),
     m_pitchBytes(0),
     m_log() { }
-clFiltersExe::~clFiltersExe() { }
+clFiltersExe::~clFiltersExe() {
+    for (size_t i = 0; i < m_sharedFramesIn.size(); i++) {
+        m_sharedFramesIn[i].reset();
+    }
+    m_sharedFramesOut.reset();
+}
 
 int clFiltersExe::init(AviutlAufExeParams& prms) {
     m_log = std::make_shared<RGYLog>(prms.logfile.c_str(), prms.log_level);
     m_eventMesStart = prms.eventMesStart;
     m_eventMesEnd = prms.eventMesEnd;
-    WaitForSingleObject(m_eventMesStart, INFINITE);
+    if (!m_eventMesStart || !m_eventMesEnd) {
+        AddMessage(RGY_LOG_ERROR, _T("Invalid event handles."));
+        return 1;
+    }
 
     m_ppid = prms.ppid;
     m_aviutlHandle = std::unique_ptr<std::remove_pointer<HANDLE>::type, handle_deleter>(OpenProcess(SYNCHRONIZE | PROCESS_VM_READ, FALSE, prms.ppid), handle_deleter());
+    if (!m_aviutlHandle) {
+        AddMessage(RGY_LOG_ERROR, _T("Failed to open Aviutl process handle %d.\n"), prms.ppid);
+        return 1;
+    }
+    AddMessage(RGY_LOG_DEBUG, _T("Opened Aviutl process handle %d.\n"), prms.ppid);
+
     m_sharedMessage = std::make_unique<RGYSharedMemWin>(strsprintf(CLFILTER_SHARED_MEM_MESSAGE, prms.ppid).c_str(), sizeof(clfitersSharedMesData));
+    if (!m_sharedMessage || !m_sharedMessage->is_open()) {
+        AddMessage(RGY_LOG_ERROR, _T("Failed to open shared mem for messages.\n"));
+        m_sharedMessage.reset();
+        return 1;
+    }
+    AddMessage(RGY_LOG_DEBUG, _T("Opened shared mem for messages.\n"));
+
     m_sharedPrms = std::make_unique<RGYSharedMemWin>(strsprintf(CLFILTER_SHARED_MEM_PRMS, prms.ppid).c_str(), sizeof(clfitersSharedPrms));
+    if (!m_sharedPrms || !m_sharedPrms->is_open()) {
+        AddMessage(RGY_LOG_ERROR, _T("Failed to open shared mem for parameters.\n"));
+        m_sharedPrms.reset();
+        return 1;
+    }
+    AddMessage(RGY_LOG_DEBUG, _T("Opened shared mem for parameters.\n"));
+
     m_maxWidth = prms.max_w;
     m_maxHeight = prms.max_h;
     m_pitchBytes = get_shared_frame_pitch(m_maxWidth);
-
     const int frameSize = m_pitchBytes * m_maxHeight;
-    for (int i = 0; i < 3; i++) {
-        m_sharedFramesIn.push_back(std::make_unique<RGYSharedMemWin>(strsprintf(CLFILTER_SHARED_MEM_FRAMES_IN, m_ppid, i).c_str(), frameSize));
+    AddMessage(RGY_LOG_DEBUG, _T("Frame max %dx%d, pitch %d, size %d.\n"), m_maxWidth, m_maxHeight, m_pitchBytes, frameSize);
+
+    for (size_t i = 0; i < m_sharedFramesIn.size(); i++) {
+        m_sharedFramesIn[i] = std::make_unique<RGYSharedMemWin>(strsprintf(CLFILTER_SHARED_MEM_FRAMES_IN, m_ppid, i).c_str(), frameSize);
+        if (!m_sharedFramesIn[i] || !m_sharedFramesIn[i]->is_open()) {
+            AddMessage(RGY_LOG_ERROR, _T("Failed to open shared mem for frame(%d).\n"), i);
+            return 1;
+        }
+        AddMessage(RGY_LOG_DEBUG, _T("Opened shared mem for frame(%d).\n"), i);
     }
     m_sharedFramesOut = std::make_unique<RGYSharedMemWin>(strsprintf(CLFILTER_SHARED_MEM_FRAMES_OUT, m_ppid).c_str(), frameSize);
+    if (!m_sharedFramesOut || !m_sharedFramesOut->is_open()) {
+        AddMessage(RGY_LOG_ERROR, _T("Failed to open shared mem for frame(out).\n"));
+        return 1;
+    }
+    AddMessage(RGY_LOG_DEBUG, _T("Opened shared mem for frame(out).\n"));
+
     checkClPlatforms();
     // プロセス初期化処理の終了を通知
     SetEvent(m_eventMesEnd);
@@ -140,10 +183,10 @@ void clFiltersExe::checkClPlatforms() {
             devName = str_replace(devName, "(R)", "");
             devName = str_replace(devName, "  ", " ");
             devices += strsprintf("%x/%s\n", pd.i, devName.c_str());
+            AddMessage(RGY_LOG_DEBUG, _T("Found platform %d, device %d: %s.\n"), pd.s.platform, pd.s.device, char_to_tstring(devName).c_str());
         }
     }
-    auto mes = getMessagePtr();
-    strcpy_s(mes->data, devices.c_str());
+    strcpy_s(getMessagePtr()->data, devices.c_str());
 }
 
 RGYFrameInfo clFiltersExe::setFrameInfo(const int iframeID, const int width, const int height, void *frame) {
@@ -246,10 +289,11 @@ int clFiltersExe::run() {
         if (WaitForSingleObject(m_eventMesStart, 5000) == WAIT_TIMEOUT) {
             continue;
         }
+        int ret = 0;
         const auto mes_type = ((clfitersSharedMesData*)m_sharedMessage->ptr())->type;
         switch (mes_type) {
         case clfitersMes::FuncProc:
-            funcProc();
+            ret = funcProc();
             break;
         case clfitersMes::Abort:
             abort = true;
@@ -259,6 +303,7 @@ int clFiltersExe::run() {
         default:
             break;
         }
+        ((clfitersSharedMesData*)m_sharedMessage->ptr())->ret = ret;
         SetEvent(m_eventMesEnd);
     }
     return 0;

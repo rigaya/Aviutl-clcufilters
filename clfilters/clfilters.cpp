@@ -1817,6 +1817,10 @@ BOOL clFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_PR
             return FALSE;
         }
     }
+    // エラーの確認
+    if (message->ret != 0) {
+        return FALSE;
+    }
     // 共有メモリからコピー
     mt_frame_copy_data copyPrm;
     copyPrm.src = (char *)m_sharedFramesOut->ptr();

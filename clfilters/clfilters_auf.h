@@ -51,6 +51,31 @@ public:
     const std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>> getPlatforms() const { return m_platforms; }
 protected:
     clfitersSharedMesData *getMessagePtr() { return (clfitersSharedMesData*)m_sharedMessage->ptr(); }
+    
+    void AddMessage(RGYLogLevel log_level, const tstring &str) {
+        if (m_log == nullptr || log_level < m_log->getLogLevel(RGY_LOGT_CORE)) {
+            return;
+        }
+        auto lines = split(str, _T("\n"));
+        for (const auto &line : lines) {
+            if (line[0] != _T('\0')) {
+                m_log->write(log_level, RGY_LOGT_CORE, (_T("clfilters[auf]: ") + line + _T("\n")).c_str());
+            }
+        }
+    }
+    void AddMessage(RGYLogLevel log_level, const TCHAR *format, ...) {
+        if (m_log == nullptr || log_level < m_log->getLogLevel(RGY_LOGT_CORE)) {
+            return;
+        }
+        va_list args;
+        va_start(args, format);
+        int len = _vsctprintf(format, args) + 1; // _vscprintf doesn't count terminating '\0'
+        tstring buffer;
+        buffer.resize(len, _T('\0'));
+        _vstprintf_s(&buffer[0], len, format, args);
+        va_end(args);
+        AddMessage(log_level, buffer);
+    }
     std::unique_ptr<RGYPipeProcess> m_process;
     unique_event m_eventMesStart;
     unique_event m_eventMesEnd;

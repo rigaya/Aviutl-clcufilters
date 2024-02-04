@@ -93,23 +93,60 @@ int clFiltersAuf::runProcess(const HINSTANCE aufHandle, const int maxw, const in
     sa.bInheritHandle = TRUE;
     m_eventMesStart = CreateEventUnique(&sa, FALSE, FALSE);
     m_eventMesEnd = CreateEventUnique(&sa, FALSE, FALSE);
+    if (!m_eventMesStart || !m_eventMesEnd) {
+        AddMessage(RGY_LOG_ERROR, _T("Failed to create event handles.\n"));
+        return 1;
+    }
+    AddMessage(RGY_LOG_DEBUG, _T("Created event handles.\n"));
+
     m_sharedMessage = std::make_unique<RGYSharedMemWin>(strsprintf(CLFILTER_SHARED_MEM_MESSAGE, aviutlPid).c_str(), sizeof(clfitersSharedMesData));
+    if (!m_sharedMessage || !m_sharedMessage->is_open()) {
+        AddMessage(RGY_LOG_ERROR, _T("Failed to open shared mem for messages.\n"));
+        m_sharedMessage.reset();
+        return 1;
+    }
+    AddMessage(RGY_LOG_DEBUG, _T("Opened shared mem for messages.\n"));
+
     m_sharedPrms = std::make_unique<RGYSharedMemWin>(strsprintf(CLFILTER_SHARED_MEM_PRMS, aviutlPid).c_str(), sizeof(clfitersSharedPrms));
+    if (!m_sharedPrms || !m_sharedPrms->is_open()) {
+        AddMessage(RGY_LOG_ERROR, _T("Failed to open shared mem for parameters.\n"));
+        m_sharedPrms.reset();
+        return 1;
+    }
+    AddMessage(RGY_LOG_DEBUG, _T("Opened shared mem for parameters.\n"));
+
     m_sharedFramesPitchBytes = get_shared_frame_pitch(maxw);
     const int frameSize = m_sharedFramesPitchBytes * maxh;
+    AddMessage(RGY_LOG_DEBUG, _T("Frame max %dx%d, pitch %d, size %d.\n"), maxw, maxh, m_sharedFramesPitchBytes, frameSize);
+
     for (size_t i = 0; i < m_sharedFramesIn.size(); i++) {
         m_sharedFramesIn[i] = std::make_unique<RGYSharedMemWin>(strsprintf(CLFILTER_SHARED_MEM_FRAMES_IN, aviutlPid, i).c_str(), frameSize);
+        if (!m_sharedFramesIn[i] || !m_sharedFramesIn[i]->is_open()) {
+            AddMessage(RGY_LOG_ERROR, _T("Failed to open shared mem for frame(%d).\n"), i);
+            return 1;
+        }
+        AddMessage(RGY_LOG_DEBUG, _T("Opened shared mem for frame(%d).\n"), i);
     }
     m_sharedFramesOut = std::make_unique<RGYSharedMemWin>(strsprintf(CLFILTER_SHARED_MEM_FRAMES_OUT, aviutlPid).c_str(), frameSize);
+    if (!m_sharedFramesOut || !m_sharedFramesOut->is_open()) {
+        AddMessage(RGY_LOG_ERROR, _T("Failed to open shared mem for frame(out).\n"));
+        return 1;
+    }
+    AddMessage(RGY_LOG_DEBUG, _T("Opened shared mem for frame(out).\n"));
+
     //初期化
     initShared();
-    // プロセスの起動
-    char aviutlPath[4096] = { 0 };
-    GetModuleFileName(nullptr, aviutlPath, _countof(aviutlPath) - 1);
-    auto [ret2, aviutlDir ] = PathRemoveFileSpecFixed(aviutlPath);
+
+    // exeのパスを取得
     char aufPath[4096] = { 0 };
     GetModuleFileName(aufHandle, aufPath, _countof(aufPath) - 1);
     const auto exePath = PathRemoveExtensionS(aufPath) + ".exe";
+    if (!rgy_file_exists(exePath)) {
+        AddMessage(RGY_LOG_ERROR, _T("Failed to find exe: %s.\n"), exePath.c_str());
+        return 1;
+    }
+
+    // コマンドライン作成
     const auto aviutlPidStr = strsprintf("0x%08x", aviutlPid);
     const auto maxWidthStr = strsprintf("%d", maxw);
     const auto maxHeightStr = strsprintf("%d", maxh);
@@ -129,14 +166,23 @@ int clFiltersAuf::runProcess(const HINSTANCE aufHandle, const int maxw, const in
         _T("--event-mes-start"), eventMesStartStr.c_str(),
         _T("--event-mes-end"), eventMesEndStr.c_str()
     };
+    tstring cmd_line;
+    for (auto arg : args) {
+        if (arg) {
+            cmd_line += tstring(arg) + _T(" ");
+        }
+    }
+    // プロセスの起動
+    AddMessage(RGY_LOG_DEBUG, _T("Run: %s.\n"), cmd_line.c_str());
     m_process->init(PIPE_MODE_DISABLE, PIPE_MODE_ENABLE, PIPE_MODE_ENABLE);
-    int ret = m_process->run(args, aviutlDir.c_str(), 0, true, true);
+    int ret = m_process->run(args, nullptr, 0, true, true);
     if (ret != 0) {
+        AddMessage(RGY_LOG_ERROR, _T("Failed to run process: %s.\n"), cmd_line.c_str());
         return ret;
     }
     // プロセスのstdout, stderrの取得スレッドを起動
     m_threadProcOut = std::thread([&]() {
-        m_log->write(RGY_LOG_DEBUG, RGY_LOGT_APP, _T("Start thread to receive stdout messages from process.\n"));
+        AddMessage(RGY_LOG_DEBUG, _T("Start thread to receive stdout messages from process.\n"));
         std::vector<uint8_t> buffer;
         while (m_process->stdOutRead(buffer) >= 0) {
             if (buffer.size() > 0) {
@@ -151,11 +197,11 @@ int clFiltersAuf::runProcess(const HINSTANCE aufHandle, const int maxw, const in
             m_log->write(RGY_LOG_INFO, RGY_LOGT_APP, _T("%s"), char_to_tstring(str).c_str());
             buffer.clear();
         }
-        m_log->write(RGY_LOG_DEBUG, RGY_LOGT_APP, _T("Reached process stdout EOF.\n"));
+        AddMessage(RGY_LOG_DEBUG, _T("Reached process stdout EOF.\n"));
     });
 
     m_threadProcErr = std::thread([&]() {
-        m_log->write(RGY_LOG_DEBUG, RGY_LOGT_APP, _T("Start thread to receive stderr messages from process.\n"));
+        AddMessage(RGY_LOG_DEBUG, _T("Start thread to receive stderr messages from process.\n"));
         std::vector<uint8_t> buffer;
         while (m_process->stdErrRead(buffer) >= 0) {
             if (buffer.size() > 0) {
@@ -170,13 +216,13 @@ int clFiltersAuf::runProcess(const HINSTANCE aufHandle, const int maxw, const in
             m_log->write(RGY_LOG_INFO, RGY_LOGT_APP, _T("%s"), char_to_tstring(str).c_str());
             buffer.clear();
         }
-        m_log->write(RGY_LOG_DEBUG, RGY_LOGT_APP, _T("Reached process stderr EOF.\n"));
+        AddMessage(RGY_LOG_DEBUG, _T("Reached process stderr EOF.\n"));
     });
-    // プロセス初期化処理の終了を待機
-    SetEvent(m_eventMesStart.get());
+
+    // プロセス初期化処理の終了とplatformとdeviceの情報を取得を待機
     while (WaitForSingleObject(m_eventMesEnd.get(), 1000) == WAIT_TIMEOUT) {
         if (!m_process->processAlive()) {
-            m_log->write(RGY_LOG_ERROR, RGY_LOGT_APP, _T("Process terminated before initialization.\n"));
+            AddMessage(RGY_LOG_ERROR, _T("Process terminated before initialization.\n"));
             return 1;
         }
     }
@@ -192,5 +238,6 @@ int clFiltersAuf::runProcess(const HINSTANCE aufHandle, const int maxw, const in
             m_platforms.push_back({ pd, pstr.substr(pdstr+1) });
         }
     }
+    AddMessage(RGY_LOG_DEBUG, _T("Got platform information.\n"));
     return 0;
 }
