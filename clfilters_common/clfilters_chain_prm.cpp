@@ -41,6 +41,7 @@ AviutlAufExeParams::AviutlAufExeParams() :
     log_level(RGY_LOG_INFO),
     logfile(),
     clinfo(false),
+    checkDevice(false),
     ppid(0),
     max_w(0),
     max_h(0),

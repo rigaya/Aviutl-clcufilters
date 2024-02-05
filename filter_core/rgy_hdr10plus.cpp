@@ -60,12 +60,11 @@ RGY_ERR RGYHDR10Plus::init(const tstring &inputJson) {
     }
     const tstring HDR10PlusGenExePathWithQuotes = tstring(_T("\"")) + HDR10PlusGenExePath + _T("\"");
     const tstring inputJsonWithQuotes = tstring(_T("\"")) + inputJson + _T("\"");
-    std::vector<const TCHAR *> args;
-    args.push_back(HDR10PlusGenExePathWithQuotes.c_str());
-    args.push_back(_T("-i"));
-    args.push_back(inputJsonWithQuotes.c_str());
-    args.push_back(_T("-o"));
-    args.push_back(_T("-"));
+    const std::vector<tstring> args = {
+        HDR10PlusGenExePathWithQuotes,
+        _T("-i"), inputJsonWithQuotes,
+        _T("-o"), _T("-")
+    };
 
     m_proc = createRGYPipeProcess();
     m_proc->init(PIPE_MODE_DISABLE, PIPE_MODE_ENABLE | PIPE_MODE_ENABLE_FP, PIPE_MODE_DISABLE);

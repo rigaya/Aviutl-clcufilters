@@ -147,6 +147,7 @@ static_assert(exdatasize == 1024);
 
 static CLFILTER_EXDATA cl_exdata;
 
+static std::unique_ptr<clFiltersAufDevices> g_clfiltersAufDevices;
 static std::unique_ptr<clFiltersAuf> g_clfiltersAuf;
 
 static void cl_exdata_set_default() {
@@ -582,13 +583,6 @@ BOOL func_update(FILTER* fp, int status) {
     return TRUE;
 }
 
-static void init_clfilter_exe(const FILTER *fp) {
-    SYS_INFO sys_info = { 0 };
-    fp->exfunc->get_sys_info(nullptr, &sys_info);
-    g_clfiltersAuf = std::make_unique<clFiltersAuf>();
-    g_clfiltersAuf->runProcess(fp->dll_hinst, sys_info.max_w, sys_info.max_h);
-}
-
 //---------------------------------------------------------------------
 //        設定画面処理
 //---------------------------------------------------------------------
@@ -860,22 +854,15 @@ static void del_combo_item_current(FILTER *fp, HWND hwnd) {
 static BOOL out_opencl_info(FILTER *fp) {
     char filename[4096] = { 0 };
     if (fp->exfunc->dlg_get_save_name(filename, (LPSTR)".txt", (LPSTR)"clinfo.txt")) {
-        auto fpclinfo = std::unique_ptr<FILE, fp_deleter>(_tfopen(char_to_tstring(filename).c_str(), _T("w")), fp_deleter());
         auto proc = createRGYPipeProcess();
-        proc->init(PIPE_MODE_DISABLE, PIPE_MODE_ENABLE | PIPE_MODE_ENABLE_FP, PIPE_MODE_DISABLE);
-        std::vector<uint8_t> buffer;
-        while (proc->stdOutRead(buffer) >= 0) {
-            if (buffer.size() > 0) {
-                auto str = std::string(buffer.data(), buffer.data() + buffer.size());
+        proc->init(PIPE_MODE_DISABLE, PIPE_MODE_ENABLE, PIPE_MODE_DISABLE);
+        const std::vector<tstring> args =  { getClfiltersExePath(), _T("--clinfo") };
+        if (proc->run(args, nullptr, 0, true, true) == 0) {
+            auto str = proc->getOutput();
+            if (str.length() > 0) {
+                auto fpclinfo = std::unique_ptr<FILE, fp_deleter>(_tfopen(char_to_tstring(filename).c_str(), _T("w")), fp_deleter());
                 fprintf(fpclinfo.get(), "%s", str.c_str());
-                buffer.clear();
             }
-        }
-        proc->stdOutRead(buffer);
-        if (buffer.size() > 0) {
-            auto str = std::string(buffer.data(), buffer.data() + buffer.size());
-            fprintf(fpclinfo.get(), "%s", str.c_str());
-            buffer.clear();
         }
         proc->close();
     }
@@ -963,7 +950,6 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
         break;
     case WM_FILTER_INIT:
         cl_exdata_set_default();
-        init_clfilter_exe(fp);
         init_dialog(hwnd, fp);
         return TRUE;
     case WM_FILTER_UPDATE: // フィルタ更新
@@ -1353,6 +1339,20 @@ void move_colorspace(int& y_pos, int col, int col_width, int check_min, int chec
     y_pos += track_bar_delta_y;
 }
 
+static void init_clfilter_exe(const FILTER *fp) {
+    SYS_INFO sys_info = { 0 };
+    fp->exfunc->get_sys_info(nullptr, &sys_info);
+    g_clfiltersAuf = std::make_unique<clFiltersAuf>();
+    g_clfiltersAuf->runProcess(fp->dll_hinst, sys_info.max_w, sys_info.max_h);
+}
+
+static void init_device_list() {
+    if (!g_clfiltersAufDevices) {
+        g_clfiltersAufDevices = std::make_unique<clFiltersAufDevices>();
+        g_clfiltersAufDevices->createList();
+    }
+}
+
 void init_dialog(HWND hwnd, FILTER *fp) {
     child_hwnd.clear();
     int nCount = 0;
@@ -1390,8 +1390,11 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     cx_opencl_device = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 68, cb_opencl_platform_y, 205, 100, hwnd, (HMENU)ID_CX_OPENCL_DEVICE, hinst, NULL);
     SendMessage(cx_opencl_device, WM_SETFONT, (WPARAM)b_font, 0);
 
-    for (const auto& pd : g_clfiltersAuf->getPlatforms()) {
-        set_combo_item(cx_opencl_device, pd.second.c_str(), pd.first.i);
+    init_device_list();
+    if (g_clfiltersAufDevices) {
+        for (const auto& pd : g_clfiltersAufDevices->getPlatforms()) {
+            set_combo_item(cx_opencl_device, pd.second.c_str(), pd.first.i);
+        }
     }
 
     //OpenCL info
@@ -1707,7 +1710,6 @@ BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
     const int out_height = (fp->check[CLFILTER_CHECK_RESIZE_ENABLE]) ? resize_res[cl_exdata.resize_idx].second : fpip->h;
     const bool resize_required = out_width != fpip->w || out_height != fpip->h;
     const auto prm = func_proc_get_param(fp, fpip);
-    g_clfiltersAuf->setLogLevel(RGY_LOG_DEBUG);
     if (prm.getFilterChain(resize_required).size() == 0) { // 適用すべきフィルタがない場合
         return TRUE; // 何もしない
     }
@@ -1717,6 +1719,25 @@ BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
     if (fpip->frame_n <= 0 || current_frame < 0) {
         return TRUE; // 何もしない
     }
+    // GPUリストを作成
+    init_device_list();
+    if (g_clfiltersAufDevices->getPlatforms().size() == 0) {
+        return TRUE; // 何もしない
+    }
+    // 選択対象がGPUリストにあるかを確認
+    auto clplatform = g_clfiltersAufDevices->getPlatforms();
+    auto dev = std::find_if(clplatform.begin(), clplatform.end(),
+        [platform = cl_exdata.cl_dev_id.s.platform, device = cl_exdata.cl_dev_id.s.device](const std::pair<CL_PLATFORM_DEVICE, tstring>& data) {
+            return data.first.s.platform == platform && data.first.s.device == device;
+        });
+    if (dev == clplatform.end()) {
+        return TRUE; // 何もしない
+    }
+    // フィルタ処理の実行
+    if (!g_clfiltersAuf) {
+        init_clfilter_exe(fp);
+    }
+    g_clfiltersAuf->setLogLevel(RGY_LOG_DEBUG);
     const BOOL ret = g_clfiltersAuf->funcProc(prm, fp, fpip);
     std::swap(fpip->ycp_edit, fpip->ycp_temp);
     fpip->w = out_width;
@@ -1736,7 +1757,7 @@ BOOL clFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_PR
         || prev_pd.s.device != cl_exdata.cl_dev_id.s.device) {
         std::string mes = AUF_FULL_NAME;
         mes += ": ";
-        auto clplatform = g_clfiltersAuf->getPlatforms();
+        auto clplatform = g_clfiltersAufDevices->getPlatforms();
         auto dev = std::find_if(clplatform.begin(), clplatform.end(),
             [platform = cl_exdata.cl_dev_id.s.platform, device = cl_exdata.cl_dev_id.s.device](const std::pair<CL_PLATFORM_DEVICE, tstring>& data) {
             return data.first.s.platform == platform && data.first.s.device == device;
@@ -1818,7 +1839,7 @@ BOOL clFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_PR
         }
     }
     // エラーの確認
-    if (message->ret != 0) {
+    if (message->ret != TRUE) {
         return FALSE;
     }
     // 共有メモリからコピー

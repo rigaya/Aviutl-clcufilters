@@ -88,6 +88,7 @@ struct AviutlAufExeParams {
     RGYParamLogLevel log_level;
     tstring logfile;
     bool clinfo;
+    bool checkDevice;
     uint32_t ppid;
     int max_w;
     int max_h;

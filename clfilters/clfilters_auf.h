@@ -40,6 +40,18 @@
 #include "clfilters_chain_prm.h"
 #include "filter.h"
 
+std::string getClfiltersExePath();
+
+class clFiltersAufDevices {
+public:
+    clFiltersAufDevices();
+    ~clFiltersAufDevices();
+    int createList();
+    const std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>> getPlatforms() const { return m_platforms; }
+protected:
+    std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>> m_platforms;
+};
+
 class clFiltersAuf {
 public:
     clFiltersAuf();
@@ -48,7 +60,6 @@ public:
     void initShared();
     BOOL funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_PROC_INFO *fpip);
     void setLogLevel(const RGYParamLogLevel& loglevel) { m_log->setLogLevelAll(loglevel); }
-    const std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>> getPlatforms() const { return m_platforms; }
 protected:
     clfitersSharedMesData *getMessagePtr() { return (clfitersSharedMesData*)m_sharedMessage->ptr(); }
     
@@ -86,7 +97,6 @@ protected:
     std::unique_ptr<RGYSharedMemWin> m_sharedFramesOut;
     std::thread m_threadProcOut;
     std::thread m_threadProcErr;
-    std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>> m_platforms;
     std::shared_ptr<RGYLog> m_log;
 };
 

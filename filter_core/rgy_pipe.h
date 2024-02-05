@@ -99,7 +99,7 @@ public:
         m_pipe.stdOut.mode = stdout_;
         m_pipe.stdErr.mode = stderr_;
     };
-    virtual int run(const std::vector<const TCHAR *>& args, const TCHAR *exedir, uint32_t priority, bool hidden, bool minimized) = 0;
+    virtual int run(const std::vector<tstring>& args, const TCHAR *exedir, uint32_t priority, bool hidden, bool minimized) = 0;
     virtual void close() = 0;
     virtual bool processAlive() = 0;
     virtual std::string getOutput() = 0;
@@ -124,7 +124,7 @@ public:
     RGYPipeProcessWin();
     virtual ~RGYPipeProcessWin();
 
-    virtual int run(const std::vector<const TCHAR *>& args, const TCHAR *exedir, uint32_t priority, bool hidden, bool minimized) override;
+    virtual int run(const std::vector<tstring>& args, const TCHAR *exedir, uint32_t priority, bool hidden, bool minimized) override;
     virtual void close() override;
     virtual bool processAlive() override;
     virtual std::string getOutput() override;
@@ -148,7 +148,7 @@ public:
     RGYPipeProcessLinux();
     virtual ~RGYPipeProcessLinux();
 
-    virtual int run(const std::vector<const TCHAR *>& args, const TCHAR *exedir, uint32_t priority, bool hidden, bool minimized) override;
+    virtual int run(const std::vector<tstring>& args, const TCHAR *exedir, uint32_t priority, bool hidden, bool minimized) override;
     virtual void close() override;
     virtual bool processAlive() override;
     virtual std::string getOutput() override;

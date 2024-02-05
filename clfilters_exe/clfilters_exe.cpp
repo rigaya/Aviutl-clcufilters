@@ -33,6 +33,7 @@ public:
     ~clFiltersExe();
     int init(AviutlAufExeParams& prms);
     int run();
+    std::string checkClPlatforms();
     void AddMessage(RGYLogLevel log_level, const tstring &str) {
         if (m_log == nullptr || log_level < m_log->getLogLevel(RGY_LOGT_APP)) {
             return;
@@ -61,7 +62,6 @@ public:
         AddMessage(log_level, buffer);
     }
 protected:
-    void checkClPlatforms();
     int funcProc();
     clfitersSharedMesData *getMessagePtr() { return (clfitersSharedMesData*)m_sharedMessage->ptr(); }
     RGYFrameInfo setFrameInfo(const int iframeID, const int width, const int height, void *frame);
@@ -163,9 +163,10 @@ int clFiltersExe::init(AviutlAufExeParams& prms) {
     return 0;
 }
 
-void clFiltersExe::checkClPlatforms() {
+std::string clFiltersExe::checkClPlatforms() {
     if (m_clplatforms.size() == 0) {
-        RGYOpenCL cl(m_log);
+        auto log = m_log;
+        RGYOpenCL cl(m_log ? m_log : std::make_shared<RGYLog>(nullptr, RGY_LOG_INFO));
         m_clplatforms = cl.getPlatforms(nullptr);
         for (auto& platform : m_clplatforms) {
             platform->createDeviceList(CL_DEVICE_TYPE_GPU);
@@ -186,7 +187,7 @@ void clFiltersExe::checkClPlatforms() {
             AddMessage(RGY_LOG_DEBUG, _T("Found platform %d, device %d: %s.\n"), pd.s.platform, pd.s.device, char_to_tstring(devName).c_str());
         }
     }
-    strcpy_s(getMessagePtr()->data, devices.c_str());
+    return devices;
 }
 
 RGYFrameInfo clFiltersExe::setFrameInfo(const int iframeID, const int width, const int height, void *frame) {
@@ -232,7 +233,6 @@ int clFiltersExe::funcProc() {
             strcpy_s(getMessagePtr()->data, mes.c_str());
             return FALSE;
         }
-        is_saving = FALSE;
     }
 
     // 保存モード(is_saving=true)の時に、どのくらい先まで処理をしておくべきか?
@@ -316,6 +316,12 @@ int _tmain(const int argc, const TCHAR **argv) {
     }
     if (prms.clinfo) {
         const auto str = getOpenCLInfo(CL_DEVICE_TYPE_GPU);
+        _ftprintf(stdout, _T("%s\n"), str.c_str());
+        return 0;
+    }
+    if (prms.checkDevice) {
+        clFiltersExe clfilterexe;
+        const auto str = clfilterexe.checkClPlatforms();
         _ftprintf(stdout, _T("%s\n"), str.c_str());
         return 0;
     }

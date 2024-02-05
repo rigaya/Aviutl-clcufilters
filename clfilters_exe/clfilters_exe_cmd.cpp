@@ -158,6 +158,10 @@ int parse_one_arg(const TCHAR* option_name, const TCHAR* strInput[], int& i, [[m
         prm->logfile = strInput[i];
         return 0;
     }
+    if (IS_OPTION("check-device")) {
+        prm->checkDevice = true;
+        return 0;
+    }
     if (IS_OPTION("clinfo")) {
         prm->clinfo = true;
         return 0;

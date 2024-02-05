@@ -836,13 +836,10 @@ int CPerfMonitor::init(tstring filename, const TCHAR *pPythonPath,
             AddMessage(RGY_LOG_WARN, _T("performance monitor plot disabled.\n"));
             m_nSelectOutputPlot = 0;
         } else {
-            tstring sInterval = strsprintf(_T("%d"), interval);
-            std::vector<const TCHAR *> args;
-            args.push_back(sPythonPath.c_str());
-            args.push_back(m_sPywPath.c_str());
-            args.push_back(_T("-i"));
-            args.push_back(sInterval.c_str());
-            args.push_back(nullptr);
+            const std::vector<tstring> args = {
+                sPythonPath, m_sPywPath,
+                _T("-i"), strsprintf(_T("%d"), interval)
+            };
             if (m_pProcess->run(args, nullptr, priority, false, false)) {
                 AddMessage(RGY_LOG_WARN, _T("Failed to run performance monitor plot.\n"));
                 AddMessage(RGY_LOG_WARN, _T("performance monitor plot disabled.\n"));

@@ -29,6 +29,46 @@
 #include "clfilters_auf.h"
 #include "rgy_filesystem.h"
 
+std::string getClfiltersExePath() {
+    char aviutlPath[4096] = { 0 };
+    GetModuleFileName(nullptr, aviutlPath, _countof(aviutlPath) - 1);
+    auto [ret, aviutlDir] = PathRemoveFileSpecFixed(aviutlPath);
+    auto exeDir = PathCombineS(PathCombineS(aviutlDir, "exe_files"), "clfilters");
+    return PathCombineS(exeDir, "clfilters.exe");
+}
+
+clFiltersAufDevices::clFiltersAufDevices() :
+    m_platforms() {
+}
+clFiltersAufDevices::~clFiltersAufDevices() {};
+
+int clFiltersAufDevices::createList() {
+    std::string deviceListStr;
+    auto proc = createRGYPipeProcess();
+    proc->init(PIPE_MODE_DISABLE, PIPE_MODE_ENABLE, PIPE_MODE_DISABLE);
+    const std::vector<tstring> args = { getClfiltersExePath(), _T("--check-device") };
+    if (proc->run(args, nullptr, 0, true, true) != 0) {
+        return 1;
+    }
+    deviceListStr = proc->getOutput();
+    proc->close();
+    proc.reset();
+
+    // platformとdeviceの情報を取得
+    const auto platforms = split(deviceListStr, _T("\n"));
+    for (const auto& pstr : platforms) {
+        const auto pdstr = pstr.find(_T("/"));
+        CL_PLATFORM_DEVICE pd;
+        if (pdstr != std::string::npos) {
+            if (sscanf_s(pstr.substr(0, pdstr).c_str(), "%x", &pd.i) != 1) {
+                continue;
+            }
+            m_platforms.push_back({ pd, pstr.substr(pdstr + 1) });
+        }
+    }
+    return 0;
+}
+
 clFiltersAuf::clFiltersAuf() :
     m_process(createRGYPipeProcess()),
     m_eventMesStart(unique_event(nullptr, CloseEvent)),
@@ -40,7 +80,6 @@ clFiltersAuf::clFiltersAuf() :
     m_sharedFramesOut(),
     m_threadProcOut(),
     m_threadProcErr(),
-    m_platforms(),
     m_log(std::make_shared<RGYLog>(nullptr, RGY_LOG_DEBUG)) {
 }
 clFiltersAuf::~clFiltersAuf() {
@@ -138,37 +177,27 @@ int clFiltersAuf::runProcess(const HINSTANCE aufHandle, const int maxw, const in
     initShared();
 
     // exeのパスを取得
-    char aufPath[4096] = { 0 };
-    GetModuleFileName(aufHandle, aufPath, _countof(aufPath) - 1);
-    const auto exePath = PathRemoveExtensionS(aufPath) + ".exe";
+    const auto exePath = getClfiltersExePath();
     if (!rgy_file_exists(exePath)) {
         AddMessage(RGY_LOG_ERROR, _T("Failed to find exe: %s.\n"), exePath.c_str());
         return 1;
     }
 
     // コマンドライン作成
-    const auto aviutlPidStr = strsprintf("0x%08x", aviutlPid);
-    const auto maxWidthStr = strsprintf("%d", maxw);
-    const auto maxHeightStr = strsprintf("%d", maxh);
-    const auto sizeSharedPrmStr = strsprintf("%d", sizeof(clfitersSharedPrms));
-    const auto sizeSharedMesDataStr = strsprintf("%d", sizeof(clfitersSharedMesData));
-    const auto sizePIXELYCStr = strsprintf("%d", sizeof(PIXEL_YC));
-    const auto eventMesStartStr = strsprintf("%p", m_eventMesStart.get());
-    const auto eventMesEndStr = strsprintf("%p", m_eventMesEnd.get());
-    const std::vector<const TCHAR*> args = {
+    const std::vector<tstring> args = {
         exePath.c_str(),
-        _T("--ppid"), aviutlPidStr.c_str(),
-        _T("--maxw"), maxWidthStr.c_str(),
-        _T("--maxh"), maxHeightStr.c_str(),
-        _T("--size-shared-prm"), sizeSharedPrmStr.c_str(),
-        _T("--size-shared-mesdata"), sizeSharedMesDataStr.c_str(),
-        _T("--size-pixelyc"), sizePIXELYCStr.c_str(),
-        _T("--event-mes-start"), eventMesStartStr.c_str(),
-        _T("--event-mes-end"), eventMesEndStr.c_str()
+        _T("--ppid"), strsprintf("0x%08x", aviutlPid),
+        _T("--maxw"), strsprintf("%d", maxw),
+        _T("--maxh"), strsprintf("%d", maxh),
+        _T("--size-shared-prm"), strsprintf("%d", sizeof(clfitersSharedPrms)),
+        _T("--size-shared-mesdata"), strsprintf("%d", sizeof(clfitersSharedMesData)),
+        _T("--size-pixelyc"), strsprintf("%d", sizeof(PIXEL_YC)),
+        _T("--event-mes-start"), strsprintf("%p", m_eventMesStart.get()),
+        _T("--event-mes-end"), strsprintf("%p", m_eventMesEnd.get())
     };
     tstring cmd_line;
-    for (auto arg : args) {
-        if (arg) {
+    for (const auto& arg : args) {
+        if (!arg.empty()) {
             cmd_line += tstring(arg) + _T(" ");
         }
     }
@@ -219,25 +248,12 @@ int clFiltersAuf::runProcess(const HINSTANCE aufHandle, const int maxw, const in
         AddMessage(RGY_LOG_DEBUG, _T("Reached process stderr EOF.\n"));
     });
 
-    // プロセス初期化処理の終了とplatformとdeviceの情報を取得を待機
+    // プロセス初期化処理の終了を待機
     while (WaitForSingleObject(m_eventMesEnd.get(), 1000) == WAIT_TIMEOUT) {
         if (!m_process->processAlive()) {
             AddMessage(RGY_LOG_ERROR, _T("Process terminated before initialization.\n"));
             return 1;
         }
     }
-    // platformとdeviceの情報を取得
-    const auto platforms = split(getMessagePtr()->data, _T("\n"));
-    for (const auto& pstr : platforms) {
-        const auto pdstr = pstr.find(_T("/"));
-        CL_PLATFORM_DEVICE pd;
-        if (pdstr != std::string::npos) {
-            if (sscanf_s(pstr.substr(0, pdstr).c_str(), "%x", &pd.i) != 1) {
-                continue;
-            }
-            m_platforms.push_back({ pd, pstr.substr(pdstr+1) });
-        }
-    }
-    AddMessage(RGY_LOG_DEBUG, _T("Got platform information.\n"));
     return 0;
 }

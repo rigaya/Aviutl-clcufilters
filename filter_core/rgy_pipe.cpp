@@ -76,7 +76,7 @@ int RGYPipeProcessWin::startPipes() {
     return 0;
 }
 
-int RGYPipeProcessWin::run(const std::vector<const TCHAR *>& args, const TCHAR *exedir, uint32_t priority, bool hidden, bool minimized) {
+int RGYPipeProcessWin::run(const std::vector<tstring>& args, const TCHAR *exedir, uint32_t priority, bool hidden, bool minimized) {
     BOOL Inherit = FALSE;
     DWORD flag = priority;
     STARTUPINFO si;
@@ -104,7 +104,7 @@ int RGYPipeProcessWin::run(const std::vector<const TCHAR *>& args, const TCHAR *
 
     tstring cmd_line;
     for (auto arg : args) {
-        if (arg) {
+        if (!arg.empty()) {
             cmd_line += tstring(arg) + _T(" ");
         }
     }
