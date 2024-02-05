@@ -5,14 +5,6 @@
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="ReleaseEN|Win32">
-      <Configuration>ReleaseEN</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="ReleaseEN|x64">
-      <Configuration>ReleaseEN</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
@@ -26,66 +18,11 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="rgy_filter.cl" />
-    <None Include="rgy_filter_convolution3d.cl" />
-    <None Include="rgy_filter_deband.cl" />
-    <None Include="rgy_filter_deband_gen_rand.cl" />
-    <None Include="rgy_filter_denoise_knn.cl" />
-    <None Include="rgy_filter_denoise_pmd.cl" />
-    <None Include="rgy_filter_edgelevel.cl" />
-    <None Include="rgy_filter_nnedi_common.cl" />
-    <None Include="rgy_filter_nnedi_k0.cl" />
-    <None Include="rgy_filter_nnedi_k1.cl" />
-    <None Include="rgy_filter_pad.cl" />
-    <None Include="rgy_filter_resize.cl" />
-    <None Include="rgy_filter_smooth.cl" />
-    <None Include="rgy_filter_transform.cl" />
-    <None Include="rgy_filter_tweak.cl" />
-    <None Include="rgy_filter_unsharp.cl" />
-    <None Include="rgy_filter_warpsharp.cl" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="rgy_filter.cpp" />
-    <ClCompile Include="rgy_filter_colorspace.cpp" />
-    <ClCompile Include="rgy_filter_convolution3d.cpp" />
-    <ClCompile Include="rgy_filter_crop.cpp" />
-    <ClCompile Include="rgy_filter_deband.cpp" />
-    <ClCompile Include="rgy_filter_denoise_knn.cpp" />
-    <ClCompile Include="rgy_filter_denoise_pmd.cpp" />
-    <ClCompile Include="rgy_filter_edgelevel.cpp" />
-    <ClCompile Include="rgy_filter_nnedi.cpp" />
-    <ClCompile Include="rgy_filter_pad.cpp" />
-    <ClCompile Include="rgy_filter_resize.cpp" />
-    <ClCompile Include="rgy_filter_smooth.cpp" />
-    <ClCompile Include="rgy_filter_transform.cpp" />
-    <ClCompile Include="rgy_filter_tweak.cpp" />
-    <ClCompile Include="rgy_filter_unsharp.cpp" />
-    <ClCompile Include="rgy_filter_warpsharp.cpp" />
-    <ClCompile Include="rgy_opencl.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="rgy_filter.h" />
-    <ClInclude Include="rgy_filter_colorspace.h" />
-    <ClInclude Include="rgy_filter_colorspace_func.h" />
-    <ClInclude Include="rgy_filter_convolution3d.h" />
-    <ClInclude Include="rgy_filter_deband.h" />
-    <ClInclude Include="rgy_filter_denoise_knn.h" />
-    <ClInclude Include="rgy_filter_denoise_pmd.h" />
-    <ClInclude Include="rgy_filter_edgelevel.h" />
-    <ClInclude Include="rgy_filter_nnedi.h" />
-    <ClInclude Include="rgy_filter_smooth.h" />
-    <ClInclude Include="rgy_filter_transform.h" />
-    <ClInclude Include="rgy_filter_tweak.h" />
-    <ClInclude Include="rgy_filter_unsharp.h" />
-    <ClInclude Include="rgy_filter_warpsharp.h" />
-    <ClInclude Include="rgy_opencl.h" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{9a44dcf0-a6dd-466c-8340-7b3852b7a2fe}</ProjectGuid>
-    <RootNamespace>clfilterscommon</RootNamespace>
+    <ProjectGuid>{dd3ab6f1-44ed-4796-92de-2efae9f6d755}</ProjectGuid>
+    <RootNamespace>cufilterscommon</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -96,13 +33,6 @@
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseEN|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
@@ -122,13 +52,6 @@
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseEN|x64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
-  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
@@ -140,16 +63,10 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseEN|Win32'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseEN|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
@@ -161,19 +78,11 @@
     <OutDir>$(SolutionDir)_build\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(OutDir)obj\$(ProjectName)\</IntDir>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseEN|Win32'">
-    <OutDir>$(SolutionDir)_build\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(OutDir)obj\$(ProjectName)\</IntDir>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)_build\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(OutDir)obj\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(SolutionDir)_build\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(OutDir)obj\$(ProjectName)\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseEN|x64'">
     <OutDir>$(SolutionDir)_build\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(OutDir)obj\$(ProjectName)\</IntDir>
   </PropertyGroup>
@@ -186,7 +95,6 @@
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
     </ClCompile>
     <Link>
@@ -205,39 +113,12 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <BufferSecurityCheck>false</BufferSecurityCheck>
-      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
       <FloatingPointModel>Fast</FloatingPointModel>
-    </ClCompile>
-    <Link>
-      <SubSystem>
-      </SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseEN|Win32'">
-    <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeaderFile>
-      </PrecompiledHeaderFile>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <BufferSecurityCheck>false</BufferSecurityCheck>
-      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
-      <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -256,7 +137,6 @@
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
     </ClCompile>
     <Link>
@@ -275,37 +155,11 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <BufferSecurityCheck>false</BufferSecurityCheck>
       <FloatingPointModel>Fast</FloatingPointModel>
-    </ClCompile>
-    <Link>
-      <SubSystem>
-      </SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseEN|x64'">
-    <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeaderFile>
-      </PrecompiledHeaderFile>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <BufferSecurityCheck>false</BufferSecurityCheck>
-      <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
     <Link>
       <SubSystem>

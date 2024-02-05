@@ -32,7 +32,7 @@
 #include <random>
 #include <future>
 #include <algorithm>
-#include "rgy_opencl.h"
+//#include "rgy_opencl.h"
 #include "rgy_osdep.h"
 #include "rgy_util.h"
 

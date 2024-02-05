@@ -83,7 +83,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\clfilters_common;..\filter_core</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core</AdditionalIncludeDirectories>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalOptions>/execution-charset:shift_jis %(AdditionalOptions)</AdditionalOptions>
@@ -100,7 +100,7 @@
       <Culture>0x0411</Culture>
     </ResourceCompile>
     <ResourceCompile>
-      <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common;..\clcufilters_common</AdditionalIncludeDirectories>
       <AdditionalOptions>/c 65001 %(AdditionalOptions)</AdditionalOptions>
     </ResourceCompile>
     <PostBuildEvent>
@@ -117,7 +117,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\clfilters_common;..\filter_core</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FloatingPointModel>Fast</FloatingPointModel>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -143,7 +143,7 @@
       <Culture>0x0411</Culture>
     </ResourceCompile>
     <ResourceCompile>
-      <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common;..\clcufilters_common</AdditionalIncludeDirectories>
       <AdditionalOptions>/c 65001 %(AdditionalOptions)</AdditionalOptions>
     </ResourceCompile>
     <PostBuildEvent>
@@ -160,7 +160,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\clfilters_common;..\filter_core</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FloatingPointModel>Fast</FloatingPointModel>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -186,7 +186,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <ResourceCompile>
-      <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common;..\clcufilters_common</AdditionalIncludeDirectories>
       <AdditionalOptions>/c 65001 %(AdditionalOptions)</AdditionalOptions>
     </ResourceCompile>
     <PostBuildEvent>
@@ -209,6 +209,9 @@
     <ResourceCompile Include="clfilters.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\clcufilters_common\clcufilters_common.vcxproj">
+      <Project>{234ee082-07a4-42b6-a478-1049f872d136}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\clfilters_common\clfilters_common.vcxproj">
       <Project>{9a44dcf0-a6dd-466c-8340-7b3852b7a2fe}</Project>
     </ProjectReference>

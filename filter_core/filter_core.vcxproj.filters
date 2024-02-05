@@ -4,24 +4,8 @@
     <ClCompile Include="rgy_prm.cpp" />
     <ClCompile Include="rgy_resource.cpp" />
     <ClCompile Include="rgy_util.cpp" />
-    <ClCompile Include="rgy_filter.cpp" />
-    <ClCompile Include="rgy_filter_colorspace.cpp" />
-    <ClCompile Include="rgy_filter_crop.cpp" />
-    <ClCompile Include="rgy_filter_deband.cpp" />
-    <ClCompile Include="rgy_filter_denoise_knn.cpp" />
-    <ClCompile Include="rgy_filter_denoise_pmd.cpp" />
-    <ClCompile Include="rgy_filter_edgelevel.cpp" />
-    <ClCompile Include="rgy_filter_nnedi.cpp" />
-    <ClCompile Include="rgy_filter_pad.cpp" />
-    <ClCompile Include="rgy_filter_resize.cpp" />
-    <ClCompile Include="rgy_filter_smooth.cpp" />
-    <ClCompile Include="rgy_filter_transform.cpp" />
-    <ClCompile Include="rgy_filter_tweak.cpp" />
-    <ClCompile Include="rgy_filter_unsharp.cpp" />
-    <ClCompile Include="rgy_filter_warpsharp.cpp" />
     <ClCompile Include="rgy_frame.cpp" />
     <ClCompile Include="rgy_log.cpp" />
-    <ClCompile Include="rgy_opencl.cpp" />
     <ClCompile Include="convert_csp_ssse3.cpp" />
     <ClCompile Include="convert_csp.cpp" />
     <ClCompile Include="convert_csp_avx.cpp" />
@@ -54,25 +38,10 @@
     <ClInclude Include="rgy_resource.h" />
     <ClInclude Include="rgy_tchar.h" />
     <ClInclude Include="rgy_util.h" />
-    <ClInclude Include="rgy_filter.h" />
-    <ClInclude Include="rgy_filter_colorspace.h" />
-    <ClInclude Include="rgy_filter_colorspace_func.h" />
-    <ClInclude Include="rgy_filter_deband.h" />
-    <ClInclude Include="rgy_filter_denoise_knn.h" />
-    <ClInclude Include="rgy_filter_denoise_pmd.h" />
-    <ClInclude Include="rgy_filter_edgelevel.h" />
-    <ClInclude Include="rgy_filter_nnedi.h" />
-    <ClInclude Include="rgy_filter_smooth.h" />
-    <ClInclude Include="rgy_filter_transform.h" />
-    <ClInclude Include="rgy_filter_tweak.h" />
-    <ClInclude Include="rgy_filter_unsharp.h" />
-    <ClInclude Include="rgy_filter_warpsharp.h" />
     <ClInclude Include="rgy_frame.h" />
     <ClInclude Include="rgy_log.h" />
-    <ClInclude Include="rgy_opencl.h" />
     <ClInclude Include="rgy_osdep.h" />
     <ClInclude Include="rgy_version.h" />
-    <ClInclude Include="convert_csp.h" />
     <ClInclude Include="convert_csp_simd.h" />
     <ClInclude Include="rgy_simd.h" />
     <ClInclude Include="rgy_ini.h" />
@@ -99,23 +68,7 @@
     <ClInclude Include="rgy_cmd.h" />
     <ClInclude Include="rgy_language.h" />
     <ClInclude Include="rgy_avutil.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="rgy_filter.cl" />
-    <None Include="rgy_filter_deband.cl" />
-    <None Include="rgy_filter_deband_gen_rand.cl" />
-    <None Include="rgy_filter_denoise_knn.cl" />
-    <None Include="rgy_filter_denoise_pmd.cl" />
-    <None Include="rgy_filter_edgelevel.cl" />
-    <None Include="rgy_filter_nnedi_common.cl" />
-    <None Include="rgy_filter_nnedi_k0.cl" />
-    <None Include="rgy_filter_nnedi_k1.cl" />
-    <None Include="rgy_filter_pad.cl" />
-    <None Include="rgy_filter_resize.cl" />
-    <None Include="rgy_filter_smooth.cl" />
-    <None Include="rgy_filter_transform.cl" />
-    <None Include="rgy_filter_tweak.cl" />
-    <None Include="rgy_filter_unsharp.cl" />
-    <None Include="rgy_filter_warpsharp.cl" />
+    <ClInclude Include="convert_csp.h" />
+    <ClInclude Include="rgy_frame_info.h" />
   </ItemGroup>
 </Project>

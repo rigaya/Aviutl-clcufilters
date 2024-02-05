@@ -134,7 +134,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\clfilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
     </ClCompile>
@@ -144,7 +144,7 @@
     </Link>
     <ResourceCompile>
       <Culture>0x0411</Culture>
-      <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common;..\clcufilters_common</AdditionalIncludeDirectories>
       <AdditionalOptions>/c 65001 %(AdditionalOptions)</AdditionalOptions>
     </ResourceCompile>
     <PostBuildEvent>
@@ -160,7 +160,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\clfilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -176,7 +176,7 @@
     </Link>
     <ResourceCompile>
       <Culture>0x0411</Culture>
-      <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common;..\clcufilters_common</AdditionalIncludeDirectories>
       <AdditionalOptions>/c 65001 %(AdditionalOptions)</AdditionalOptions>
     </ResourceCompile>
     <PostBuildEvent>
@@ -192,7 +192,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\clfilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -208,7 +208,7 @@
     </Link>
     <ResourceCompile>
       <Culture>0x0411</Culture>
-      <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common;..\clcufilters_common</AdditionalIncludeDirectories>
       <AdditionalOptions>/c 65001 %(AdditionalOptions)</AdditionalOptions>
     </ResourceCompile>
     <PostBuildEvent>
@@ -222,7 +222,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\clfilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
     </ClCompile>
@@ -232,7 +232,7 @@
     </Link>
     <ResourceCompile>
       <Culture>0x0411</Culture>
-      <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common;..\clcufilters_common</AdditionalIncludeDirectories>
       <AdditionalOptions>/c 65001 %(AdditionalOptions)</AdditionalOptions>
     </ResourceCompile>
     <PostBuildEvent>
@@ -247,7 +247,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\clfilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -263,7 +263,7 @@
     </Link>
     <ResourceCompile>
       <Culture>0x0411</Culture>
-      <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common;..\clcufilters_common</AdditionalIncludeDirectories>
       <AdditionalOptions>/c 65001 %(AdditionalOptions)</AdditionalOptions>
     </ResourceCompile>
     <PostBuildEvent>
@@ -278,7 +278,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\clfilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -294,7 +294,7 @@
     </Link>
     <ResourceCompile>
       <Culture>0x0411</Culture>
-      <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common;..\clcufilters_common</AdditionalIncludeDirectories>
       <AdditionalOptions>/c 65001 %(AdditionalOptions)</AdditionalOptions>
     </ResourceCompile>
     <PostBuildEvent>
@@ -307,6 +307,9 @@
     <ClCompile Include="clfilters_exe_cmd.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\clcufilters_common\clcufilters_common.vcxproj">
+      <Project>{234ee082-07a4-42b6-a478-1049f872d136}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\clfilters_common\clfilters_common.vcxproj">
       <Project>{9a44dcf0-a6dd-466c-8340-7b3852b7a2fe}</Project>
     </ProjectReference>

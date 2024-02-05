@@ -34,6 +34,7 @@
 #include "rgy_version.h"
 #include "rgy_err.h"
 #include "convert_csp.h"
+#include "rgy_frame_info.h"
 #if !FOR_AUO && ENCODER_NVENC
 #include "rgy_cuda_util.h"
 #endif //#if !FOR_AUO && ENCODER_NVENC
