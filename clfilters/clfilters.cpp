@@ -1739,7 +1739,6 @@ BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
     }
     g_clfiltersAuf->setLogLevel(RGY_LOG_DEBUG);
     const BOOL ret = g_clfiltersAuf->funcProc(prm, fp, fpip);
-    std::swap(fpip->ycp_edit, fpip->ycp_temp);
     fpip->w = out_width;
     fpip->h = out_height;
     return ret;
@@ -1786,18 +1785,21 @@ BOOL clFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_PR
     }
     fp->exfunc->set_ycp_filtering_cache_size(fp, fpip->max_w, fpip->max_h, frameInOffset+1, NULL);
 
+    const int frameInFin = (is_saving) ? std::min(current_frame + frameInOffset, frame_n - 1) : current_frame;
+
     // 共有メモリへの値の設定
     sharedPrms->pd = cl_exdata.cl_dev_id;
     sharedPrms->is_saving = is_saving;
     sharedPrms->currentFrameId = fpip->frame;
     sharedPrms->frame_n = fpip->frame_n;
     sharedPrms->frameIn = frameIn;
+    sharedPrms->frameInFin = frameInFin;
     sharedPrms->frameProc = frameProc;
     sharedPrms->frameOut = frameOut;
     sharedPrms->resetPipeLine = resetPipeline;
     strcpy_s(sharedPrms->prms, tchar_to_string(prm.genCmd()).c_str());
-    m_log->write(RGY_LOG_TRACE, RGY_LOGT_CORE, "currentFrameId: %d, frameIn: %d, frameProc %d, frameOut %d, reset %d\n",
-        sharedPrms->currentFrameId, sharedPrms->frameIn, sharedPrms->frameProc, sharedPrms->frameOut, sharedPrms->resetPipeLine);
+    m_log->write(RGY_LOG_TRACE, RGY_LOGT_CORE, "currentFrameId: %d, frameIn: %d, frameInFin: %d, frameProc %d, frameOut %d, reset %d\n",
+        sharedPrms->currentFrameId, sharedPrms->frameIn, sharedPrms->frameInFin, sharedPrms->frameProc, sharedPrms->frameOut, sharedPrms->resetPipeLine);
 
     // -- フレームの転送 -----------------------------------------------------------------
     // 初期化
@@ -1805,7 +1807,6 @@ BOOL clFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_PR
         initPrms(&sharedPrms->srcFrame[i]);
     }
     // frameIn の終了フレーム
-    const int frameInFin = (is_saving) ? std::min(current_frame + frameInOffset, frame_n - 1) : current_frame;
     // フレーム転送の実行
     for (int i = 0; frameIn <= frameInFin; frameIn++, i++) {
         int width = fpip->w, height = fpip->h;
@@ -1818,13 +1819,30 @@ BOOL clFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_PR
         mt_frame_copy_data copyPrm;
         copyPrm.src = (char *)srcptr;
         copyPrm.srcPitch = fpip->max_w * sizeof(PIXEL_YC);
-        copyPrm.dst = (char *)m_sharedFramesIn[i]->ptr();
+        copyPrm.dst = (char *)m_sharedFramesIn->ptr();
         copyPrm.dstPitch = m_sharedFramesPitchBytes;
         copyPrm.width = width;
         copyPrm.height = height;
         copyPrm.sizeOfPix = sizeof(PIXEL_YC);
 
+        if (i > 0) {
+            // 2フレーム目以降はプロセスのGPUへのフレーム転送完了を待つ
+            while (WaitForSingleObject(m_eventMesEnd.get(), 100) == WAIT_TIMEOUT) {
+                // exeの生存を確認
+                if (!m_process->processAlive()) {
+                    return FALSE;
+                }
+            }
+        }
+
         fp->exfunc->exec_multi_thread_func(multi_thread_copy, (void *)&copyPrm, nullptr);
+
+        if (frameIn < frameInFin) {
+            // 複数フレームを送る場合、1フレームずつ転送するので、プロセス側を起動する
+            clfitersSharedMesData *message = (clfitersSharedMesData*)m_sharedMessage->ptr();
+            message->type = clfitersMes::FuncProc;
+            SetEvent(m_eventMesStart.get());
+        }
     }
     // プロセス側に処理開始を通知
     clfitersSharedMesData *message = (clfitersSharedMesData*)m_sharedMessage->ptr();
@@ -1844,9 +1862,9 @@ BOOL clFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_PR
     }
     // 共有メモリからコピー
     mt_frame_copy_data copyPrm;
-    copyPrm.src = (char *)m_sharedFramesOut->ptr();
+    copyPrm.src = (char *)m_sharedFramesIn->ptr();
     copyPrm.srcPitch = m_sharedFramesPitchBytes;
-    copyPrm.dst = (char *)fpip->ycp_temp;
+    copyPrm.dst = (char *)fpip->ycp_edit;
     copyPrm.dstPitch = fpip->max_w * sizeof(PIXEL_YC);
     copyPrm.width = prm.outWidth;
     copyPrm.height = prm.outHeight;

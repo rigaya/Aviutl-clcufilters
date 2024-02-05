@@ -77,7 +77,6 @@ clFiltersAuf::clFiltersAuf() :
     m_sharedPrms(),
     m_sharedFramesIn(),
     m_sharedFramesPitchBytes(0),
-    m_sharedFramesOut(),
     m_threadProcOut(),
     m_threadProcErr(),
     m_log(std::make_shared<RGYLog>(nullptr, RGY_LOG_DEBUG)) {
@@ -108,9 +107,7 @@ clFiltersAuf::~clFiltersAuf() {
         m_threadProcErr.join();
     }
 
-    for (size_t i = 0; i < m_sharedFramesIn.size(); i++) {
-        m_sharedFramesIn[i].reset();
-    }
+    m_sharedFramesIn.reset();
     m_sharedFramesPitchBytes = 0;
     m_sharedPrms.reset();
     m_sharedMessage.reset();
@@ -158,20 +155,12 @@ int clFiltersAuf::runProcess(const HINSTANCE aufHandle, const int maxw, const in
     const int frameSize = m_sharedFramesPitchBytes * maxh;
     AddMessage(RGY_LOG_DEBUG, _T("Frame max %dx%d, pitch %d, size %d.\n"), maxw, maxh, m_sharedFramesPitchBytes, frameSize);
 
-    for (size_t i = 0; i < m_sharedFramesIn.size(); i++) {
-        m_sharedFramesIn[i] = std::make_unique<RGYSharedMemWin>(strsprintf(CLFILTER_SHARED_MEM_FRAMES_IN, aviutlPid, i).c_str(), frameSize);
-        if (!m_sharedFramesIn[i] || !m_sharedFramesIn[i]->is_open()) {
-            AddMessage(RGY_LOG_ERROR, _T("Failed to open shared mem for frame(%d).\n"), i);
-            return 1;
-        }
-        AddMessage(RGY_LOG_DEBUG, _T("Opened shared mem for frame(%d).\n"), i);
-    }
-    m_sharedFramesOut = std::make_unique<RGYSharedMemWin>(strsprintf(CLFILTER_SHARED_MEM_FRAMES_OUT, aviutlPid).c_str(), frameSize);
-    if (!m_sharedFramesOut || !m_sharedFramesOut->is_open()) {
+    m_sharedFramesIn = std::make_unique<RGYSharedMemWin>(strsprintf(CLFILTER_SHARED_MEM_FRAMES_IN, aviutlPid).c_str(), frameSize);
+    if (!m_sharedFramesIn || !m_sharedFramesIn->is_open()) {
         AddMessage(RGY_LOG_ERROR, _T("Failed to open shared mem for frame(out).\n"));
         return 1;
     }
-    AddMessage(RGY_LOG_DEBUG, _T("Opened shared mem for frame(out).\n"));
+    AddMessage(RGY_LOG_DEBUG, _T("Opened shared mem for frame.\n"));
 
     //初期化
     initShared();

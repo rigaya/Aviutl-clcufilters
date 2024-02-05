@@ -92,9 +92,8 @@ protected:
     unique_event m_eventMesEnd;
     std::unique_ptr<RGYSharedMemWin> m_sharedMessage;
     std::unique_ptr<RGYSharedMemWin> m_sharedPrms;
-    std::array<std::unique_ptr<RGYSharedMemWin>, _countof(clfitersSharedPrms::srcFrame)> m_sharedFramesIn;
+    std::unique_ptr<RGYSharedMemWin> m_sharedFramesIn;
     int m_sharedFramesPitchBytes;
-    std::unique_ptr<RGYSharedMemWin> m_sharedFramesOut;
     std::thread m_threadProcOut;
     std::thread m_threadProcErr;
     std::shared_ptr<RGYLog> m_log;

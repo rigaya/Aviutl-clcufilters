@@ -36,8 +36,8 @@
 
 static const char *CLFILTER_SHARED_MEM_MESSAGE  = "clfilter_shared_mem_message_%08x";
 static const char *CLFILTER_SHARED_MEM_PRMS     = "clfilter_shared_mem_prms_%08x";
-static const char *CLFILTER_SHARED_MEM_FRAMES_IN = "clfilter_shared_mem_frames_in_%08x_%d";
-static const char *CLFILTER_SHARED_MEM_FRAMES_OUT = "clfilter_shared_mem_frames_out_%08x";
+static const char *CLFILTER_SHARED_MEM_FRAMES_IN = "clfilter_shared_mem_frames_%08x";
+//static const char *CLFILTER_SHARED_MEM_FRAMES_OUT = "clfilter_shared_mem_frames_out_%08x";
 
 enum class clfitersMes : int32_t {
     None = 0,
@@ -74,6 +74,7 @@ struct clfitersSharedPrms {
     int32_t currentFrameId; // 現在のフレーム
     int32_t frame_n;        // 最大フレーム数
     int32_t frameIn;        // 処理を開始すべきフレーム
+    int32_t frameInFin;     // 処理を開始すべきフレーム (終了)
     int32_t frameProc;      // 処理を開始すべきフレーム
     int32_t frameOut;       // 処理を開始すべきフレーム
     int32_t resetPipeLine;  // パイプラインをリセットするかどうか

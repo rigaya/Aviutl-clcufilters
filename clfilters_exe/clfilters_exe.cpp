@@ -72,8 +72,7 @@ protected:
     HANDLE m_eventMesEnd;
     std::unique_ptr<RGYSharedMemWin> m_sharedMessage;
     std::unique_ptr<RGYSharedMemWin> m_sharedPrms;
-    std::array<std::unique_ptr<RGYSharedMemWin>, _countof(clfitersSharedPrms::srcFrame)> m_sharedFramesIn;
-    std::unique_ptr<RGYSharedMemWin> m_sharedFramesOut;
+    std::unique_ptr<RGYSharedMemWin> m_sharedFramesIn;
     size_t m_ppid;
     int m_maxWidth;
     int m_maxHeight;
@@ -90,17 +89,13 @@ clFiltersExe::clFiltersExe() :
     m_sharedMessage(),
     m_sharedPrms(),
     m_sharedFramesIn(),
-    m_sharedFramesOut(),
     m_ppid(0),
     m_maxWidth(0),
     m_maxHeight(0),
     m_pitchBytes(0),
     m_log() { }
 clFiltersExe::~clFiltersExe() {
-    for (size_t i = 0; i < m_sharedFramesIn.size(); i++) {
-        m_sharedFramesIn[i].reset();
-    }
-    m_sharedFramesOut.reset();
+    m_sharedFramesIn.reset();
 }
 
 int clFiltersExe::init(AviutlAufExeParams& prms) {
@@ -142,16 +137,8 @@ int clFiltersExe::init(AviutlAufExeParams& prms) {
     const int frameSize = m_pitchBytes * m_maxHeight;
     AddMessage(RGY_LOG_DEBUG, _T("Frame max %dx%d, pitch %d, size %d.\n"), m_maxWidth, m_maxHeight, m_pitchBytes, frameSize);
 
-    for (size_t i = 0; i < m_sharedFramesIn.size(); i++) {
-        m_sharedFramesIn[i] = std::make_unique<RGYSharedMemWin>(strsprintf(CLFILTER_SHARED_MEM_FRAMES_IN, m_ppid, i).c_str(), frameSize);
-        if (!m_sharedFramesIn[i] || !m_sharedFramesIn[i]->is_open()) {
-            AddMessage(RGY_LOG_ERROR, _T("Failed to open shared mem for frame(%d).\n"), i);
-            return 1;
-        }
-        AddMessage(RGY_LOG_DEBUG, _T("Opened shared mem for frame(%d).\n"), i);
-    }
-    m_sharedFramesOut = std::make_unique<RGYSharedMemWin>(strsprintf(CLFILTER_SHARED_MEM_FRAMES_OUT, m_ppid).c_str(), frameSize);
-    if (!m_sharedFramesOut || !m_sharedFramesOut->is_open()) {
+    m_sharedFramesIn = std::make_unique<RGYSharedMemWin>(strsprintf(CLFILTER_SHARED_MEM_FRAMES_IN, m_ppid).c_str(), frameSize);
+    if (!m_sharedFramesIn || !m_sharedFramesIn->is_open()) {
         AddMessage(RGY_LOG_ERROR, _T("Failed to open shared mem for frame(out).\n"));
         return 1;
     }
@@ -217,6 +204,7 @@ int clFiltersExe::funcProc() {
     auto is_saving = sharedPrms->is_saving;
     // どのフレームから処理を開始すべきか?
     auto frameIn = sharedPrms->frameIn;
+    const auto frameInFin = sharedPrms->frameInFin;
     auto frameProc = sharedPrms->frameProc;
     //auto frameOut = sharedPrms->frameOut;
     prm.setPrmFromCmd(char_to_tstring(sharedPrms->prms));
@@ -248,14 +236,26 @@ int clFiltersExe::funcProc() {
 
     // -- フレームの転送 -----------------------------------------------------------------
     // frameIn の終了フレーム
-    const int frameInFin = (is_saving) ? std::min(current_frame + frameInOffset, frame_n - 1) : current_frame;
+    //const int frameInFin = (is_saving) ? std::min(current_frame + frameInOffset, frame_n - 1) : current_frame;
     // フレーム転送の実行
     for (int i = 0; frameIn <= frameInFin; frameIn++, i++) {
+        if (i > 0) {
+            // 2フレーム目以降は、プラグイン側の処理完了を待つ必要がある
+            while (WaitForSingleObject(m_eventMesStart, 100) == WAIT_TIMEOUT) {
+                if (m_aviutlHandle && WaitForSingleObject(m_aviutlHandle.get(), 0) != WAIT_TIMEOUT) {
+                    return FALSE;
+                }
+            }
+        }
         const auto& srcFrame = sharedPrms->srcFrame[i];
-        const RGYFrameInfo in = setFrameInfo(frameIn, srcFrame.width, srcFrame.height, m_sharedFramesIn[i]->ptr());
+        const RGYFrameInfo in = setFrameInfo(frameIn, srcFrame.width, srcFrame.height, m_sharedFramesIn->ptr());
         if (m_clfilter->sendInFrame(&in) != RGY_ERR_NONE) {
             return FALSE;
         }
+        if (frameIn < frameInFin) {
+            // まだ受け取るフレームがあるなら、GPUへの転送完了を通知
+            SetEvent(m_eventMesEnd);
+        } 
     }
     // -- フレームの処理 -----------------------------------------------------------------
     if (prm != m_clfilter->getPrm()) { // パラメータが変更されていたら、
@@ -270,7 +270,7 @@ int clFiltersExe::funcProc() {
         }
     }
     // -- フレームの取得 -----------------------------------------------------------------
-    RGYFrameInfo out = setFrameInfo(current_frame, prm.outWidth, prm.outHeight, m_sharedFramesOut->ptr());
+    RGYFrameInfo out = setFrameInfo(current_frame, prm.outWidth, prm.outHeight, m_sharedFramesIn->ptr());
     if (m_clfilter->getOutFrame(&out) != RGY_ERR_NONE) {
         return FALSE;
     }
