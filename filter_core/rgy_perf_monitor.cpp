@@ -328,16 +328,12 @@ int NVSMIInfo::getData(NVMLMonitorInfo *info, const std::string& gpu_pcibusid) {
     info->clear();
 
     auto process = createRGYPipeProcess();
-    process->init();
-    ProcessPipe pipes = { 0 };
-    pipes.stdOut.mode = PIPE_MODE_ENABLE;
-    std::vector<const TCHAR *> args;
-    args.push_back(NVSMI_PATH);
-    args.push_back(_T("-q"));
-    if (process->run(args, nullptr, &pipes, 0, true, true)) {
+    process->init(PIPE_MODE_DISABLE, PIPE_MODE_ENABLE, PIPE_MODE_DISABLE);
+    std::vector<tstring> args = { NVSMI_PATH, _T("-q") };
+    if (process->run(args, nullptr, 0, true, true)) {
         return 1;
     }
-    m_NVSMIOut = tolowercase(process->getOutput(&pipes));
+    m_NVSMIOut = tolowercase(process->getOutput());
     if (m_NVSMIOut.length() == 0) {
         return 1;
     }
@@ -883,10 +879,12 @@ int CPerfMonitor::init(tstring filename, const TCHAR *pPythonPath,
     AddMessage(RGY_LOG_DEBUG, _T("Performace Monitor: %s\n"), CPerfMonitor::SelectedCounters(m_nSelectOutputLog).c_str());
     AddMessage(RGY_LOG_DEBUG, _T("Performace Plot   : %s\n"), CPerfMonitor::SelectedCounters(m_nSelectOutputPlot).c_str());
 
-    _ftprintf(m_fpLog.get(), "%s", write_header(m_nSelectOutputLog).c_str());
-    const auto str = write_header(m_nSelectOutputPlot);
-    m_pProcess->stdInFpWrite(str.c_str(), str.length());
-    m_pProcess->stdInFpFlush();
+    if (m_fpLog) fprintf(m_fpLog.get(), "%s", write_header(m_nSelectOutputLog).c_str());
+    if (m_pProcess) {
+        const auto str = write_header(m_nSelectOutputPlot);
+        m_pProcess->stdInFpWrite(str.c_str(), str.length());
+        m_pProcess->stdInFpFlush();
+    }
 
     m_thCheck = std::thread(loader, this);
     return 0;
@@ -1321,18 +1319,22 @@ void CPerfMonitor::run() {
                     m_nSelectOutputPlot = 0;
                 }
             }
-            _ftprintf(m_fpLog.get(), "%s", write(m_nSelectOutputLog).c_str());
-            const auto str = write(m_nSelectOutputPlot);
-            m_pProcess->stdInFpWrite(str.c_str(), str.length());
-            m_pProcess->stdInFpFlush();
+            if (m_fpLog)  fprintf(m_fpLog.get(), "%s", write(m_nSelectOutputLog).c_str());
+            if (m_pProcess) {
+                const auto str = write(m_nSelectOutputPlot);
+                m_pProcess->stdInFpWrite(str.c_str(), str.length());
+                m_pProcess->stdInFpFlush();
+            }
             m_refreshedTime = timenow;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds((m_nInterval <= 100) ? m_nInterval : 50));
     }
     check();
-    _ftprintf(m_fpLog.get(), "%s", write(m_nSelectOutputLog).c_str());
-    const auto str = write(m_nSelectOutputPlot);
-    m_pProcess->stdInFpWrite(str.c_str(), str.length());
-    m_pProcess->stdInFpFlush();
-    m_pProcess->close();
+    if (m_fpLog)  fprintf(m_fpLog.get(), "%s", write(m_nSelectOutputLog).c_str());
+    if (m_pProcess) {
+        const auto str = write(m_nSelectOutputPlot);
+        m_pProcess->stdInFpWrite(str.c_str(), str.length());
+        m_pProcess->stdInFpFlush();
+        m_pProcess->close();
+    }
 }

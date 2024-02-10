@@ -1,3 +1,6 @@
 [submodule "clRNG"]
 	path = clRNG
 	url = https://github.com/clMathLibraries/clRNG.git
+[submodule "MAXINE-VFX-SDK"]
+	path = MAXINE-VFX-SDK
+	url = https://github.com/NVIDIA/MAXINE-VFX-SDK.git

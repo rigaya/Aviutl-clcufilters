@@ -52,6 +52,17 @@ const char *get_encoder_version();
 #define ENCODER_MPP    0
 #define CLFILTERS_AUF  1
 
+
+#if CUFILTERS && defined(_WIN64)
+#define ENABLE_NVRTC 1
+#define ENABLE_NVVFX 1
+#else
+#define ENABLE_NVRTC 0
+#define ENABLE_NVVFX 0
+#endif
+
+#define ENABLE_VPP_SMOOTH_QP_FRAME 0
+
 #if defined(_WIN32) || defined(_WIN64)
 
 #define ENABLE_PERF_COUNTER 0
