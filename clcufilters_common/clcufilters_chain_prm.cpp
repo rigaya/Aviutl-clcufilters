@@ -26,7 +26,7 @@
 //
 // ------------------------------------------------------------------------------------------
 
-#include "clfilters_chain_prm.h"
+#include "clcufilters_chain_prm.h"
 #include "rgy_cmd.h"
 #include "rgy_util.h"
 

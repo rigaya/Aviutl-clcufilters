@@ -26,14 +26,21 @@
 //
 // ------------------------------------------------------------------------------------------
 
-#ifndef __CLFILTER_CHAIN_H__
-#define __CLFILTER_CHAIN_H__
+#ifndef __CUFILTER_CHAIN_H__
+#define __CUFILTER_CHAIN_H__
 
-#include "clcufilters_chain.h"
+#include <cstdint>
+#include <array>
+#include <memory>
+#include "rgy_prm.h"
 #include "rgy_filter.h"
+#include "convert_csp.h"
+#include "convert_csp_func.h"
+#include "clcufilters_chain_prm.h"
 
-class clFilterFrameBuffer : public clcuFilterFrameBuffer {
+class clFilterFrameBuffer {
 public:
+    static const int bufSize = 4;
     clFilterFrameBuffer(std::shared_ptr<RGYOpenCLContext> cl);
     ~clFilterFrameBuffer();
 
@@ -46,6 +53,9 @@ public:
     void out_to_next();
 private:
     std::shared_ptr<RGYOpenCLContext> m_cl;
+    std::array<std::unique_ptr<RGYCLFrame>, bufSize> m_frame;
+    int m_in;
+    int m_out;
 };
 
 class clFilterChain {
@@ -89,4 +99,4 @@ private:
 };
 
 
-#endif //__CLFILTER_CHAIN_H__
+#endif //__CUFILTER_CHAIN_H__

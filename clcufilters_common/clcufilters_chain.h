@@ -26,26 +26,36 @@
 //
 // ------------------------------------------------------------------------------------------
 
-#ifndef __CLFILTER_CHAIN_H__
-#define __CLFILTER_CHAIN_H__
+#ifndef __CLCUFILTER_CHAIN_H__
+#define __CLCUFILTER_CHAIN_H__
 
-#include "clcufilters_chain.h"
-#include "rgy_filter.h"
+#include <cstdint>
+#include <array>
+#include <memory>
+#include "rgy_prm.h"
+#include "rgy_frame.h"
+#include "convert_csp.h"
+#include "convert_csp_func.h"
+#include "clcufilters_chain_prm.h"
 
-class clFilterFrameBuffer : public clcuFilterFrameBuffer {
+template<typename TFrame>
+class clcuFilterFrameBuffer {
 public:
-    clFilterFrameBuffer(std::shared_ptr<RGYOpenCLContext> cl);
-    ~clFilterFrameBuffer();
+    static const int bufSize = 4;
+    clcuFilterFrameBuffer();
+    ~clcuFilterFrameBuffer();
 
     void freeFrames();
     void resetCachedFrames();
-    RGYCLFrame *get_in(const int width, const int height);
-    RGYCLFrame *get_out();
-    RGYCLFrame *get_out(const int frameID);
+    TFrame *get_in(const int width, const int height);
+    TFrame *get_out();
+    TFrame *get_out(const int frameID);
     void in_to_next();
     void out_to_next();
-private:
-    std::shared_ptr<RGYOpenCLContext> m_cl;
+protected:
+    std::array<std::unique_ptr<TFrame>, bufSize> m_frame;
+    int m_in;
+    int m_out;
 };
 
 class clFilterChain {
@@ -89,4 +99,4 @@ private:
 };
 
 
-#endif //__CLFILTER_CHAIN_H__
+#endif //__CLCUFILTER_CHAIN_H__

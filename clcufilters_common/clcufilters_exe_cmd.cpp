@@ -2,8 +2,8 @@
 #include "rgy_def.h"
 #include "rgy_log.h"
 #include "rgy_cmd.h"
-#include "clfilters_exe_cmd.h"
-#include "clfilters_chain_prm.h"
+#include "clcufilters_exe_cmd.h"
+#include "clcufilters_chain_prm.h"
 
 #if 0
 void print_cmd_error_unknown_opt(tstring strErrorValue) {

@@ -35,12 +35,17 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="clfilters_chain_prm.cpp" />
+    <ClCompile Include="clcufilters_chain.cpp" />
+    <ClCompile Include="clcufilters_chain_prm.cpp" />
+    <ClCompile Include="clcufilters_exe_cmd.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="clfilters_chain_prm.h" />
-    <ClInclude Include="clfilters_shared.h" />
-    <ClInclude Include="clfilters_version.h" />
+    <ClInclude Include="clcufilters_chain.h" />
+    <ClInclude Include="clcufilters_chain_prm.h" />
+    <ClInclude Include="clcufilters_exe.h" />
+    <ClInclude Include="clcufilters_exe_cmd.h" />
+    <ClInclude Include="clcufilters_shared.h" />
+    <ClInclude Include="clcufilters_version.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

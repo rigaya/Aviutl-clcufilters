@@ -28,8 +28,8 @@
 
 
 #pragma once
-#ifndef __CLFILTERS_VERSION_H__
-#define __CLFILTERS_VERSION_H__
+#ifndef __CLCUFILTERS_VERSION_H__
+#define __CLCUFILTERS_VERSION_H__
 
 #include "rgy_version.h"
 
@@ -58,4 +58,4 @@
 #define VER_PRODUCTVERSION       VER_FILEVERSION
 #define VER_STR_PRODUCTVERSION   VER_STR_FILEVERSION
 
-#endif //__CLFILTERS_VERSION_H__
+#endif //__CLCUFILTERS_VERSION_H__

@@ -498,7 +498,6 @@
   <ItemGroup>
     <ClCompile Include="clfilters_chain.cpp" />
     <ClCompile Include="clfilters_exe.cpp" />
-    <ClCompile Include="clfilters_exe_cmd.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\clcufilters_common\clcufilters_common.vcxproj">
@@ -515,11 +514,10 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="clfilters_chain.h" />
-    <ClInclude Include="clfilters_exe_cmd.h" />
+    <ResourceCompile Include="clfilters_exe.rc" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="clfilters_exe.rc" />
+    <ClInclude Include="clfilters_chain.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -496,6 +496,7 @@
     <ClCompile Include="rgy_event.cpp" />
     <ClCompile Include="rgy_filesystem.cpp" />
     <ClCompile Include="rgy_frame.cpp" />
+    <ClCompile Include="rgy_frame_info.cpp" />
     <ClCompile Include="rgy_hdr10plus.cpp" />
     <ClCompile Include="rgy_ini.cpp" />
     <ClCompile Include="rgy_language.cpp" />

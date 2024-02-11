@@ -26,13 +26,13 @@
 //
 // ------------------------------------------------------------------------------------------
 
-#ifndef _CLFILTERS_EXE_H_
-#define _CLFILTERS_EXE_H_
+#ifndef _CLCUFILTERS_SHARED_H_
+#define _CLCUFILTERS_SHARED_H_
 
 #include <cstdint>
 #include "rgy_util.h"
 #include "rgy_tchar.h"
-#include "clfilters_chain_prm.h"
+#include "clcufilters_chain_prm.h"
 
 static const char *CLFILTER_SHARED_MEM_MESSAGE  = "clfilter_shared_mem_message_%08x";
 static const char *CLFILTER_SHARED_MEM_PRMS     = "clfilter_shared_mem_prms_%08x";
@@ -108,5 +108,5 @@ static int get_shared_frame_pitch(const int width) {
     return ALIGN(width * SIZE_PIXEL_YC, 64);
 }
 
-#endif //_CLFILTERS_EXE_H_
+#endif //_CLCUFILTERS_SHARED_H_
 

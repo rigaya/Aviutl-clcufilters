@@ -26,8 +26,8 @@
 //
 // ------------------------------------------------------------------------------------------
 
-#ifndef __CLFILTERS_CHAIN_PRM_H__
-#define __CLFILTERS_CHAIN_PRM_H__
+#ifndef __CLCUFILTERS_CHAIN_PRM_H__
+#define __CLCUFILTERS_CHAIN_PRM_H__
 
 #include <vector>
 #include <cstdint>
@@ -131,4 +131,4 @@ struct clFilterChainParam {
     void setPrmFromCmd(const tstring& cmd);
 };
 
-#endif
+#endif //__CLCUFILTERS_CHAIN_PRM_H__
