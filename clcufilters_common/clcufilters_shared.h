@@ -26,8 +26,8 @@
 //
 // ------------------------------------------------------------------------------------------
 
-#ifndef _CLCUFILTERS_SHARED_H_
-#define _CLCUFILTERS_SHARED_H_
+#ifndef __CLCUFILTERS_SHARED_H__
+#define __CLCUFILTERS_SHARED_H__
 
 #include <cstdint>
 #include "rgy_util.h"
@@ -108,5 +108,5 @@ static int get_shared_frame_pitch(const int width) {
     return ALIGN(width * SIZE_PIXEL_YC, 64);
 }
 
-#endif //_CLCUFILTERS_SHARED_H_
+#endif //__CLCUFILTERS_SHARED_H__
 

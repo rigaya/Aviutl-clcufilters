@@ -1,3 +1,5 @@
+﻿// -----------------------------------------------------------------------------------------
+// clfilters by rigaya
 // -----------------------------------------------------------------------------------------
 //
 // The MIT License
@@ -24,11 +26,20 @@
 //
 // ------------------------------------------------------------------------------------------
 
-#ifndef __CLCUFILTERS_EXE_CMD_H__
-#define __CLCUFILTERS_EXE_CMD_H__
+#ifndef __CUFILTERS_EXE_H__
+#define __CUFILTERS_EXE_H__
 
-#include "clcufilters_chain_prm.h"
+#include "clcufilters_exe.h"
 
-int parse_cmd(AviutlAufExeParams& prms, const bool ignore_parse_err, const int nArgNum, const TCHAR** strInput);
+class cuFiltersExe : public clcuFiltersExe {
+public:
+    cuFiltersExe();
+    virtual ~cuFiltersExe();
+    virtual std::string checkDevices() override;
+    virtual bool isCUDA() const override { return true; }
+protected:
+    std::string checkCUDADevices();
+    virtual RGY_ERR initDevice(const clfitersSharedPrms *sharedPrms, clFilterChainParam& prm) override;
+};
 
-#endif //__CLCUFILTERS_EXE_CMD_H__
+#endif // !__CUFILTERS_EXE_H__

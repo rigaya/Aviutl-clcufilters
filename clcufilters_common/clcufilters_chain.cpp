@@ -30,35 +30,22 @@
 #include "clcufilters_chain.h"
 #include "clcufilters_chain_prm.h"
 #include "rgy_cmd.h"
-#include "rgy_filter_colorspace.h"
-#include "rgy_filter_nnedi.h"
-#include "rgy_filter_denoise_knn.h"
-#include "rgy_filter_denoise_pmd.h"
-#include "rgy_filter_smooth.h"
-#include "rgy_filter_unsharp.h"
-#include "rgy_filter_edgelevel.h"
-#include "rgy_filter_warpsharp.h"
-#include "rgy_filter_deband.h"
-#include "rgy_filter_tweak.h"
 
-static const TCHAR *LOG_FILE_NAME = "clfilters.auf.log";
-
-clFilterFrameBuffer::clFilterFrameBuffer(std::shared_ptr<RGYOpenCLContext> cl) :
-    m_cl(cl),
+clcuFilterFrameBuffer::clcuFilterFrameBuffer() :
     m_frame(),
     m_in(0),
     m_out(0) {
 
 }
 
-clFilterFrameBuffer::~clFilterFrameBuffer() {
+clcuFilterFrameBuffer::~clcuFilterFrameBuffer() {
     freeFrames();
 }
 
-void clFilterFrameBuffer::freeFrames() {
+void clcuFilterFrameBuffer::freeFrames() {
     for (auto& f : m_frame) {
         if (f) {
-            f->resetMappedFrame();
+            resetMappedFrame(f.get());
         }
         f.reset();
     }
@@ -66,73 +53,54 @@ void clFilterFrameBuffer::freeFrames() {
     m_out = 0;
 }
 
-void clFilterFrameBuffer::resetCachedFrames() {
+void clcuFilterFrameBuffer::resetCachedFrames() {
     for (auto& f : m_frame) {
         if (f) {
-            f->resetMappedFrame();
+            resetMappedFrame(f.get());
         }
     }
     m_in = 0;
     m_out = 0;
 };
 
-RGYCLFrame *clFilterFrameBuffer::get_in(const int width, const int height) {
-    if (!m_frame[m_in] || m_frame[m_in]->frame.width != width || m_frame[m_in]->frame.height != height) {
-        m_frame[m_in] = m_cl->createFrameBuffer(width, height, RGY_CSP_YUV444_16, 16, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR);
+RGYFrame *clcuFilterFrameBuffer::get_in(const int width, const int height) {
+    if (!m_frame[m_in] || m_frame[m_in]->width() != width || m_frame[m_in]->height() != height) {
+        m_frame[m_in] = allocateFrame(width, height);
     }
     return m_frame[m_in].get();
 }
-RGYCLFrame *clFilterFrameBuffer::get_out() {
+RGYFrame *clcuFilterFrameBuffer::get_out() {
     return m_frame[m_out].get();
 }
-RGYCLFrame *clFilterFrameBuffer::get_out(const int frameID) {
+RGYFrame *clcuFilterFrameBuffer::get_out(const int frameID) {
     for (auto& f : m_frame) {
-        if (f && f->frame.inputFrameId == frameID) {
+        if (f && f->inputFrameId() == frameID) {
             return f.get();
         }
     }
     return nullptr;
 }
-void clFilterFrameBuffer::in_to_next() { m_in = (m_in + 1) % m_frame.size(); }
-void clFilterFrameBuffer::out_to_next() { m_out = (m_out + 1) % m_frame.size(); }
+void clcuFilterFrameBuffer::in_to_next() { m_in = (m_in + 1) % m_frame.size(); }
+void clcuFilterFrameBuffer::out_to_next() { m_out = (m_out + 1) % m_frame.size(); }
 
 
-clFilterChain::clFilterChain() :
+clcuFilterChain::clcuFilterChain() :
     m_log(),
     m_prm(),
-    m_cl(),
-    m_platformID(-1),
-    m_deviceID(-1),
     m_deviceName(),
     m_frameIn(),
     m_frameOut(),
-    m_queueSendIn(),
     m_filters(),
     m_convert_yc48_to_yuv444_16(),
     m_convert_yuv444_16_to_yc48() {
 
 }
 
-clFilterChain::~clFilterChain() {
+clcuFilterChain::~clcuFilterChain() {
     close();
 }
 
-void clFilterChain::close() {
-    m_filters.clear();
-    m_frameIn.reset();
-    m_queueSendIn.finish(); // m_frameIn.reset() のあと
-    m_queueSendIn.clear();  // m_frameIn.reset() のあと
-    m_frameOut.reset();
-    m_cl.reset();
-    m_deviceName.clear();
-    m_convert_yc48_to_yuv444_16.reset();
-    m_convert_yuv444_16_to_yc48.reset();
-    m_log.reset();
-    m_platformID = -1;
-    m_deviceID = -1;
-}
-
-void clFilterChain::PrintMes(const RGYLogLevel logLevel, const TCHAR *format, ...) {
+void clcuFilterChain::PrintMes(const RGYLogLevel logLevel, const TCHAR *format, ...) {
     va_list args;
     va_start(args, format);
 
@@ -142,23 +110,14 @@ void clFilterChain::PrintMes(const RGYLogLevel logLevel, const TCHAR *format, ..
     va_end(args);
 
     m_log->write_log(logLevel, RGY_LOGT_APP, buffer.data());
-
-    if (logLevel < RGY_LOG_ERROR) {
-        return;
-    }
-
-    MessageBoxA(NULL, buffer.data(), AUF_FULL_NAME, MB_OK | MB_ICONEXCLAMATION);
 }
 
-RGY_ERR clFilterChain::init(const int platformID, const int deviceID, const cl_device_type device_type, const RGYLogLevel log_level, const bool log_to_file) {
+RGY_ERR clcuFilterChain::init(const clcuFilterDeviceParam *param, const RGYLogLevel log_level, const bool log_to_file) {
     m_log = std::make_shared<RGYLog>(log_to_file ? LOG_FILE_NAME : nullptr, log_level);
 
-    if (auto err = initOpenCL(platformID, deviceID, device_type); err != RGY_ERR_NONE) {
+    if (auto err = initDevice(param); err != RGY_ERR_NONE) {
         return err;
     }
-
-    m_frameIn = std::make_unique<clFilterFrameBuffer>(m_cl);
-    m_frameOut = std::make_unique<clFilterFrameBuffer>(m_cl);
 
     m_convert_yc48_to_yuv444_16 = std::make_unique<RGYConvertCSP>();
     if (m_convert_yc48_to_yuv444_16->getFunc(RGY_CSP_YC48, RGY_CSP_YUV444_16, false, RGY_SIMD::SIMD_ALL) == nullptr) {
@@ -179,272 +138,7 @@ RGY_ERR clFilterChain::init(const int platformID, const int deviceID, const cl_d
     return RGY_ERR_NONE;
 }
 
-RGY_ERR clFilterChain::initOpenCL(const int platformID, const int deviceID, const cl_device_type device_type) {
-    PrintMes(RGY_LOG_INFO, _T("start init OpenCL platform %d, device %d\n"), platformID, deviceID);
-
-    RGYOpenCL cl(m_log);
-    auto platforms = cl.getPlatforms(nullptr);
-    if (platforms.size() == 0) {
-        PrintMes(RGY_LOG_ERROR, _T("No OpenCL Platform found on this system.\n"));
-        return RGY_ERR_DEVICE_NOT_FOUND;
-    }
-
-    if (platformID >= 0 && platformID >= (int)platforms.size()) {
-        PrintMes(RGY_LOG_ERROR, _T("platform %d does not exist (platform count = %d)\n"), platformID, (int)platforms.size());
-        return RGY_ERR_DEVICE_NOT_FOUND;
-    }
-    PrintMes(RGY_LOG_INFO, _T("OpenCL platform count %d\n"), (int)platforms.size());
-
-    auto& platform = platforms[std::max(platformID, 0)];
-
-    auto err = err_cl_to_rgy(platform->createDeviceList(device_type));
-    if (err != RGY_ERR_NONE) {
-        PrintMes(RGY_LOG_ERROR, _T("Failed to create device list: %s\n"), get_err_mes(err));
-        return RGY_ERR_DEVICE_NOT_FOUND;
-    }
-    PrintMes(RGY_LOG_INFO, _T("created device list: %d device(s).\n"), platform->devs().size());
-
-    if (deviceID >= 0 && deviceID >= (int)platform->devs().size()) {
-        PrintMes(RGY_LOG_ERROR, _T("Invalid device Id %d (device count %d)\n"), deviceID, (int)platform->devs().size());
-        return RGY_ERR_INVALID_DEVICE;
-    }
-
-    platform->setDev(platform->devs()[std::max(deviceID, 0)]);
-    m_cl = std::make_shared<RGYOpenCLContext>(platform, m_log);
-    if (m_cl->createContext(0) != RGY_ERR_NONE) {
-        PrintMes(RGY_LOG_ERROR, _T("Failed to create OpenCL context.\n"));
-        return RGY_ERR_UNKNOWN;
-    }
-
-    const auto devInfo = platform->dev(0).info();
-    m_deviceName = (devInfo.board_name_amd.length() > 0) ? devInfo.board_name_amd : devInfo.name;
-    m_platformID = platformID;
-    m_deviceID = deviceID;
-    m_queueSendIn = m_cl->createQueue(platform->dev(0).id(), 0 /*CL_QUEUE_PROFILING_ENABLE*/);
-
-    PrintMes(RGY_LOG_INFO, _T("created OpenCL context, selcted device %s.\n"), m_deviceName.c_str());
-    return RGY_ERR_NONE;
-}
-
-RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RGYFrameInfo& inputFrame, const VppType filterType, const int resizeWidth, const int resizeHeight) {
-    // colorspace
-    if (filterType == VppType::CL_COLORSPACE) {
-        if (!filter) {
-            //フィルタチェーンに追加
-            filter.reset(new RGYFilterColorspace(m_cl));
-        }
-        std::shared_ptr<RGYFilterParamColorspace> param(new RGYFilterParamColorspace());
-        param->colorspace = m_prm.vpp.colorspace;
-        param->frameIn = inputFrame;
-        param->frameOut = inputFrame;
-        param->bOutOverwrite = false;
-        auto sts = filter->init(param, m_log);
-        if (sts != RGY_ERR_NONE) {
-            PrintMes(RGY_LOG_ERROR, _T("failed to init colorspace.\n"));
-            return sts;
-        }
-        //入力フレーム情報を更新
-        inputFrame = param->frameOut;
-    }
-    // nnedi
-    if (filterType == VppType::CL_NNEDI) {
-        if (!filter) {
-            //フィルタチェーンに追加
-            filter.reset(new RGYFilterNnedi(m_cl));
-        }
-        std::shared_ptr<RGYFilterParamNnedi> param(new RGYFilterParamNnedi());
-        param->nnedi = m_prm.vpp.nnedi;
-        param->hModule = m_prm.hModule;
-        param->frameIn = inputFrame;
-        param->frameOut = inputFrame;
-        param->timebase = rgy_rational<int>(); // bobで使用するが、clfiltersではbobはサポートしない
-        param->bOutOverwrite = false;
-        auto sts = filter->init(param, m_log);
-        if (sts != RGY_ERR_NONE) {
-            PrintMes(RGY_LOG_ERROR, _T("failed to init nnedi.\n"));
-            return sts;
-        }
-        //入力フレーム情報を更新
-        inputFrame = param->frameOut;
-    }
-    //ノイズ除去 (knn)
-    if (filterType == VppType::CL_DENOISE_KNN) {
-        if (!filter) {
-            //フィルタチェーンに追加
-            filter.reset(new RGYFilterDenoiseKnn(m_cl));
-        }
-        std::shared_ptr<RGYFilterParamDenoiseKnn> param(new RGYFilterParamDenoiseKnn());
-        param->knn = m_prm.vpp.knn;
-        param->frameIn = inputFrame;
-        param->frameOut = inputFrame;
-        param->bOutOverwrite = false;
-        auto sts = filter->init(param, m_log);
-        if (sts != RGY_ERR_NONE) {
-            PrintMes(RGY_LOG_ERROR, _T("failed to init knn.\n"));
-            return sts;
-        }
-        //入力フレーム情報を更新
-        inputFrame = param->frameOut;
-    }
-    //ノイズ除去 (pmd)
-    if (filterType == VppType::CL_DENOISE_PMD) {
-        if (!filter) {
-            //フィルタチェーンに追加
-            filter.reset(new RGYFilterDenoisePmd(m_cl));
-        }
-        std::shared_ptr<RGYFilterParamDenoisePmd> param(new RGYFilterParamDenoisePmd());
-        param->pmd = m_prm.vpp.pmd;
-        param->frameIn = inputFrame;
-        param->frameOut = inputFrame;
-        param->bOutOverwrite = false;
-        auto sts = filter->init(param, m_log);
-        if (sts != RGY_ERR_NONE) {
-            PrintMes(RGY_LOG_ERROR, _T("failed to init pmd.\n"));
-            return sts;
-        }
-        //入力フレーム情報を更新
-        inputFrame = param->frameOut;
-    }
-    //ノイズ除去 (smooth)
-    if (filterType == VppType::CL_DENOISE_SMOOTH) {
-        if (!filter) {
-            //フィルタチェーンに追加
-            filter.reset(new RGYFilterSmooth(m_cl));
-        }
-        std::shared_ptr<RGYFilterParamSmooth> param(new RGYFilterParamSmooth());
-        param->smooth = m_prm.vpp.smooth;
-        param->frameIn = inputFrame;
-        param->frameOut = inputFrame;
-        param->bOutOverwrite = false;
-        auto sts = filter->init(param, m_log);
-        if (sts != RGY_ERR_NONE) {
-            PrintMes(RGY_LOG_ERROR, _T("failed to init smooth.\n"));
-            return sts;
-        }
-        //入力フレーム情報を更新
-        inputFrame = param->frameOut;
-    }
-
-    //リサイズ
-    if (filterType == VppType::CL_RESIZE) {
-        if (!filter) {
-            //フィルタチェーンに追加
-            filter.reset(new RGYFilterResize(m_cl));
-        }
-        std::shared_ptr<RGYFilterParamResize> param(new RGYFilterParamResize());
-        param->interp = m_prm.vpp.resize_algo;
-        param->frameIn = inputFrame;
-        param->frameOut = inputFrame;
-        param->frameOut.width = resizeWidth;
-        param->frameOut.height = resizeHeight;
-        param->bOutOverwrite = false;
-        auto sts = filter->init(param, m_log);
-        if (sts != RGY_ERR_NONE) {
-            PrintMes(RGY_LOG_ERROR, _T("failed to init resize.\n"));
-            return sts;
-        }
-        //入力フレーム情報を更新
-        inputFrame = param->frameOut;
-    }
-    //unsharp
-    if (filterType == VppType::CL_UNSHARP) {
-        if (!filter) {
-            //フィルタチェーンに追加
-            filter.reset(new RGYFilterUnsharp(m_cl));
-        }
-        std::shared_ptr<RGYFilterParamUnsharp> param(new RGYFilterParamUnsharp());
-        param->unsharp = m_prm.vpp.unsharp;
-        param->frameIn = inputFrame;
-        param->frameOut = inputFrame;
-        param->bOutOverwrite = false;
-        auto sts = filter->init(param, m_log);
-        if (sts != RGY_ERR_NONE) {
-            PrintMes(RGY_LOG_ERROR, _T("failed to init unsharp.\n"));
-            return sts;
-        }
-        //入力フレーム情報を更新
-        inputFrame = param->frameOut;
-    }
-    //edgelevel
-    if (filterType == VppType::CL_EDGELEVEL) {
-        if (!filter) {
-            //フィルタチェーンに追加
-            filter.reset(new RGYFilterEdgelevel(m_cl));
-        }
-        std::shared_ptr<RGYFilterParamEdgelevel> param(new RGYFilterParamEdgelevel());
-        param->edgelevel = m_prm.vpp.edgelevel;
-        param->frameIn = inputFrame;
-        param->frameOut = inputFrame;
-        param->bOutOverwrite = false;
-        auto sts = filter->init(param, m_log);
-        if (sts != RGY_ERR_NONE) {
-            PrintMes(RGY_LOG_ERROR, _T("failed to init edgelevel.\n"));
-            return sts;
-        }
-        //入力フレーム情報を更新
-        inputFrame = param->frameOut;
-    }
-    //warpsharp
-    if (filterType == VppType::CL_WARPSHARP) {
-        if (!filter) {
-            //フィルタチェーンに追加
-            filter.reset(new RGYFilterWarpsharp(m_cl));
-        }
-        std::shared_ptr<RGYFilterParamWarpsharp> param(new RGYFilterParamWarpsharp());
-        param->warpsharp = m_prm.vpp.warpsharp;
-        param->frameIn = inputFrame;
-        param->frameOut = inputFrame;
-        param->bOutOverwrite = false;
-        auto sts = filter->init(param, m_log);
-        if (sts != RGY_ERR_NONE) {
-            PrintMes(RGY_LOG_ERROR, _T("failed to init warpsharp.\n"));
-            return sts;
-        }
-        //入力フレーム情報を更新
-        inputFrame = param->frameOut;
-    }
-    //tweak
-    if (filterType == VppType::CL_TWEAK) {
-        if (!filter) {
-            //フィルタチェーンに追加
-            filter.reset(new RGYFilterTweak(m_cl));
-        }
-        std::shared_ptr<RGYFilterParamTweak> param(new RGYFilterParamTweak());
-        param->tweak = m_prm.vpp.tweak;
-        param->frameIn = inputFrame;
-        param->frameOut = inputFrame;
-        param->bOutOverwrite = true;
-        auto sts = filter->init(param, m_log);
-        if (sts != RGY_ERR_NONE) {
-            PrintMes(RGY_LOG_ERROR, _T("failed to init tweak.\n"));
-            return sts;
-        }
-        //入力フレーム情報を更新
-        inputFrame = param->frameOut;
-    }
-    //deband
-    if (filterType == VppType::CL_DEBAND) {
-        if (!filter) {
-            //フィルタチェーンに追加
-            filter.reset(new RGYFilterDeband(m_cl));
-        }
-        std::shared_ptr<RGYFilterParamDeband> param(new RGYFilterParamDeband());
-        param->deband = m_prm.vpp.deband;
-        param->frameIn = inputFrame;
-        param->frameOut = inputFrame;
-        param->bOutOverwrite = false;
-        auto sts = filter->init(param, m_log);
-        if (sts != RGY_ERR_NONE) {
-            PrintMes(RGY_LOG_ERROR, _T("failed to init deband.\n"));
-            return sts;
-        }
-        //入力フレーム情報を更新
-        inputFrame = param->frameOut;
-    }
-    return RGY_ERR_NONE;
-}
-
-tstring clFilterChain::printFilterChain(const std::vector<VppType>& filterChain) const {
+tstring clcuFilterChain::printFilterChain(const std::vector<VppType>& filterChain) const {
     tstring str;
     for (auto& filter : filterChain) {
         if (str.length() > 0) str += _T(", ");
@@ -453,7 +147,7 @@ tstring clFilterChain::printFilterChain(const std::vector<VppType>& filterChain)
     return str;
 }
 
-bool clFilterChain::filterChainEqual(const std::vector<VppType>& target) const {
+bool clcuFilterChain::filterChainEqual(const std::vector<VppType>& target) const {
     if (m_filters.size() != target.size()) {
         return false;
     }
@@ -465,7 +159,7 @@ bool clFilterChain::filterChainEqual(const std::vector<VppType>& target) const {
     return true;
 }
 
-RGY_ERR clFilterChain::filterChainCreate(const RGYFrameInfo *pInputFrame, const int outWidth, const int outHeight) {
+RGY_ERR clcuFilterChain::filterChainCreate(const RGYFrameInfo *pInputFrame, const int outWidth, const int outHeight) {
     RGYFrameInfo inputFrame = *pInputFrame;
     for (size_t i = 0; i < _countof(inputFrame.ptr); i++) {
         inputFrame.ptr[i] = nullptr;
@@ -479,7 +173,7 @@ RGY_ERR clFilterChain::filterChainCreate(const RGYFrameInfo *pInputFrame, const 
         decltype(m_filters) newFilters;
         newFilters.reserve(filterChain.size());
         for (const auto filterType : filterChain) {
-            auto filter = std::make_pair(filterType, std::unique_ptr<RGYFilter>());
+            auto filter = std::make_pair(filterType, std::unique_ptr<RGYFilterBase>());
             for (auto& oldFilter : m_filters) {
                 if (oldFilter.first == filterType && oldFilter.second) {
                     filter.second = std::move(oldFilter.second);
@@ -500,158 +194,15 @@ RGY_ERR clFilterChain::filterChainCreate(const RGYFrameInfo *pInputFrame, const 
     return RGY_ERR_NONE;
 }
 
-void clFilterChain::resetPipeline() {
+void clcuFilterChain::resetPipeline() {
     m_frameIn->resetCachedFrames();
     m_frameOut->resetCachedFrames();
     PrintMes(RGY_LOG_DEBUG, _T("clFilterChain reset pipeline.\n"));
 }
 
-static void copyFramePropWithoutCsp(RGYFrameInfo *dst, const RGYFrameInfo *src) {
-    dst->width = src->width;
-    dst->height = src->height;
-    dst->picstruct = src->picstruct;
-    dst->timestamp = src->timestamp;
-    dst->duration = src->duration;
-    dst->flags = src->flags;
-    dst->inputFrameId = src->inputFrameId;
-}
-
-RGY_ERR clFilterChain::sendInFrame(const RGYFrameInfo *pInputFrame) {
-    if (!m_cl) {
-        return RGY_ERR_NULL_PTR;
-    }
-    auto frameDevIn = m_frameIn->get_in(pInputFrame->width, pInputFrame->height);
-    m_frameIn->in_to_next();
-
-    auto err = frameDevIn->queueMapBuffer(m_queueSendIn, CL_MAP_WRITE /*CL_​MAP_​WRITE_​INVALIDATE_​REGION*/);
-    if (err != RGY_ERR_NONE) {
-        PrintMes(RGY_LOG_ERROR, _T("failed to queue map input buffer: %s.\n"), get_err_mes(err));
-        return err;
-    }
-    frameDevIn->mapWait();
-    copyFramePropWithoutCsp(&frameDevIn->frame, pInputFrame);
-
-    {
-        auto frameHostIn = frameDevIn->mappedHost();
-
-        //YC48->YUV444(16bit)
-        int crop[4] = { 0 };
-        m_convert_yc48_to_yuv444_16->run(false,
-            frameHostIn->ptr().data(), (const void **)&pInputFrame->ptr[0],
-            pInputFrame->width, pInputFrame->pitch[0], pInputFrame->pitch[0],
-            frameHostIn->pitch(0), pInputFrame->height, frameHostIn->height(), crop);
-    }
-
-    if ((err = frameDevIn->unmapBuffer()) != RGY_ERR_NONE) {
-        PrintMes(RGY_LOG_ERROR, _T("failed to unmap input buffer: %s.\n"), get_err_mes(err));
-        return err;
-    }
-    return RGY_ERR_NONE;
-}
-
-int clFilterChain::getNextOutFrameId() const {
+int clcuFilterChain::getNextOutFrameId() const {
     if (!m_frameOut) return -1;
 
     auto frameDevOut = m_frameOut->get_out();
-    return (frameDevOut) ? frameDevOut->frame.inputFrameId : -1;
-}
-
-RGY_ERR clFilterChain::getOutFrame(RGYFrameInfo *pOutputFrame) {
-    if (!m_cl) {
-        return RGY_ERR_NULL_PTR;
-    }
-    auto frameDevOut = m_frameOut->get_out(pOutputFrame->inputFrameId);
-    m_frameOut->out_to_next();
-
-    if (!frameDevOut) {
-        return RGY_ERR_OUT_OF_RANGE;
-    }
-    frameDevOut->mapWait();
-    copyFramePropWithoutCsp(pOutputFrame, &frameDevOut->frame);
-    {
-        auto frameHostOut = frameDevOut->mappedHost();
-        //YUV444(16bit)->YC48
-        int crop[4] = { 0 };
-        m_convert_yuv444_16_to_yc48->run(false,
-            (void **)&pOutputFrame->ptr[0], (const void **)frameHostOut->ptr().data(),
-            frameHostOut->width(), frameHostOut->pitch(0), frameHostOut->pitch(0),
-            pOutputFrame->pitch[0], frameHostOut->height(), pOutputFrame->height, crop);
-    }
-    auto err = frameDevOut->unmapBuffer();
-    if (err != RGY_ERR_NONE) {
-        PrintMes(RGY_LOG_ERROR, _T("failed to unmap output buffer: %s.\n"), get_err_mes(err));
-        return err;
-    }
-    frameDevOut->resetMappedFrame();
-    return RGY_ERR_NONE;
-}
-
-RGY_ERR clFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
-    if (!m_cl) {
-        return RGY_ERR_NULL_PTR;
-    }
-    auto frameDevIn = m_frameIn->get_out(frameID);
-    m_frameIn->out_to_next();
-
-    if (!frameDevIn) {
-        return RGY_ERR_OUT_OF_RANGE;
-    }
-    m_cl->setModuleHandle(prm.hModule);
-    m_log->setLogLevelAll(prm.log_level);
-    m_log->setLogFile(prm.log_to_file ? LOG_FILE_NAME : nullptr);
-    m_prm = prm;
-
-    auto frameDevOut = m_frameOut->get_in(prm.outWidth, prm.outHeight);
-    m_frameOut->in_to_next();
-
-    //フィルタチェーン更新
-    auto err = filterChainCreate(&frameDevIn->frame, prm.outWidth, prm.outHeight);
-    if (err != RGY_ERR_NONE) {
-        PrintMes(RGY_LOG_ERROR, _T("failed to update filter chain.\n"));
-        return err;
-    }
-
-    frameDevIn->mapWait();
-
-    //通常は、最後のひとつ前のフィルタまで実行する
-    //上書き型のフィルタが最後の場合は、そのフィルタまで実行する(最後はコピーが必須)
-    const auto filterfin = (m_filters.back().second->GetFilterParam()->bOutOverwrite) ? m_filters.size() : m_filters.size() - 1;
-    //フィルタチェーン実行
-    auto frameInfo = frameDevIn->frame;
-    for (size_t ifilter = 0; ifilter < filterfin; ifilter++) {
-        int nOutFrames = 0;
-        RGYFrameInfo *outInfo[16] = { 0 };
-        err = m_filters[ifilter].second->filter(&frameInfo, (RGYFrameInfo **)&outInfo, &nOutFrames);
-        if (err != RGY_ERR_NONE) {
-            PrintMes(RGY_LOG_ERROR, _T("Error while running filter \"%s\": %s.\n"), m_filters[ifilter].second->name().c_str(), get_err_mes(err));
-            return err;
-        }
-        if (nOutFrames > 1) {
-            PrintMes(RGY_LOG_ERROR, _T("Currently only simple filters are supported.\n"));
-            return RGY_ERR_UNSUPPORTED;
-        }
-        frameInfo = *(outInfo[0]);
-    }
-    //最後のフィルタ
-    if (m_filters.back().second->GetFilterParam()->bOutOverwrite) {
-        if ((err = m_cl->copyFrame(&frameDevOut->frame, &frameInfo)) != RGY_ERR_NONE) {
-            PrintMes(RGY_LOG_ERROR, _T("Error in frame copy: %s.\n"), get_err_mes(err));
-            return err;
-        }
-    } else {
-        auto& lastFilter = m_filters[m_filters.size() - 1];
-        int nOutFrames = 0;
-        RGYFrameInfo *outInfo[16] = { 0 };
-        outInfo[0] = &frameDevOut->frame;
-        err = lastFilter.second->filter(&frameInfo, (RGYFrameInfo **)&outInfo, &nOutFrames);
-        if (err != RGY_ERR_NONE) {
-            PrintMes(RGY_LOG_ERROR, _T("Error while running filter \"%s\": %s.\n"), lastFilter.second->name().c_str(), get_err_mes(err));
-            return err;
-        }
-    }
-    if ((err = frameDevOut->queueMapBuffer(m_cl->queue(), CL_MAP_READ)) != RGY_ERR_NONE) {
-        PrintMes(RGY_LOG_ERROR, _T("failed to queue map input buffer: %s.\n"), get_err_mes(err));
-        return err;
-    }
-    return RGY_ERR_NONE;
+    return (frameDevOut) ? frameDevOut->inputFrameId() : -1;
 }

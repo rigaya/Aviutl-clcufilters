@@ -4,7 +4,7 @@
 //
 // The MIT License
 //
-// Copyright (c) 2022 rigaya
+// Copyright (c) 2022-2024 rigaya
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@
 // ------------------------------------------------------------------------------------------
 
 #include "clcufilters_version.h"
-#include "clcufilters_chain.h"
+#include "clfilters_chain.h"
 #include "clcufilters_chain_prm.h"
 #include "rgy_cmd.h"
 #include "rgy_filter_colorspace.h"
@@ -41,13 +41,9 @@
 #include "rgy_filter_deband.h"
 #include "rgy_filter_tweak.h"
 
-static const TCHAR *LOG_FILE_NAME = "clfilters.auf.log";
-
 clFilterFrameBuffer::clFilterFrameBuffer(std::shared_ptr<RGYOpenCLContext> cl) :
-    m_cl(cl),
-    m_frame(),
-    m_in(0),
-    m_out(0) {
+    clcuFilterFrameBuffer(),
+    m_cl(cl) {
 
 }
 
@@ -55,61 +51,21 @@ clFilterFrameBuffer::~clFilterFrameBuffer() {
     freeFrames();
 }
 
-void clFilterFrameBuffer::freeFrames() {
-    for (auto& f : m_frame) {
-        if (f) {
-            f->resetMappedFrame();
-        }
-        f.reset();
-    }
-    m_in = 0;
-    m_out = 0;
+std::unique_ptr<RGYFrame> clFilterFrameBuffer::allocateFrame(const int width, const int height) {
+    return m_cl->createFrameBuffer(width, height, RGY_CSP_YUV444_16, 16, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR);
 }
 
-void clFilterFrameBuffer::resetCachedFrames() {
-    for (auto& f : m_frame) {
-        if (f) {
-            f->resetMappedFrame();
-        }
+void clFilterFrameBuffer::resetMappedFrame(RGYFrame *frame) {
+    if (auto clFrame = dynamic_cast<RGYCLFrame *>(frame); clFrame) {
+        clFrame->resetMappedFrame();
     }
-    m_in = 0;
-    m_out = 0;
-};
-
-RGYCLFrame *clFilterFrameBuffer::get_in(const int width, const int height) {
-    if (!m_frame[m_in] || m_frame[m_in]->frame.width != width || m_frame[m_in]->frame.height != height) {
-        m_frame[m_in] = m_cl->createFrameBuffer(width, height, RGY_CSP_YUV444_16, 16, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR);
-    }
-    return m_frame[m_in].get();
 }
-RGYCLFrame *clFilterFrameBuffer::get_out() {
-    return m_frame[m_out].get();
-}
-RGYCLFrame *clFilterFrameBuffer::get_out(const int frameID) {
-    for (auto& f : m_frame) {
-        if (f && f->frame.inputFrameId == frameID) {
-            return f.get();
-        }
-    }
-    return nullptr;
-}
-void clFilterFrameBuffer::in_to_next() { m_in = (m_in + 1) % m_frame.size(); }
-void clFilterFrameBuffer::out_to_next() { m_out = (m_out + 1) % m_frame.size(); }
-
 
 clFilterChain::clFilterChain() :
-    m_log(),
-    m_prm(),
+    clcuFilterChain(),
     m_cl(),
     m_platformID(-1),
-    m_deviceID(-1),
-    m_deviceName(),
-    m_frameIn(),
-    m_frameOut(),
-    m_queueSendIn(),
-    m_filters(),
-    m_convert_yc48_to_yuv444_16(),
-    m_convert_yuv444_16_to_yc48() {
+    m_queueSendIn() {
 
 }
 
@@ -132,54 +88,11 @@ void clFilterChain::close() {
     m_deviceID = -1;
 }
 
-void clFilterChain::PrintMes(const RGYLogLevel logLevel, const TCHAR *format, ...) {
-    va_list args;
-    va_start(args, format);
-
-    int len = _vsctprintf(format, args) + 1; // _vscprintf doesn't count terminating '\0'
-    vector<TCHAR> buffer(len, 0);
-    _vstprintf_s(buffer.data(), len, format, args);
-    va_end(args);
-
-    m_log->write_log(logLevel, RGY_LOGT_APP, buffer.data());
-
-    if (logLevel < RGY_LOG_ERROR) {
-        return;
-    }
-
-    MessageBoxA(NULL, buffer.data(), AUF_FULL_NAME, MB_OK | MB_ICONEXCLAMATION);
-}
-
-RGY_ERR clFilterChain::init(const int platformID, const int deviceID, const cl_device_type device_type, const RGYLogLevel log_level, const bool log_to_file) {
-    m_log = std::make_shared<RGYLog>(log_to_file ? LOG_FILE_NAME : nullptr, log_level);
-
-    if (auto err = initOpenCL(platformID, deviceID, device_type); err != RGY_ERR_NONE) {
-        return err;
-    }
-
-    m_frameIn = std::make_unique<clFilterFrameBuffer>(m_cl);
-    m_frameOut = std::make_unique<clFilterFrameBuffer>(m_cl);
-
-    m_convert_yc48_to_yuv444_16 = std::make_unique<RGYConvertCSP>();
-    if (m_convert_yc48_to_yuv444_16->getFunc(RGY_CSP_YC48, RGY_CSP_YUV444_16, false, RGY_SIMD::SIMD_ALL) == nullptr) {
-        PrintMes(RGY_LOG_ERROR, _T("color conversion not supported: %s -> %s.\n"),
-                 RGY_CSP_NAMES[RGY_CSP_YC48], RGY_CSP_NAMES[RGY_CSP_YUV444_16]);
-        return RGY_ERR_INVALID_COLOR_FORMAT;
-    }
-    PrintMes(RGY_LOG_INFO, _T("color conversion %s -> %s [%s].\n"),
-        RGY_CSP_NAMES[RGY_CSP_YC48], RGY_CSP_NAMES[RGY_CSP_YUV444_16], get_simd_str(m_convert_yc48_to_yuv444_16->getFunc()->simd));
-
-    m_convert_yuv444_16_to_yc48 = std::make_unique<RGYConvertCSP>();
-    if (m_convert_yuv444_16_to_yc48->getFunc(RGY_CSP_YUV444_16, RGY_CSP_YC48, false, RGY_SIMD::SIMD_ALL) == nullptr) {
-        PrintMes(RGY_LOG_ERROR, _T("unsupported color format conversion, %s -> %s\n"), RGY_CSP_NAMES[RGY_CSP_YUV444_16], RGY_CSP_NAMES[RGY_CSP_YC48]);
-        return RGY_ERR_INVALID_COLOR_FORMAT;
-    }
-    PrintMes(RGY_LOG_INFO, _T("color conversion %s -> %s [%s].\n"),
-        RGY_CSP_NAMES[RGY_CSP_YUV444_16], RGY_CSP_NAMES[RGY_CSP_YC48], get_simd_str(m_convert_yuv444_16_to_yc48->getFunc()->simd));
-    return RGY_ERR_NONE;
-}
-
-RGY_ERR clFilterChain::initOpenCL(const int platformID, const int deviceID, const cl_device_type device_type) {
+RGY_ERR clFilterChain::initDevice(const clcuFilterDeviceParam *param) {
+    auto prm = dynamic_cast<const clFilterDeviceParam *>(param);
+    const int platformID = prm->platformID;
+    const int deviceID = prm->deviceID;
+    const cl_device_type device_type = prm->deviceType;
     PrintMes(RGY_LOG_INFO, _T("start init OpenCL platform %d, device %d\n"), platformID, deviceID);
 
     RGYOpenCL cl(m_log);
@@ -222,11 +135,14 @@ RGY_ERR clFilterChain::initOpenCL(const int platformID, const int deviceID, cons
     m_deviceID = deviceID;
     m_queueSendIn = m_cl->createQueue(platform->dev(0).id(), 0 /*CL_QUEUE_PROFILING_ENABLE*/);
 
+    m_frameIn = std::make_unique<clFilterFrameBuffer>(m_cl);
+    m_frameOut = std::make_unique<clFilterFrameBuffer>(m_cl);
+
     PrintMes(RGY_LOG_INFO, _T("created OpenCL context, selcted device %s.\n"), m_deviceName.c_str());
     return RGY_ERR_NONE;
 }
 
-RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RGYFrameInfo& inputFrame, const VppType filterType, const int resizeWidth, const int resizeHeight) {
+RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilterBase>& filter, RGYFrameInfo& inputFrame, const VppType filterType, const int resizeWidth, const int resizeHeight) {
     // colorspace
     if (filterType == VppType::CL_COLORSPACE) {
         if (!filter) {
@@ -254,7 +170,7 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
         }
         std::shared_ptr<RGYFilterParamNnedi> param(new RGYFilterParamNnedi());
         param->nnedi = m_prm.vpp.nnedi;
-        param->hModule = m_prm.hModule;
+        param->hModule = nullptr;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->timebase = rgy_rational<int>(); // bobで使用するが、clfiltersではbobはサポートしない
@@ -444,83 +360,14 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
     return RGY_ERR_NONE;
 }
 
-tstring clFilterChain::printFilterChain(const std::vector<VppType>& filterChain) const {
-    tstring str;
-    for (auto& filter : filterChain) {
-        if (str.length() > 0) str += _T(", ");
-        str += vppfilter_type_to_str(filter);
-    }
-    return str;
-}
-
-bool clFilterChain::filterChainEqual(const std::vector<VppType>& target) const {
-    if (m_filters.size() != target.size()) {
-        return false;
-    }
-    for (size_t ifilter = 0; ifilter < m_filters.size(); ifilter++) {
-        if (m_filters[ifilter].first != target[ifilter]) {
-            return false;
-        }
-    }
-    return true;
-}
-
-RGY_ERR clFilterChain::filterChainCreate(const RGYFrameInfo *pInputFrame, const int outWidth, const int outHeight) {
-    RGYFrameInfo inputFrame = *pInputFrame;
-    for (size_t i = 0; i < _countof(inputFrame.ptr); i++) {
-        inputFrame.ptr[i] = nullptr;
-    }
-
-    const bool resizeRequired = pInputFrame->width != outWidth || pInputFrame->height != outHeight;
-    const auto filterChain = m_prm.getFilterChain(resizeRequired);
-    if (!filterChainEqual(filterChain)) {
-        PrintMes(RGY_LOG_INFO, _T("clFilterChain changed: %s\n"), printFilterChain(filterChain).c_str());
-
-        decltype(m_filters) newFilters;
-        newFilters.reserve(filterChain.size());
-        for (const auto filterType : filterChain) {
-            auto filter = std::make_pair(filterType, std::unique_ptr<RGYFilter>());
-            for (auto& oldFilter : m_filters) {
-                if (oldFilter.first == filterType && oldFilter.second) {
-                    filter.second = std::move(oldFilter.second);
-                    break;
-                }
-            }
-            newFilters.push_back(std::move(filter));
-        }
-        m_filters.clear();
-        m_filters = std::move(newFilters);
-    }
-    for (auto& fitler : m_filters) {
-        auto err = configureOneFilter(fitler.second, inputFrame, fitler.first, outWidth, outHeight);
-        if (err != RGY_ERR_NONE) {
-            return err;
-        }
-    }
-    return RGY_ERR_NONE;
-}
-
-void clFilterChain::resetPipeline() {
-    m_frameIn->resetCachedFrames();
-    m_frameOut->resetCachedFrames();
-    PrintMes(RGY_LOG_DEBUG, _T("clFilterChain reset pipeline.\n"));
-}
-
-static void copyFramePropWithoutCsp(RGYFrameInfo *dst, const RGYFrameInfo *src) {
-    dst->width = src->width;
-    dst->height = src->height;
-    dst->picstruct = src->picstruct;
-    dst->timestamp = src->timestamp;
-    dst->duration = src->duration;
-    dst->flags = src->flags;
-    dst->inputFrameId = src->inputFrameId;
-}
-
 RGY_ERR clFilterChain::sendInFrame(const RGYFrameInfo *pInputFrame) {
     if (!m_cl) {
         return RGY_ERR_NULL_PTR;
     }
-    auto frameDevIn = m_frameIn->get_in(pInputFrame->width, pInputFrame->height);
+    auto frameDevIn = dynamic_cast<RGYCLFrame*>(m_frameIn->get_in(pInputFrame->width, pInputFrame->height));
+    if (!frameDevIn) {
+        return RGY_ERR_NULL_PTR;
+    }
     m_frameIn->in_to_next();
 
     auto err = frameDevIn->queueMapBuffer(m_queueSendIn, CL_MAP_WRITE /*CL_​MAP_​WRITE_​INVALIDATE_​REGION*/);
@@ -549,18 +396,14 @@ RGY_ERR clFilterChain::sendInFrame(const RGYFrameInfo *pInputFrame) {
     return RGY_ERR_NONE;
 }
 
-int clFilterChain::getNextOutFrameId() const {
-    if (!m_frameOut) return -1;
-
-    auto frameDevOut = m_frameOut->get_out();
-    return (frameDevOut) ? frameDevOut->frame.inputFrameId : -1;
-}
-
 RGY_ERR clFilterChain::getOutFrame(RGYFrameInfo *pOutputFrame) {
     if (!m_cl) {
         return RGY_ERR_NULL_PTR;
     }
-    auto frameDevOut = m_frameOut->get_out(pOutputFrame->inputFrameId);
+    auto frameDevOut = dynamic_cast<RGYCLFrame*>(m_frameOut->get_out(pOutputFrame->inputFrameId));
+    if (!frameDevOut) {
+        return RGY_ERR_NULL_PTR;
+    }
     m_frameOut->out_to_next();
 
     if (!frameDevOut) {
@@ -590,7 +433,7 @@ RGY_ERR clFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
     if (!m_cl) {
         return RGY_ERR_NULL_PTR;
     }
-    auto frameDevIn = m_frameIn->get_out(frameID);
+    auto frameDevIn = dynamic_cast<RGYCLFrame*>(m_frameIn->get_out(frameID));
     m_frameIn->out_to_next();
 
     if (!frameDevIn) {
@@ -601,7 +444,7 @@ RGY_ERR clFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
     m_log->setLogFile(prm.log_to_file ? LOG_FILE_NAME : nullptr);
     m_prm = prm;
 
-    auto frameDevOut = m_frameOut->get_in(prm.outWidth, prm.outHeight);
+    auto frameDevOut = dynamic_cast<RGYCLFrame*>(m_frameOut->get_in(prm.outWidth, prm.outHeight));
     m_frameOut->in_to_next();
 
     //フィルタチェーン更新

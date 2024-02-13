@@ -102,6 +102,8 @@ struct AviutlAufExeParams {
     ~AviutlAufExeParams();
 };
 
+static const int16_t CLCU_PLATFORM_CUDA = -1;
+
 union CL_PLATFORM_DEVICE {
     struct {
         int16_t platform;

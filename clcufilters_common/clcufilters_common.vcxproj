@@ -37,6 +37,7 @@
   <ItemGroup>
     <ClCompile Include="clcufilters_chain.cpp" />
     <ClCompile Include="clcufilters_chain_prm.cpp" />
+    <ClCompile Include="clcufilters_exe.cpp" />
     <ClCompile Include="clcufilters_exe_cmd.cpp" />
   </ItemGroup>
   <ItemGroup>

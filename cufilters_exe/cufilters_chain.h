@@ -4,7 +4,7 @@
 //
 // The MIT License
 //
-// Copyright (c) 2022 rigaya
+// Copyright (c) 2024 rigaya
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,77 +26,70 @@
 //
 // ------------------------------------------------------------------------------------------
 
-#ifndef __CUFILTER_CHAIN_H__
-#define __CUFILTER_CHAIN_H__
+#ifndef __CUFILTERS_CHAIN_H__
+#define __CUFILTERS_CHAIN_H__
 
 #include <cstdint>
 #include <array>
 #include <memory>
 #include "rgy_prm.h"
-#include "rgy_filter.h"
+#include "NVEncFilter.h"
 #include "convert_csp.h"
 #include "convert_csp_func.h"
+#include "clcufilters_chain.h"
 #include "clcufilters_chain_prm.h"
 
-class clFilterFrameBuffer {
+class cuFilterFrameBuffer : public clcuFilterFrameBuffer {
 public:
-    static const int bufSize = 4;
-    clFilterFrameBuffer(std::shared_ptr<RGYOpenCLContext> cl);
-    ~clFilterFrameBuffer();
+    cuFilterFrameBuffer();
+    virtual ~cuFilterFrameBuffer();
 
-    void freeFrames();
-    void resetCachedFrames();
-    RGYCLFrame *get_in(const int width, const int height);
-    RGYCLFrame *get_out();
-    RGYCLFrame *get_out(const int frameID);
-    void in_to_next();
-    void out_to_next();
-private:
-    std::shared_ptr<RGYOpenCLContext> m_cl;
-    std::array<std::unique_ptr<RGYCLFrame>, bufSize> m_frame;
-    int m_in;
-    int m_out;
+    virtual std::unique_ptr<RGYFrame> allocateFrame(const int width, const int height) override;
+    virtual void resetMappedFrame(RGYFrame *frame) override;
+protected:
 };
 
-class clFilterChain {
+class cuDevice {
 public:
-    clFilterChain();
-    ~clFilterChain();
-
-    RGY_ERR init(const int platformID, const int deviceID, const cl_device_type device_type, const RGYLogLevel log_level, const bool log_to_file);
-
-    void resetPipeline();
-    RGY_ERR sendInFrame(const RGYFrameInfo *pInputFrame);
-    RGY_ERR proc(const int frameID, const clFilterChainParam& prm);
-    RGY_ERR getOutFrame(RGYFrameInfo *pOutputFrame);
-    int getNextOutFrameId() const;
-
-    std::string getDeviceName() const { return m_deviceName; }
-    int platformID() const { return m_platformID; }
-    int deviceID() const { return m_deviceID; }
-    const clFilterChainParam& getPrm() const { return m_prm; }
-private:
+    cuDevice();
+    ~cuDevice();
+    RGY_ERR init(const int deviceID, std::shared_ptr<RGYLog> log);
     void close();
-    RGY_ERR initOpenCL(const int platformID, const int deviceID, const cl_device_type device_type);
-    bool filterChainEqual(const std::vector<VppType>& objchain) const;
-    RGY_ERR filterChainCreate(const RGYFrameInfo *pInputFrame, const int outWidth, const int outHeight);
-    RGY_ERR configureOneFilter(std::unique_ptr<RGYFilter>& filter, RGYFrameInfo& inputFrame, const VppType filterType, const int resizeWidth, const int resizeHeight);
+    const tstring& getDeviceName() const { return m_deviceName; }
+    int getDriverVersion() const { return m_cuda_driver_version; }
+    std::pair<int, int> getCUDAVer() const { return m_cuda_version; }
+protected:
     void PrintMes(const RGYLogLevel logLevel, const TCHAR *format, ...);
-    tstring printFilterChain(const std::vector<VppType>& objchain) const;
 
     std::shared_ptr<RGYLog> m_log;
-    clFilterChainParam m_prm;
-    std::shared_ptr<RGYOpenCLContext> m_cl;
-    int m_platformID;
     int m_deviceID;
-    std::string m_deviceName;
-    std::unique_ptr<clFilterFrameBuffer> m_frameIn;
-    std::unique_ptr<clFilterFrameBuffer> m_frameOut;
-    RGYOpenCLQueue m_queueSendIn;
-    std::vector<std::pair<VppType, std::unique_ptr<RGYFilter>>> m_filters;
-    std::unique_ptr<RGYConvertCSP> m_convert_yc48_to_yuv444_16;
-    std::unique_ptr<RGYConvertCSP> m_convert_yuv444_16_to_yc48;
+    tstring m_deviceName;
+    int m_cuda_driver_version;
+    std::pair<int, int> m_cuda_version;
+};
+
+class cuFilterChain : public clcuFilterChain {
+public:
+    cuFilterChain();
+    virtual ~cuFilterChain();
+
+    virtual RGY_ERR sendInFrame(const RGYFrameInfo *pInputFrame) override;
+    virtual RGY_ERR proc(const int frameID, const clFilterChainParam& prm) override;
+    virtual RGY_ERR getOutFrame(RGYFrameInfo *pOutputFrame) override;
+    virtual int platformID() const override { return CLCU_PLATFORM_CUDA; };
+private:
+    virtual RGY_ERR initDevice(const clcuFilterDeviceParam *param) override;
+    virtual void close() override;
+    virtual RGY_ERR configureOneFilter(std::unique_ptr<RGYFilterBase>& filter, RGYFrameInfo& inputFrame, const VppType filterType, const int resizeWidth, const int resizeHeight) override;
+
+    std::unique_ptr<cuDevice> m_cuDevice;
+    std::unique_ptr<CUFrameBuf> m_frameHostIn;
+    std::unique_ptr<CUFrameBuf> m_frameHostOut;
+    std::unique_ptr<cudaEvent_t, cudaevent_deleter> m_eventIn;
+    std::unique_ptr<cudaEvent_t, cudaevent_deleter> m_eventOut;
+    std::unique_ptr<cudaStream_t, cudastream_deleter> m_streamIn;
+    std::unique_ptr<cudaStream_t, cudastream_deleter> m_streamOut;
 };
 
 
-#endif //__CUFILTER_CHAIN_H__
+#endif //__CUFILTERS_CHAIN_H__

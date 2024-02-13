@@ -35,10 +35,10 @@
 
 #define DEFINE_GLOBAL
 #include "filter.h"
-#include "clfilters_version.h"
-#include "clfilters.h"
-#include "clfilters_shared.h"
+#include "clcufilters_version.h"
+#include "clcufilters_shared.h"
 #include "clfilters_auf.h"
+#include "clfilters.h"
 
 void init_dialog(HWND hwnd, FILTER *fp);
 void update_cx(FILTER *fp);
@@ -147,8 +147,8 @@ static_assert(exdatasize == 1024);
 
 static CLFILTER_EXDATA cl_exdata;
 
-static std::unique_ptr<clFiltersAufDevices> g_clfiltersAufDevices;
-static std::unique_ptr<clFiltersAuf> g_clfiltersAuf;
+static std::unique_ptr<clcuFiltersAufDevices> g_clfiltersAufDevices;
+static std::unique_ptr<clcuFiltersAuf> g_clfiltersAuf;
 
 static void cl_exdata_set_default() {
     cl_exdata.cl_dev_id.i = 0;
@@ -1342,13 +1342,13 @@ void move_colorspace(int& y_pos, int col, int col_width, int check_min, int chec
 static void init_clfilter_exe(const FILTER *fp) {
     SYS_INFO sys_info = { 0 };
     fp->exfunc->get_sys_info(nullptr, &sys_info);
-    g_clfiltersAuf = std::make_unique<clFiltersAuf>();
-    g_clfiltersAuf->runProcess(fp->dll_hinst, sys_info.max_w, sys_info.max_h);
+    g_clfiltersAuf = std::make_unique<clcuFiltersAuf>();
+    g_clfiltersAuf->runProcess(fp->dll_hinst, sys_info.max_w, sys_info.max_h, platformIsCUDA(cl_exdata.cl_dev_id.s.platform));
 }
 
 static void init_device_list() {
     if (!g_clfiltersAufDevices) {
-        g_clfiltersAufDevices = std::make_unique<clFiltersAufDevices>();
+        g_clfiltersAufDevices = std::make_unique<clcuFiltersAufDevices>();
         g_clfiltersAufDevices->createList();
     }
 }
@@ -1393,7 +1393,9 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     init_device_list();
     if (g_clfiltersAufDevices) {
         for (const auto& pd : g_clfiltersAufDevices->getPlatforms()) {
-            set_combo_item(cx_opencl_device, pd.second.c_str(), pd.first.i);
+            std::string devFullName = pd.first.s.platform == CLCU_PLATFORM_CUDA ? "CUDA: " : "OpenCL: ";
+            devFullName += pd.second;
+            set_combo_item(cx_opencl_device, devFullName.c_str(), pd.first.i);
         }
     }
 
@@ -1705,6 +1707,10 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp, const FILTER_PRO
     return prm;
 }
 
+static bool platformIsCUDA(int16_t platform) {
+    return platform == CLCU_PLATFORM_CUDA;
+}
+
 BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
     const int out_width  = (fp->check[CLFILTER_CHECK_RESIZE_ENABLE]) ? resize_res[cl_exdata.resize_idx].first  : fpip->w;
     const int out_height = (fp->check[CLFILTER_CHECK_RESIZE_ENABLE]) ? resize_res[cl_exdata.resize_idx].second : fpip->h;
@@ -1734,7 +1740,7 @@ BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
         return TRUE; // 何もしない
     }
     // フィルタ処理の実行
-    if (!g_clfiltersAuf) {
+    if (!g_clfiltersAuf || platformIsCUDA(cl_exdata.cl_dev_id.s.platform) != g_clfiltersAuf->isCUDA()) {
         init_clfilter_exe(fp);
     }
     g_clfiltersAuf->setLogLevel(RGY_LOG_DEBUG);
@@ -1744,7 +1750,7 @@ BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
     return ret;
 }
 
-BOOL clFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_PROC_INFO *fpip) {
+BOOL clcuFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_PROC_INFO *fpip) {
     // exe側のis_saving, clfilter->getNextOutFrameId()を取得
     auto sharedPrms = (clfitersSharedPrms *)m_sharedPrms->ptr();
     auto is_saving = sharedPrms->is_saving;

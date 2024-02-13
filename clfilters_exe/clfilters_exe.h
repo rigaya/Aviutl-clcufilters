@@ -1,3 +1,5 @@
+﻿// -----------------------------------------------------------------------------------------
+// clfilters by rigaya
 // -----------------------------------------------------------------------------------------
 //
 // The MIT License
@@ -24,11 +26,22 @@
 //
 // ------------------------------------------------------------------------------------------
 
-#ifndef __CLCUFILTERS_EXE_CMD_H__
-#define __CLCUFILTERS_EXE_CMD_H__
+#ifndef __CLFILTERS_EXE_H__
+#define __CLFILTERS_EXE_H__
 
-#include "clcufilters_chain_prm.h"
+#include "clcufilters_exe.h"
+#include "rgy_opencl.h"
 
-int parse_cmd(AviutlAufExeParams& prms, const bool ignore_parse_err, const int nArgNum, const TCHAR** strInput);
+class clFiltersExe : public clcuFiltersExe {
+public:
+    clFiltersExe();
+    virtual ~clFiltersExe();
+    virtual std::string checkDevices() override;
+    virtual bool isCUDA() const override { return false; }
+protected:
+    std::string checkClPlatforms();
+    virtual RGY_ERR initDevice(const clfitersSharedPrms *sharedPrms, clFilterChainParam& prm) override;
+    std::vector<std::shared_ptr<RGYOpenCLPlatform>> m_clplatforms;
+};
 
-#endif //__CLCUFILTERS_EXE_CMD_H__
+#endif // !__CLFILTERS_EXE_H__

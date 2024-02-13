@@ -36,30 +36,33 @@
 #include "rgy_event.h"
 #include "rgy_prm.h"
 #include "rgy_log.h"
-#include "clfilters_shared.h"
-#include "clfilters_chain_prm.h"
+#include "clcufilters_shared.h"
+#include "clcufilters_chain_prm.h"
 #include "filter.h"
 
 std::string getClfiltersExePath();
+std::string getCUfiltersExePath();
 
-class clFiltersAufDevices {
+class clcuFiltersAufDevices {
 public:
-    clFiltersAufDevices();
-    ~clFiltersAufDevices();
+    clcuFiltersAufDevices();
+    ~clcuFiltersAufDevices();
     int createList();
     const std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>> getPlatforms() const { return m_platforms; }
 protected:
+    int createList(const tstring& exePath);
     std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>> m_platforms;
 };
 
-class clFiltersAuf {
+class clcuFiltersAuf {
 public:
-    clFiltersAuf();
-    ~clFiltersAuf();
-    int runProcess(const HINSTANCE aufHandle, const int maxw, const int maxh);
+    clcuFiltersAuf();
+    ~clcuFiltersAuf();
+    int runProcess(const HINSTANCE aufHandle, const int maxw, const int maxh, const bool isCUDA);
     void initShared();
     BOOL funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_PROC_INFO *fpip);
     void setLogLevel(const RGYParamLogLevel& loglevel) { m_log->setLogLevelAll(loglevel); }
+    bool isCUDA() const;
 protected:
     clfitersSharedMesData *getMessagePtr() { return (clfitersSharedMesData*)m_sharedMessage->ptr(); }
     
@@ -70,7 +73,7 @@ protected:
         auto lines = split(str, _T("\n"));
         for (const auto &line : lines) {
             if (line[0] != _T('\0')) {
-                m_log->write(log_level, RGY_LOGT_CORE, (_T("clfilters[auf]: ") + line + _T("\n")).c_str());
+                m_log->write(log_level, RGY_LOGT_CORE, (_T("clcufilters[auf]: ") + line + _T("\n")).c_str());
             }
         }
     }

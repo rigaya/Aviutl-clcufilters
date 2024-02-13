@@ -25,13 +25,25 @@
 //
 // ------------------------------------------------------------------------------------------
 
-#include "rgy_filter.h"
+#include "rgy_filter_cl.h"
+
+RGY_ERR RGYFilterPerfCL::checkPerformace(void *event_start, void *event_fin) {
+    uint64_t time_start = 0;
+    auto sts = ((RGYOpenCLEvent *)event_start)->getProfilingTimeEnd(time_start);
+    if (sts != RGY_ERR_NONE) return sts;
+    uint64_t time_end = 0;
+    sts = ((RGYOpenCLEvent *)event_fin)->getProfilingTimeStart(time_end);
+    if (sts != RGY_ERR_NONE) return sts;
+    setTime((time_end - time_start) * 1e-6 /*ns -> ms*/);
+    return RGY_ERR_NONE;
+}
 
 RGYFilter::RGYFilter(shared_ptr<RGYOpenCLContext> context) :
-    m_name(), m_infoStr(), m_pLog(), m_cl(context), m_frameBuf(),
-    m_pFieldPairIn(), m_pFieldPairOut(),
-    m_param(),
-    m_pathThrough(FILTER_PATHTHROUGH_ALL), m_perfMonitor() {
+    RGYFilterBase(),
+    m_cl(context),
+    m_frameBuf(),
+    m_pFieldPairIn(),
+    m_pFieldPairOut() {
 
 }
 
@@ -94,7 +106,7 @@ RGY_ERR RGYFilter::filter(RGYFrameInfo *pInputFrame, RGYFrameInfo **ppOutputFram
         *pOutputFrameNum = 1;
     }
     RGYOpenCLEvent queueRunStart;
-    if (m_perfMonitor.checkPerformanceEnabled()) {
+    if (m_perfMonitor) {
         queue.getmarker(queueRunStart);
     }
     const auto ret = run_filter(pInputFrame, ppOutputFrames, pOutputFrameNum, queue, wait_events, event);
@@ -116,13 +128,18 @@ RGY_ERR RGYFilter::filter(RGYFrameInfo *pInputFrame, RGYFrameInfo **ppOutputFram
             if (m_pathThrough & FILTER_PATHTHROUGH_DATA)      ppOutputFrames[i]->dataList  = pInputFrame->dataList;
         }
     }
-    if (m_perfMonitor.checkPerformanceEnabled()) {
+    if (m_perfMonitor) {
         RGYOpenCLEvent queueRunEnd;
         queue.getmarker(queueRunEnd);
         queueRunEnd.wait();
-        m_perfMonitor.checkPerformace(&queueRunStart, &queueRunEnd);
+        m_perfMonitor->checkPerformace(&queueRunStart, &queueRunEnd);
     }
     return ret;
+}
+
+void RGYFilter::setCheckPerformance(const bool check) {
+    if (check) m_perfMonitor = std::make_unique<RGYFilterPerfCL>();
+    else       m_perfMonitor.reset();
 }
 
 RGY_ERR RGYFilter::filter_as_interlaced_pair(const RGYFrameInfo *pInputFrame, RGYFrameInfo *pOutputFrame) {

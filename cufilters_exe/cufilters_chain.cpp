@@ -4,7 +4,7 @@
 //
 // The MIT License
 //
-// Copyright (c) 2022 rigaya
+// Copyright (c) 2024 rigaya
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,112 +27,56 @@
 // ------------------------------------------------------------------------------------------
 
 #include "clcufilters_version.h"
-#include "clcufilters_chain.h"
-#include "clcufilters_chain_prm.h"
+#include "cufilters_chain.h"
 #include "rgy_cmd.h"
-#include "rgy_filter_colorspace.h"
-#include "rgy_filter_nnedi.h"
-#include "rgy_filter_denoise_knn.h"
-#include "rgy_filter_denoise_pmd.h"
-#include "rgy_filter_smooth.h"
-#include "rgy_filter_unsharp.h"
-#include "rgy_filter_edgelevel.h"
-#include "rgy_filter_warpsharp.h"
-#include "rgy_filter_deband.h"
-#include "rgy_filter_tweak.h"
+#include "NVEncFilterColorspace.h"
+#include "NVEncFilterNnedi.h"
+#include "NVEncFilterDenoiseKnn.h"
+#include "NVEncFilterDenoisePmd.h"
+#include "NVEncFilterSmooth.h"
+#include "NVEncFilterUnsharp.h"
+#include "NVEncFilterEdgelevel.h"
+#include "NVEncFilterWarpsharp.h"
+#include "NVEncFilterDeband.h"
+#include "NVEncFilterTweak.h"
 
-static const TCHAR *LOG_FILE_NAME = "clfilters.auf.log";
-
-clFilterFrameBuffer::clFilterFrameBuffer(std::shared_ptr<RGYOpenCLContext> cl) :
-    m_cl(cl),
-    m_frame(),
-    m_in(0),
-    m_out(0) {
+cuFilterFrameBuffer::cuFilterFrameBuffer() :
+    clcuFilterFrameBuffer() {
 
 }
 
-clFilterFrameBuffer::~clFilterFrameBuffer() {
-    freeFrames();
+cuFilterFrameBuffer::~cuFilterFrameBuffer() {
 }
 
-void clFilterFrameBuffer::freeFrames() {
-    for (auto& f : m_frame) {
-        if (f) {
-            f->resetMappedFrame();
-        }
-        f.reset();
+std::unique_ptr<RGYFrame> cuFilterFrameBuffer::allocateFrame(const int width, const int height) {
+    auto uptr = std::make_unique<CUFrameBuf>(width, height, RGY_CSP_YUV444_16);
+    if (uptr->alloc() != RGY_ERR_NONE) {
+        uptr.reset();
     }
-    m_in = 0;
-    m_out = 0;
+    return uptr;
 }
 
-void clFilterFrameBuffer::resetCachedFrames() {
-    for (auto& f : m_frame) {
-        if (f) {
-            f->resetMappedFrame();
-        }
-    }
-    m_in = 0;
-    m_out = 0;
-};
+void cuFilterFrameBuffer::resetMappedFrame(RGYFrame *frame) {
 
-RGYCLFrame *clFilterFrameBuffer::get_in(const int width, const int height) {
-    if (!m_frame[m_in] || m_frame[m_in]->frame.width != width || m_frame[m_in]->frame.height != height) {
-        m_frame[m_in] = m_cl->createFrameBuffer(width, height, RGY_CSP_YUV444_16, 16, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR);
-    }
-    return m_frame[m_in].get();
 }
-RGYCLFrame *clFilterFrameBuffer::get_out() {
-    return m_frame[m_out].get();
-}
-RGYCLFrame *clFilterFrameBuffer::get_out(const int frameID) {
-    for (auto& f : m_frame) {
-        if (f && f->frame.inputFrameId == frameID) {
-            return f.get();
-        }
-    }
-    return nullptr;
-}
-void clFilterFrameBuffer::in_to_next() { m_in = (m_in + 1) % m_frame.size(); }
-void clFilterFrameBuffer::out_to_next() { m_out = (m_out + 1) % m_frame.size(); }
 
-
-clFilterChain::clFilterChain() :
-    m_log(),
-    m_prm(),
-    m_cl(),
-    m_platformID(-1),
+cuDevice::cuDevice() :
     m_deviceID(-1),
     m_deviceName(),
-    m_frameIn(),
-    m_frameOut(),
-    m_queueSendIn(),
-    m_filters(),
-    m_convert_yc48_to_yuv444_16(),
-    m_convert_yuv444_16_to_yc48() {
+    m_cuda_driver_version(0),
+    m_cuda_version() {}
 
-}
-
-clFilterChain::~clFilterChain() {
+cuDevice::~cuDevice() {
     close();
 }
 
-void clFilterChain::close() {
-    m_filters.clear();
-    m_frameIn.reset();
-    m_queueSendIn.finish(); // m_frameIn.reset() のあと
-    m_queueSendIn.clear();  // m_frameIn.reset() のあと
-    m_frameOut.reset();
-    m_cl.reset();
-    m_deviceName.clear();
-    m_convert_yc48_to_yuv444_16.reset();
-    m_convert_yuv444_16_to_yc48.reset();
+void cuDevice::close() {
     m_log.reset();
-    m_platformID = -1;
     m_deviceID = -1;
+    m_deviceName.clear();
 }
 
-void clFilterChain::PrintMes(const RGYLogLevel logLevel, const TCHAR *format, ...) {
+void cuDevice::PrintMes(const RGYLogLevel logLevel, const TCHAR *format, ...) {
     va_list args;
     va_start(args, format);
 
@@ -142,98 +86,157 @@ void clFilterChain::PrintMes(const RGYLogLevel logLevel, const TCHAR *format, ..
     va_end(args);
 
     m_log->write_log(logLevel, RGY_LOGT_APP, buffer.data());
-
-    if (logLevel < RGY_LOG_ERROR) {
-        return;
-    }
-
-    MessageBoxA(NULL, buffer.data(), AUF_FULL_NAME, MB_OK | MB_ICONEXCLAMATION);
 }
 
-RGY_ERR clFilterChain::init(const int platformID, const int deviceID, const cl_device_type device_type, const RGYLogLevel log_level, const bool log_to_file) {
-    m_log = std::make_shared<RGYLog>(log_to_file ? LOG_FILE_NAME : nullptr, log_level);
+RGY_ERR cuDevice::init(const int deviceID, std::shared_ptr<RGYLog> log) {
+    m_log = log;
+    m_deviceID = deviceID;
 
-    if (auto err = initOpenCL(platformID, deviceID, device_type); err != RGY_ERR_NONE) {
+    //ひとまず、これまでのすべてのエラーをflush
+    cudaGetLastError();
+
+    int deviceCount = 0;
+    auto sts = err_to_rgy(cuDeviceGetCount(&deviceCount));
+    if (sts != RGY_ERR_NONE) {
+        PrintMes(RGY_LOG_ERROR, _T("cuDeviceGetCount error: %s\n"), get_err_mes(sts));
+        return sts;
+    }
+    if (deviceCount == 0) {
+        PrintMes(RGY_LOG_ERROR, _T("Error: no CUDA device.\n"));
+        return RGY_ERR_DEVICE_NOT_FOUND;
+    }
+    PrintMes(RGY_LOG_DEBUG, _T("cuDeviceGetCount: Success, %d.\n"), deviceCount);
+
+    if (m_deviceID > deviceCount - 1) {
+        PrintMes(RGY_LOG_ERROR, _T("Invalid Device Id = %d\n"), m_deviceID);
+        return RGY_ERR_DEVICE_NOT_FOUND;
+    }
+    CUdevice cuDevice = 0;
+    sts = err_to_rgy(cuDeviceGet(&cuDevice, m_deviceID));
+    if (sts != RGY_ERR_NONE) {
+        PrintMes(RGY_LOG_ERROR, _T("  Error: cuDeviceGet(%d): %s\n"), m_deviceID, get_err_mes(sts));
+        return RGY_ERR_DEVICE_NOT_FOUND;
+    }
+    PrintMes(RGY_LOG_DEBUG, _T("  cuDeviceGet(%d): success\n"), m_deviceID);
+
+    char dev_name[256] = { 0 };
+    if ((sts = err_to_rgy(cuDeviceGetName(dev_name, _countof(dev_name), cuDevice))) != RGY_ERR_NONE) {
+        PrintMes(RGY_LOG_ERROR, _T("  Error: cuDeviceGetName(%d): %s\n"), m_deviceID, get_err_mes(sts));
+        return RGY_ERR_DEVICE_NOT_AVAILABLE;
+    }
+    PrintMes(RGY_LOG_DEBUG, _T("  cuDeviceGetName(%d): %s\n"), m_deviceID, char_to_tstring(dev_name).c_str());
+
+#define GETATTRIB_CHECK(val, attrib, dev) { \
+        auto cuErr = cudaDeviceGetAttribute(&(val), (attrib), (dev)); \
+        if (cuErr == cudaErrorInvalidDevice || cuErr == cudaErrorInvalidValue) { \
+            auto sts = err_to_rgy(cuErr); \
+            PrintMes(RGY_LOG_ERROR, _T("  Error: cudaDeviceGetAttribute(): %s\n"), get_err_mes(sts)); \
+            return sts; \
+        } \
+        if (cuErr != cudaSuccess) { \
+            auto sts = err_to_rgy(cuErr); \
+            PrintMes(RGY_LOG_ERROR, _T("  Warn: cudaDeviceGetAttribute(): %s\n"), get_err_mes(sts)); \
+            val = 0; \
+        } \
+    }
+    int cudaDevMajor = 0, cudaDevMinor = 0;
+    GETATTRIB_CHECK(cudaDevMajor, cudaDevAttrComputeCapabilityMajor, m_deviceID);
+    GETATTRIB_CHECK(cudaDevMinor, cudaDevAttrComputeCapabilityMinor, m_deviceID);
+
+    if (((cudaDevMajor << 4) + cudaDevMinor) < 0x30) {
+        PrintMes(RGY_LOG_ERROR, _T("  Error: device does not satisfy required CUDA version (>=3.0): %d.%d\n"), cudaDevMajor, cudaDevMinor);
+        return RGY_ERR_UNSUPPORTED;
+    }
+    PrintMes(RGY_LOG_DEBUG, _T("  cudaDeviceGetAttribute: CUDA %d.%d\n"), cudaDevMajor, cudaDevMinor);
+    m_cuda_version.first = cudaDevMajor;
+    m_cuda_version.second = cudaDevMinor;
+
+    m_cuda_driver_version = 0;
+    if (RGY_ERR_NONE != (sts = err_to_rgy(cuDriverGetVersion(&m_cuda_driver_version)))) {
+        m_cuda_driver_version = -1;
+    }
+    PrintMes(RGY_LOG_DEBUG, _T("  CUDA Driver version: %d.\n"), m_cuda_driver_version);
+
+    m_deviceName = char_to_tstring(dev_name);
+    PrintMes(RGY_LOG_INFO, _T("created initialized CUDA, selcted device %s.\n"), m_deviceName.c_str());
+}
+
+cuFilterChain::cuFilterChain() :
+    clcuFilterChain(),
+    m_cuDevice(),
+    m_frameHostIn(),
+    m_frameHostOut(),
+    m_eventIn(),
+    m_eventOut(),
+    m_streamIn(),
+    m_streamOut() {
+
+}
+
+cuFilterChain::~cuFilterChain() {
+    close();
+}
+
+void cuFilterChain::close() {
+    m_filters.clear();
+    m_frameIn.reset();
+    m_streamIn.reset();
+    m_streamOut.reset();
+    m_eventIn.reset();
+    m_eventOut.reset();
+    //m_queueSendIn.finish(); // m_frameIn.reset() のあと
+    //m_queueSendIn.clear();  // m_frameIn.reset() のあと
+    m_frameOut.reset();
+    m_deviceName.clear();
+    m_convert_yc48_to_yuv444_16.reset();
+    m_convert_yuv444_16_to_yc48.reset();
+    m_log.reset();
+}
+
+RGY_ERR cuFilterChain::initDevice(const clcuFilterDeviceParam *param) {
+    PrintMes(RGY_LOG_INFO, _T("start init CUDA device %d\n"), param->deviceID);
+    m_cuDevice = std::make_unique<cuDevice>();
+    auto err = m_cuDevice->init(param->deviceID, m_log);
+    if (err != RGY_ERR_NONE) {
         return err;
     }
 
-    m_frameIn = std::make_unique<clFilterFrameBuffer>(m_cl);
-    m_frameOut = std::make_unique<clFilterFrameBuffer>(m_cl);
-
-    m_convert_yc48_to_yuv444_16 = std::make_unique<RGYConvertCSP>();
-    if (m_convert_yc48_to_yuv444_16->getFunc(RGY_CSP_YC48, RGY_CSP_YUV444_16, false, RGY_SIMD::SIMD_ALL) == nullptr) {
-        PrintMes(RGY_LOG_ERROR, _T("color conversion not supported: %s -> %s.\n"),
-                 RGY_CSP_NAMES[RGY_CSP_YC48], RGY_CSP_NAMES[RGY_CSP_YUV444_16]);
-        return RGY_ERR_INVALID_COLOR_FORMAT;
+    m_deviceID = param->deviceID;
+    m_deviceName = m_cuDevice->getDeviceName();
+    m_frameIn = std::make_unique<cuFilterFrameBuffer>();
+    m_frameOut = std::make_unique<cuFilterFrameBuffer>();
+    m_streamIn = std::unique_ptr<cudaStream_t, cudastream_deleter>(new cudaStream_t(), cudastream_deleter());
+    if (RGY_ERR_NONE != (err = err_to_rgy(cudaStreamCreateWithFlags(m_streamIn.get(), cudaStreamNonBlocking)))) {
+        PrintMes(RGY_LOG_ERROR, _T("failed to cudaStreamCreateWithFlags: %s.\n"), get_err_mes(err));
+        return err;
     }
-    PrintMes(RGY_LOG_INFO, _T("color conversion %s -> %s [%s].\n"),
-        RGY_CSP_NAMES[RGY_CSP_YC48], RGY_CSP_NAMES[RGY_CSP_YUV444_16], get_simd_str(m_convert_yc48_to_yuv444_16->getFunc()->simd));
-
-    m_convert_yuv444_16_to_yc48 = std::make_unique<RGYConvertCSP>();
-    if (m_convert_yuv444_16_to_yc48->getFunc(RGY_CSP_YUV444_16, RGY_CSP_YC48, false, RGY_SIMD::SIMD_ALL) == nullptr) {
-        PrintMes(RGY_LOG_ERROR, _T("unsupported color format conversion, %s -> %s\n"), RGY_CSP_NAMES[RGY_CSP_YUV444_16], RGY_CSP_NAMES[RGY_CSP_YC48]);
-        return RGY_ERR_INVALID_COLOR_FORMAT;
+    m_streamOut = std::unique_ptr<cudaStream_t, cudastream_deleter>(new cudaStream_t(), cudastream_deleter());
+    if (RGY_ERR_NONE != (err = err_to_rgy(cudaStreamCreateWithFlags(m_streamOut.get(), cudaStreamNonBlocking)))) {
+        PrintMes(RGY_LOG_ERROR, _T("failed to cudaStreamCreateWithFlags: %s.\n"), get_err_mes(err));
+        return err;
     }
-    PrintMes(RGY_LOG_INFO, _T("color conversion %s -> %s [%s].\n"),
-        RGY_CSP_NAMES[RGY_CSP_YUV444_16], RGY_CSP_NAMES[RGY_CSP_YC48], get_simd_str(m_convert_yuv444_16_to_yc48->getFunc()->simd));
+    const uint32_t cudaEventFlags = 0; // (pAfsParam->cudaSchedule & CU_CTX_SCHED_BLOCKING_SYNC) ? cudaEventBlockingSync : 0;
+    m_eventIn = std::unique_ptr<cudaEvent_t, cudaevent_deleter>(new cudaEvent_t(), cudaevent_deleter());
+    if (RGY_ERR_NONE != (err = err_to_rgy(cudaEventCreateWithFlags(m_eventIn.get(), cudaEventFlags | cudaEventDisableTiming)))) {
+        PrintMes(RGY_LOG_ERROR, _T("failed to cudaEventCreateWithFlags: %s.\n"), get_err_mes(err));
+        return err;
+    }
+    m_eventOut = std::unique_ptr<cudaEvent_t, cudaevent_deleter>(new cudaEvent_t(), cudaevent_deleter());
+    if (RGY_ERR_NONE != (err = err_to_rgy(cudaEventCreateWithFlags(m_eventOut.get(), cudaEventFlags | cudaEventDisableTiming)))) {
+        PrintMes(RGY_LOG_ERROR, _T("failed to cudaEventCreateWithFlags: %s.\n"), get_err_mes(err));
+        return err;
+    }
     return RGY_ERR_NONE;
 }
 
-RGY_ERR clFilterChain::initOpenCL(const int platformID, const int deviceID, const cl_device_type device_type) {
-    PrintMes(RGY_LOG_INFO, _T("start init OpenCL platform %d, device %d\n"), platformID, deviceID);
-
-    RGYOpenCL cl(m_log);
-    auto platforms = cl.getPlatforms(nullptr);
-    if (platforms.size() == 0) {
-        PrintMes(RGY_LOG_ERROR, _T("No OpenCL Platform found on this system.\n"));
-        return RGY_ERR_DEVICE_NOT_FOUND;
-    }
-
-    if (platformID >= 0 && platformID >= (int)platforms.size()) {
-        PrintMes(RGY_LOG_ERROR, _T("platform %d does not exist (platform count = %d)\n"), platformID, (int)platforms.size());
-        return RGY_ERR_DEVICE_NOT_FOUND;
-    }
-    PrintMes(RGY_LOG_INFO, _T("OpenCL platform count %d\n"), (int)platforms.size());
-
-    auto& platform = platforms[std::max(platformID, 0)];
-
-    auto err = err_cl_to_rgy(platform->createDeviceList(device_type));
-    if (err != RGY_ERR_NONE) {
-        PrintMes(RGY_LOG_ERROR, _T("Failed to create device list: %s\n"), get_err_mes(err));
-        return RGY_ERR_DEVICE_NOT_FOUND;
-    }
-    PrintMes(RGY_LOG_INFO, _T("created device list: %d device(s).\n"), platform->devs().size());
-
-    if (deviceID >= 0 && deviceID >= (int)platform->devs().size()) {
-        PrintMes(RGY_LOG_ERROR, _T("Invalid device Id %d (device count %d)\n"), deviceID, (int)platform->devs().size());
-        return RGY_ERR_INVALID_DEVICE;
-    }
-
-    platform->setDev(platform->devs()[std::max(deviceID, 0)]);
-    m_cl = std::make_shared<RGYOpenCLContext>(platform, m_log);
-    if (m_cl->createContext(0) != RGY_ERR_NONE) {
-        PrintMes(RGY_LOG_ERROR, _T("Failed to create OpenCL context.\n"));
-        return RGY_ERR_UNKNOWN;
-    }
-
-    const auto devInfo = platform->dev(0).info();
-    m_deviceName = (devInfo.board_name_amd.length() > 0) ? devInfo.board_name_amd : devInfo.name;
-    m_platformID = platformID;
-    m_deviceID = deviceID;
-    m_queueSendIn = m_cl->createQueue(platform->dev(0).id(), 0 /*CL_QUEUE_PROFILING_ENABLE*/);
-
-    PrintMes(RGY_LOG_INFO, _T("created OpenCL context, selcted device %s.\n"), m_deviceName.c_str());
-    return RGY_ERR_NONE;
-}
-
-RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RGYFrameInfo& inputFrame, const VppType filterType, const int resizeWidth, const int resizeHeight) {
+RGY_ERR cuFilterChain::configureOneFilter(std::unique_ptr<RGYFilterBase>& filter, RGYFrameInfo& inputFrame, const VppType filterType, const int resizeWidth, const int resizeHeight) {
     // colorspace
     if (filterType == VppType::CL_COLORSPACE) {
         if (!filter) {
             //フィルタチェーンに追加
-            filter.reset(new RGYFilterColorspace(m_cl));
+            filter.reset(new NVEncFilterColorspace());
         }
-        std::shared_ptr<RGYFilterParamColorspace> param(new RGYFilterParamColorspace());
+        std::shared_ptr<NVEncFilterParamColorspace> param(new NVEncFilterParamColorspace());
         param->colorspace = m_prm.vpp.colorspace;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
@@ -250,11 +253,12 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
     if (filterType == VppType::CL_NNEDI) {
         if (!filter) {
             //フィルタチェーンに追加
-            filter.reset(new RGYFilterNnedi(m_cl));
+            filter.reset(new NVEncFilterNnedi());
         }
-        std::shared_ptr<RGYFilterParamNnedi> param(new RGYFilterParamNnedi());
+        std::shared_ptr<NVEncFilterParamNnedi> param(new NVEncFilterParamNnedi());
         param->nnedi = m_prm.vpp.nnedi;
-        param->hModule = m_prm.hModule;
+        param->hModule = nullptr;
+        if (m_cuDevice) param->compute_capability = m_cuDevice->getCUDAVer();
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->timebase = rgy_rational<int>(); // bobで使用するが、clfiltersではbobはサポートしない
@@ -271,9 +275,9 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
     if (filterType == VppType::CL_DENOISE_KNN) {
         if (!filter) {
             //フィルタチェーンに追加
-            filter.reset(new RGYFilterDenoiseKnn(m_cl));
+            filter.reset(new NVEncFilterDenoiseKnn());
         }
-        std::shared_ptr<RGYFilterParamDenoiseKnn> param(new RGYFilterParamDenoiseKnn());
+        std::shared_ptr<NVEncFilterParamDenoiseKnn> param(new NVEncFilterParamDenoiseKnn());
         param->knn = m_prm.vpp.knn;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
@@ -290,9 +294,9 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
     if (filterType == VppType::CL_DENOISE_PMD) {
         if (!filter) {
             //フィルタチェーンに追加
-            filter.reset(new RGYFilterDenoisePmd(m_cl));
+            filter.reset(new NVEncFilterDenoisePmd());
         }
-        std::shared_ptr<RGYFilterParamDenoisePmd> param(new RGYFilterParamDenoisePmd());
+        std::shared_ptr<NVEncFilterParamDenoisePmd> param(new NVEncFilterParamDenoisePmd());
         param->pmd = m_prm.vpp.pmd;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
@@ -309,10 +313,11 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
     if (filterType == VppType::CL_DENOISE_SMOOTH) {
         if (!filter) {
             //フィルタチェーンに追加
-            filter.reset(new RGYFilterSmooth(m_cl));
+            filter.reset(new NVEncFilterSmooth());
         }
-        std::shared_ptr<RGYFilterParamSmooth> param(new RGYFilterParamSmooth());
+        std::shared_ptr<NVEncFilterParamSmooth> param(new NVEncFilterParamSmooth());
         param->smooth = m_prm.vpp.smooth;
+        if (m_cuDevice) param->compute_capability = m_cuDevice->getCUDAVer();
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->bOutOverwrite = false;
@@ -329,9 +334,9 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
     if (filterType == VppType::CL_RESIZE) {
         if (!filter) {
             //フィルタチェーンに追加
-            filter.reset(new RGYFilterResize(m_cl));
+            filter.reset(new NVEncFilterResize());
         }
-        std::shared_ptr<RGYFilterParamResize> param(new RGYFilterParamResize());
+        std::shared_ptr<NVEncFilterParamResize> param(new NVEncFilterParamResize());
         param->interp = m_prm.vpp.resize_algo;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
@@ -350,9 +355,9 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
     if (filterType == VppType::CL_UNSHARP) {
         if (!filter) {
             //フィルタチェーンに追加
-            filter.reset(new RGYFilterUnsharp(m_cl));
+            filter.reset(new NVEncFilterUnsharp());
         }
-        std::shared_ptr<RGYFilterParamUnsharp> param(new RGYFilterParamUnsharp());
+        std::shared_ptr<NVEncFilterParamUnsharp> param(new NVEncFilterParamUnsharp());
         param->unsharp = m_prm.vpp.unsharp;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
@@ -369,9 +374,9 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
     if (filterType == VppType::CL_EDGELEVEL) {
         if (!filter) {
             //フィルタチェーンに追加
-            filter.reset(new RGYFilterEdgelevel(m_cl));
+            filter.reset(new NVEncFilterEdgelevel());
         }
-        std::shared_ptr<RGYFilterParamEdgelevel> param(new RGYFilterParamEdgelevel());
+        std::shared_ptr<NVEncFilterParamEdgelevel> param(new NVEncFilterParamEdgelevel());
         param->edgelevel = m_prm.vpp.edgelevel;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
@@ -388,9 +393,9 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
     if (filterType == VppType::CL_WARPSHARP) {
         if (!filter) {
             //フィルタチェーンに追加
-            filter.reset(new RGYFilterWarpsharp(m_cl));
+            filter.reset(new NVEncFilterWarpsharp());
         }
-        std::shared_ptr<RGYFilterParamWarpsharp> param(new RGYFilterParamWarpsharp());
+        std::shared_ptr<NVEncFilterParamWarpsharp> param(new NVEncFilterParamWarpsharp());
         param->warpsharp = m_prm.vpp.warpsharp;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
@@ -407,9 +412,9 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
     if (filterType == VppType::CL_TWEAK) {
         if (!filter) {
             //フィルタチェーンに追加
-            filter.reset(new RGYFilterTweak(m_cl));
+            filter.reset(new NVEncFilterTweak());
         }
-        std::shared_ptr<RGYFilterParamTweak> param(new RGYFilterParamTweak());
+        std::shared_ptr<NVEncFilterParamTweak> param(new NVEncFilterParamTweak());
         param->tweak = m_prm.vpp.tweak;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
@@ -426,9 +431,9 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
     if (filterType == VppType::CL_DEBAND) {
         if (!filter) {
             //フィルタチェーンに追加
-            filter.reset(new RGYFilterDeband(m_cl));
+            filter.reset(new NVEncFilterDeband());
         }
-        std::shared_ptr<RGYFilterParamDeband> param(new RGYFilterParamDeband());
+        std::shared_ptr<NVEncFilterParamDeband> param(new NVEncFilterParamDeband());
         param->deband = m_prm.vpp.deband;
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
@@ -444,95 +449,30 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilter>& filter, RG
     return RGY_ERR_NONE;
 }
 
-tstring clFilterChain::printFilterChain(const std::vector<VppType>& filterChain) const {
-    tstring str;
-    for (auto& filter : filterChain) {
-        if (str.length() > 0) str += _T(", ");
-        str += vppfilter_type_to_str(filter);
-    }
-    return str;
-}
-
-bool clFilterChain::filterChainEqual(const std::vector<VppType>& target) const {
-    if (m_filters.size() != target.size()) {
-        return false;
-    }
-    for (size_t ifilter = 0; ifilter < m_filters.size(); ifilter++) {
-        if (m_filters[ifilter].first != target[ifilter]) {
-            return false;
-        }
-    }
-    return true;
-}
-
-RGY_ERR clFilterChain::filterChainCreate(const RGYFrameInfo *pInputFrame, const int outWidth, const int outHeight) {
-    RGYFrameInfo inputFrame = *pInputFrame;
-    for (size_t i = 0; i < _countof(inputFrame.ptr); i++) {
-        inputFrame.ptr[i] = nullptr;
-    }
-
-    const bool resizeRequired = pInputFrame->width != outWidth || pInputFrame->height != outHeight;
-    const auto filterChain = m_prm.getFilterChain(resizeRequired);
-    if (!filterChainEqual(filterChain)) {
-        PrintMes(RGY_LOG_INFO, _T("clFilterChain changed: %s\n"), printFilterChain(filterChain).c_str());
-
-        decltype(m_filters) newFilters;
-        newFilters.reserve(filterChain.size());
-        for (const auto filterType : filterChain) {
-            auto filter = std::make_pair(filterType, std::unique_ptr<RGYFilter>());
-            for (auto& oldFilter : m_filters) {
-                if (oldFilter.first == filterType && oldFilter.second) {
-                    filter.second = std::move(oldFilter.second);
-                    break;
-                }
-            }
-            newFilters.push_back(std::move(filter));
-        }
-        m_filters.clear();
-        m_filters = std::move(newFilters);
-    }
-    for (auto& fitler : m_filters) {
-        auto err = configureOneFilter(fitler.second, inputFrame, fitler.first, outWidth, outHeight);
-        if (err != RGY_ERR_NONE) {
-            return err;
-        }
-    }
-    return RGY_ERR_NONE;
-}
-
-void clFilterChain::resetPipeline() {
-    m_frameIn->resetCachedFrames();
-    m_frameOut->resetCachedFrames();
-    PrintMes(RGY_LOG_DEBUG, _T("clFilterChain reset pipeline.\n"));
-}
-
-static void copyFramePropWithoutCsp(RGYFrameInfo *dst, const RGYFrameInfo *src) {
-    dst->width = src->width;
-    dst->height = src->height;
-    dst->picstruct = src->picstruct;
-    dst->timestamp = src->timestamp;
-    dst->duration = src->duration;
-    dst->flags = src->flags;
-    dst->inputFrameId = src->inputFrameId;
-}
-
-RGY_ERR clFilterChain::sendInFrame(const RGYFrameInfo *pInputFrame) {
-    if (!m_cl) {
+RGY_ERR cuFilterChain::sendInFrame(const RGYFrameInfo *pInputFrame) {
+    if (!m_cuDevice) {
         return RGY_ERR_NULL_PTR;
     }
-    auto frameDevIn = m_frameIn->get_in(pInputFrame->width, pInputFrame->height);
+
+    auto frameDevIn = dynamic_cast<CUFrameBuf*>(m_frameIn->get_in(pInputFrame->width, pInputFrame->height));
+    if (!frameDevIn) {
+        return RGY_ERR_NULL_PTR;
+    }
     m_frameIn->in_to_next();
 
-    auto err = frameDevIn->queueMapBuffer(m_queueSendIn, CL_MAP_WRITE /*CL_​MAP_​WRITE_​INVALIDATE_​REGION*/);
-    if (err != RGY_ERR_NONE) {
-        PrintMes(RGY_LOG_ERROR, _T("failed to queue map input buffer: %s.\n"), get_err_mes(err));
-        return err;
+    if (!m_frameHostIn || cmpFrameInfoCspResolution(&frameDevIn->frame, &m_frameHostIn->frame)) {
+        m_frameHostIn = std::make_unique<CUFrameBuf>(pInputFrame->width, pInputFrame->height, RGY_CSP_YUV444_16);
+        auto sts = m_frameHostIn->allocHost();
+        if (sts != RGY_ERR_NONE) {
+            PrintMes(RGY_LOG_ERROR, _T("failed to allocate frame for input buffer: %s.\n"), get_err_mes(sts));
+            return RGY_ERR_MEMORY_ALLOC;
+        }
     }
-    frameDevIn->mapWait();
+
     copyFramePropWithoutCsp(&frameDevIn->frame, pInputFrame);
 
     {
-        auto frameHostIn = frameDevIn->mappedHost();
+        auto frameHostIn = &m_frameHostIn->frame;
 
         //YC48->YUV444(16bit)
         int crop[4] = { 0 };
@@ -542,34 +482,41 @@ RGY_ERR clFilterChain::sendInFrame(const RGYFrameInfo *pInputFrame) {
             frameHostIn->pitch(0), pInputFrame->height, frameHostIn->height(), crop);
     }
 
-    if ((err = frameDevIn->unmapBuffer()) != RGY_ERR_NONE) {
-        PrintMes(RGY_LOG_ERROR, _T("failed to unmap input buffer: %s.\n"), get_err_mes(err));
+    auto err = copyFrameAsync(&frameDevIn->frame, &m_frameHostIn->frame, *m_streamIn.get());
+    if (err != RGY_ERR_NONE) {
+        PrintMes(RGY_LOG_ERROR, _T("failed to queue map input buffer: %s.\n"), get_err_mes(err));
+        return err;
+    }
+    cudaEventRecord(frameDevIn->event, *m_streamIn.get());
+    if (err != RGY_ERR_NONE) {
+        PrintMes(RGY_LOG_ERROR, _T("sendInFrame: cudaEventRecord: %s.\n"), get_err_mes(err));
         return err;
     }
     return RGY_ERR_NONE;
 }
 
-int clFilterChain::getNextOutFrameId() const {
-    if (!m_frameOut) return -1;
-
-    auto frameDevOut = m_frameOut->get_out();
-    return (frameDevOut) ? frameDevOut->frame.inputFrameId : -1;
-}
-
-RGY_ERR clFilterChain::getOutFrame(RGYFrameInfo *pOutputFrame) {
-    if (!m_cl) {
+RGY_ERR cuFilterChain::getOutFrame(RGYFrameInfo *pOutputFrame) {
+    if (!m_cuDevice) {
         return RGY_ERR_NULL_PTR;
     }
-    auto frameDevOut = m_frameOut->get_out(pOutputFrame->inputFrameId);
+
+    auto frameDevOut = dynamic_cast<CUFrameBuf*>(m_frameOut->get_out(pOutputFrame->inputFrameId));
+    if (!frameDevOut) {
+        return RGY_ERR_NULL_PTR;
+    }
     m_frameOut->out_to_next();
 
     if (!frameDevOut) {
         return RGY_ERR_OUT_OF_RANGE;
     }
-    frameDevOut->mapWait();
     copyFramePropWithoutCsp(pOutputFrame, &frameDevOut->frame);
+    auto err = err_to_rgy(cudaEventSynchronize(frameDevOut->event));
+    if (err != RGY_ERR_NONE) {
+        PrintMes(RGY_LOG_ERROR, _T("getOutFrame: cudaEventSynchronize: %s.\n"), get_err_mes(err));
+        return err;
+    }
     {
-        auto frameHostOut = frameDevOut->mappedHost();
+        auto frameHostOut = &m_frameHostOut->frame;
         //YUV444(16bit)->YC48
         int crop[4] = { 0 };
         m_convert_yuv444_16_to_yc48->run(false,
@@ -577,31 +524,24 @@ RGY_ERR clFilterChain::getOutFrame(RGYFrameInfo *pOutputFrame) {
             frameHostOut->width(), frameHostOut->pitch(0), frameHostOut->pitch(0),
             pOutputFrame->pitch[0], frameHostOut->height(), pOutputFrame->height, crop);
     }
-    auto err = frameDevOut->unmapBuffer();
-    if (err != RGY_ERR_NONE) {
-        PrintMes(RGY_LOG_ERROR, _T("failed to unmap output buffer: %s.\n"), get_err_mes(err));
-        return err;
-    }
-    frameDevOut->resetMappedFrame();
     return RGY_ERR_NONE;
 }
 
-RGY_ERR clFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
-    if (!m_cl) {
+RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
+    if (!m_cuDevice) {
         return RGY_ERR_NULL_PTR;
     }
-    auto frameDevIn = m_frameIn->get_out(frameID);
+    auto frameDevIn = dynamic_cast<CUFrameBuf*>(m_frameIn->get_out(frameID));
     m_frameIn->out_to_next();
 
     if (!frameDevIn) {
         return RGY_ERR_OUT_OF_RANGE;
     }
-    m_cl->setModuleHandle(prm.hModule);
     m_log->setLogLevelAll(prm.log_level);
     m_log->setLogFile(prm.log_to_file ? LOG_FILE_NAME : nullptr);
     m_prm = prm;
 
-    auto frameDevOut = m_frameOut->get_in(prm.outWidth, prm.outHeight);
+    auto frameDevOut = dynamic_cast<CUFrameBuf*>(m_frameOut->get_in(prm.outWidth, prm.outHeight));
     m_frameOut->in_to_next();
 
     //フィルタチェーン更新
@@ -611,7 +551,11 @@ RGY_ERR clFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
         return err;
     }
 
-    frameDevIn->mapWait();
+    auto err = err_to_rgy(cudaStreamWaitEvent(cudaStreamDefault, frameDevIn->event, 0));
+    if (err != RGY_ERR_NONE) {
+        PrintMes(RGY_LOG_ERROR, _T("proc: cudaStreamWaitEvent: %s.\n"), get_err_mes(err));
+        return err;
+    }
 
     //通常は、最後のひとつ前のフィルタまで実行する
     //上書き型のフィルタが最後の場合は、そのフィルタまで実行する(最後はコピーが必須)
@@ -621,7 +565,8 @@ RGY_ERR clFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
     for (size_t ifilter = 0; ifilter < filterfin; ifilter++) {
         int nOutFrames = 0;
         RGYFrameInfo *outInfo[16] = { 0 };
-        err = m_filters[ifilter].second->filter(&frameInfo, (RGYFrameInfo **)&outInfo, &nOutFrames);
+        auto cufilter = dynamic_cast<NVEncFilter*>(m_filters[ifilter].second.get());
+        err = cufilter->filter(&frameInfo, (RGYFrameInfo **)&outInfo, &nOutFrames, cudaStreamDefault);
         if (err != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("Error while running filter \"%s\": %s.\n"), m_filters[ifilter].second->name().c_str(), get_err_mes(err));
             return err;
@@ -643,14 +588,41 @@ RGY_ERR clFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
         int nOutFrames = 0;
         RGYFrameInfo *outInfo[16] = { 0 };
         outInfo[0] = &frameDevOut->frame;
-        err = lastFilter.second->filter(&frameInfo, (RGYFrameInfo **)&outInfo, &nOutFrames);
+        auto cufilter = dynamic_cast<NVEncFilter*>(lastFilter.second.get());
+        err = cufilter->filter(&frameInfo, (RGYFrameInfo **)&outInfo, &nOutFrames, cudaStreamDefault);
         if (err != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("Error while running filter \"%s\": %s.\n"), lastFilter.second->name().c_str(), get_err_mes(err));
             return err;
         }
     }
-    if ((err = frameDevOut->queueMapBuffer(m_cl->queue(), CL_MAP_READ)) != RGY_ERR_NONE) {
-        PrintMes(RGY_LOG_ERROR, _T("failed to queue map input buffer: %s.\n"), get_err_mes(err));
+
+    if (!m_frameHostOut || cmpFrameInfoCspResolution(&frameDevOut->frame, &m_frameHostOut->frame)) {
+        m_frameHostOut = std::make_unique<CUFrameBuf>(frameDevOut->frame.width, frameDevOut->frame.height, RGY_CSP_YUV444_16);
+        auto sts = m_frameHostOut->allocHost();
+        if (sts != RGY_ERR_NONE) {
+            PrintMes(RGY_LOG_ERROR, _T("failed to allocate frame for output buffer: %s.\n"), get_err_mes(sts));
+            return RGY_ERR_MEMORY_ALLOC;
+        }
+    }
+
+    err = err_to_rgy(cudaEventRecord(*m_eventOut.get(), cudaStreamDefault));
+    if (err != RGY_ERR_NONE) {
+        PrintMes(RGY_LOG_ERROR, _T("proc: cudaEventRecord: %s.\n"), get_err_mes(err));
+        return err;
+    }
+    err = err_to_rgy(cudaStreamWaitEvent(*m_streamOut.get(), *m_eventOut.get(), 0));
+    if (err != RGY_ERR_NONE) {
+        PrintMes(RGY_LOG_ERROR, _T("proc: cudaStreamWaitEvent: %s.\n"), get_err_mes(err));
+        return err;
+    }
+    err = copyFrameAsync(&m_frameHostOut->frame, &frameDevOut->frame, *m_streamOut.get());
+    if (err != RGY_ERR_NONE) {
+        PrintMes(RGY_LOG_ERROR, _T("failed to copy output frame: %s.\n"), get_err_mes(err));
+        return err;
+    }
+    err = err_to_rgy(cudaEventRecord(m_frameHostOut->event, *m_streamOut.get()));
+    if (err != RGY_ERR_NONE) {
+        PrintMes(RGY_LOG_ERROR, _T("proc: cudaEventRecord: %s.\n"), get_err_mes(err));
         return err;
     }
     return RGY_ERR_NONE;

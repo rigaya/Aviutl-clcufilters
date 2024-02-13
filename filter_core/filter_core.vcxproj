@@ -495,6 +495,7 @@
     <ClCompile Include="rgy_err.cpp" />
     <ClCompile Include="rgy_event.cpp" />
     <ClCompile Include="rgy_filesystem.cpp" />
+    <ClCompile Include="rgy_filter.cpp" />
     <ClCompile Include="rgy_frame.cpp" />
     <ClCompile Include="rgy_frame_info.cpp" />
     <ClCompile Include="rgy_hdr10plus.cpp" />
@@ -529,6 +530,7 @@
     <ClInclude Include="rgy_err.h" />
     <ClInclude Include="rgy_event.h" />
     <ClInclude Include="rgy_filesystem.h" />
+    <ClInclude Include="rgy_filter.h" />
     <ClInclude Include="rgy_frame.h" />
     <ClInclude Include="rgy_frame_info.h" />
     <ClInclude Include="rgy_hdr10plus.h" />

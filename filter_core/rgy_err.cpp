@@ -234,6 +234,7 @@ struct RGYErrMapCuda {
 };
 //grep '=' cudaErrors.txt | awk '{print "CUDAERR_MAP(",$1,"),"}'
 #define CUDAERR_MAP(x) { RGY_ERR_cudaError ##x, cudaError ##x }
+
 static const RGYErrMapCuda ERR_MAP_CUDA[] = {
     { RGY_ERR_NONE, cudaSuccess },
     CUDAERR_MAP( InvalidValue ),
@@ -262,9 +263,13 @@ static const RGYErrMapCuda ERR_MAP_CUDA[] = {
     CUDAERR_MAP( MixedDeviceExecution ),
     CUDAERR_MAP( NotYetImplemented ),
     CUDAERR_MAP( MemoryValueTooLarge ),
+#if defined(cudaErrorStubLibrary)
     CUDAERR_MAP( StubLibrary ),
+#endif
     CUDAERR_MAP( InsufficientDriver ),
+#if defined(cudaErrorCallRequiresNewerDriver)
     CUDAERR_MAP( CallRequiresNewerDriver ),
+#endif
     CUDAERR_MAP( InvalidSurface ),
     CUDAERR_MAP( DuplicateVariableName ),
     CUDAERR_MAP( DuplicateTextureName ),
@@ -281,11 +286,17 @@ static const RGYErrMapCuda ERR_MAP_CUDA[] = {
     CUDAERR_MAP( InvalidDeviceFunction ),
     CUDAERR_MAP( NoDevice ),
     CUDAERR_MAP( InvalidDevice ),
+#if defined(cudaErrorDeviceNotLicensed)
     CUDAERR_MAP( DeviceNotLicensed ),
+#endif
+#if defined(cudaErrorSoftwareValidityNotEstablished)
     CUDAERR_MAP( SoftwareValidityNotEstablished ),
+#endif
     CUDAERR_MAP( StartupFailure ),
     CUDAERR_MAP( InvalidKernelImage ),
+#if defined(cudaErrorDeviceUninitialized)
     CUDAERR_MAP( DeviceUninitialized ),
+#endif
     CUDAERR_MAP( MapBufferObjectFailed ),
     CUDAERR_MAP( UnmapBufferObjectFailed ),
     CUDAERR_MAP( ArrayIsMapped ),
@@ -303,9 +314,15 @@ static const RGYErrMapCuda ERR_MAP_CUDA[] = {
     CUDAERR_MAP( InvalidGraphicsContext ),
     CUDAERR_MAP( NvlinkUncorrectable ),
     CUDAERR_MAP( JitCompilerNotFound ),
+#if defined(cudaErrorUnsupportedPtxVersion)
     CUDAERR_MAP( UnsupportedPtxVersion ),
+#endif
+#if defined(cudaErrorJitCompilationDisabled)
     CUDAERR_MAP( JitCompilationDisabled ),
+#endif
+#if defined(cudaErrorUnsupportedExecAffinity)
     CUDAERR_MAP( UnsupportedExecAffinity ),
+#endif
     CUDAERR_MAP( InvalidSource ),
     CUDAERR_MAP( FileNotFound ),
     CUDAERR_MAP( SharedObjectSymbolNotFound ),
@@ -339,11 +356,11 @@ static const RGYErrMapCuda ERR_MAP_CUDA[] = {
     CUDAERR_MAP( SystemNotReady ),
     CUDAERR_MAP( SystemDriverMismatch ),
     CUDAERR_MAP( CompatNotSupportedOnDevice ),
-    CUDAERR_MAP( MpsConnectionFailed ),
-    CUDAERR_MAP( MpsRpcFailure ),
-    CUDAERR_MAP( MpsServerNotReady ),
-    CUDAERR_MAP( MpsMaxClientsReached ),
-    CUDAERR_MAP( MpsMaxConnectionsReached ),
+    //CUDAERR_MAP( MpsConnectionFailed ),
+    //CUDAERR_MAP( MpsRpcFailure ),
+    //CUDAERR_MAP( MpsServerNotReady ),
+    //CUDAERR_MAP( MpsMaxClientsReached ),
+    //CUDAERR_MAP( MpsMaxConnectionsReached ),
     CUDAERR_MAP( StreamCaptureUnsupported ),
     CUDAERR_MAP( StreamCaptureInvalidated ),
     CUDAERR_MAP( StreamCaptureMerge ),
@@ -353,9 +370,15 @@ static const RGYErrMapCuda ERR_MAP_CUDA[] = {
     CUDAERR_MAP( StreamCaptureImplicit ),
     CUDAERR_MAP( CapturedEvent ),
     CUDAERR_MAP( StreamCaptureWrongThread ),
+#if defined(cudaErrorTimeout)
     CUDAERR_MAP( Timeout ),
+#endif
+#if defined(cudaErrorGraphExecUpdateFailure)
     CUDAERR_MAP( GraphExecUpdateFailure ),
+#endif
+#if defined(cudaErrorExternalDevice)
     CUDAERR_MAP( ExternalDevice ),
+#endif
     CUDAERR_MAP( Unknown ),
     CUDAERR_MAP( ApiFailureBase )
 };
@@ -394,8 +417,17 @@ static const RGYErrMapCudaDriver ERR_MAP_CUDA_DRIVER[] = {
     CUDADRIVERERR_MAP( PROFILER_NOT_INITIALIZED ),
     CUDADRIVERERR_MAP( PROFILER_ALREADY_STARTED ),
     CUDADRIVERERR_MAP( PROFILER_ALREADY_STOPPED ),
+#if defined(CUDA_ERROR_STUB_LIBRARY)
+    CUDADRIVERERR_MAP( STUB_LIBRARY ),
+#endif
+#if defined(CUDA_ERROR_DEVICE_UNAVAILABLE)
+    CUDADRIVERERR_MAP( DEVICE_UNAVAILABLE ),
+#endif
     CUDADRIVERERR_MAP( NO_DEVICE ),
     CUDADRIVERERR_MAP( INVALID_DEVICE ),
+#if defined(CUDA_ERROR_DEVICE_NOT_LICENSED)
+    CUDADRIVERERR_MAP( DEVICE_NOT_LICENSED ),
+#endif
     CUDADRIVERERR_MAP( INVALID_IMAGE ),
     CUDADRIVERERR_MAP( INVALID_CONTEXT ),
     CUDADRIVERERR_MAP( CONTEXT_ALREADY_CURRENT ),
@@ -416,6 +448,15 @@ static const RGYErrMapCudaDriver ERR_MAP_CUDA_DRIVER[] = {
     CUDADRIVERERR_MAP( INVALID_GRAPHICS_CONTEXT ),
     CUDADRIVERERR_MAP( NVLINK_UNCORRECTABLE ),
     CUDADRIVERERR_MAP( JIT_COMPILER_NOT_FOUND ),
+#if defined(CUDA_ERROR_UNSUPPORTED_PTX_VERSION)
+    CUDADRIVERERR_MAP( UNSUPPORTED_PTX_VERSION ),
+#endif
+#if defined(CUDA_ERROR_JIT_COMPILATION_DISABLED)
+    CUDADRIVERERR_MAP( JIT_COMPILATION_DISABLED ),
+#endif
+#if defined(CUDA_ERROR_UNSUPPORTED_EXEC_AFFINITY)
+    CUDADRIVERERR_MAP( UNSUPPORTED_EXEC_AFFINITY ),
+#endif
     CUDADRIVERERR_MAP( INVALID_SOURCE ),
     CUDADRIVERERR_MAP( FILE_NOT_FOUND ),
     CUDADRIVERERR_MAP( SHARED_OBJECT_SYMBOL_NOT_FOUND ),
@@ -449,6 +490,11 @@ static const RGYErrMapCudaDriver ERR_MAP_CUDA_DRIVER[] = {
     CUDADRIVERERR_MAP( SYSTEM_NOT_READY ),
     CUDADRIVERERR_MAP( SYSTEM_DRIVER_MISMATCH ),
     CUDADRIVERERR_MAP( COMPAT_NOT_SUPPORTED_ON_DEVICE ),
+    //CUDADRIVERERR_MAP( MPS_CONNECTION_FAILED ),
+    //CUDADRIVERERR_MAP( MPS_RPC_FAILURE ),
+    //CUDADRIVERERR_MAP( MPS_SERVER_NOT_READY ),
+    //CUDADRIVERERR_MAP( MPS_MAX_CLIENTS_REACHED ),
+    //CUDADRIVERERR_MAP( MPS_MAX_CONNECTIONS_REACHED ),
     CUDADRIVERERR_MAP( STREAM_CAPTURE_UNSUPPORTED ),
     CUDADRIVERERR_MAP( STREAM_CAPTURE_INVALIDATED ),
     CUDADRIVERERR_MAP( STREAM_CAPTURE_MERGE ),
@@ -458,7 +504,16 @@ static const RGYErrMapCudaDriver ERR_MAP_CUDA_DRIVER[] = {
     CUDADRIVERERR_MAP( STREAM_CAPTURE_IMPLICIT ),
     CUDADRIVERERR_MAP( CAPTURED_EVENT ),
     CUDADRIVERERR_MAP( STREAM_CAPTURE_WRONG_THREAD ),
-    CUDADRIVERERR_MAP( UNKNOWN )
+#if defined(CUDA_ERROR_TIMEOUT)
+    CUDADRIVERERR_MAP( TIMEOUT ),
+#endif
+#if defined(CUDA_ERROR_GRAPH_EXEC_UPDATE_FAILURE)
+    CUDADRIVERERR_MAP( GRAPH_EXEC_UPDATE_FAILURE ),
+#endif
+#if defined(CUDA_ERROR_EXTERNAL_DEVICE)
+    CUDADRIVERERR_MAP( EXTERNAL_DEVICE ),
+#endif
+    CUDADRIVERERR_MAP( UNKNOWN ),
 };
 
 CUresult err_to_cuda_driver(RGY_ERR err) {
@@ -566,7 +621,7 @@ NppStatus err_to_npp(RGY_ERR err) {
 }
 
 RGY_ERR err_to_rgy(NppStatus err) {
-    if (err == CUDA_SUCCESS) return RGY_ERR_NONE;
+    if (err == NPP_SUCCESS || err == NPP_NO_ERROR) return RGY_ERR_NONE;
     const RGYErrMapNpp *ERR_MAP_FIN = (const RGYErrMapNpp *)ERR_MAP_NPP + _countof(ERR_MAP_NPP);
     auto ret = std::find_if((const RGYErrMapNpp *)ERR_MAP_NPP, ERR_MAP_FIN, [err](const RGYErrMapNpp map) {
         return map.npp == err;
@@ -987,202 +1042,214 @@ const TCHAR *get_err_mes(RGY_ERR sts) {
     case RGY_ERR_NVCV_CUDA_ILLEGAL_ADDRESS:  return _T("CUDA tried to load or store on an invalid memory address.");
     case RGY_ERR_NVCV_CUDA:                  return _T("An otherwise unspecified CUDA error has been reported.");
 
-    case RGY_ERR_cudaErrorInvalidValue: return "This indicates that one or more of the parameters passed to the API call is not within an acceptable range of values.";
-    case RGY_ERR_cudaErrorMemoryAllocation: return "The API call failed because it was unable to allocate enough memory to perform the requested operation.";
-    case RGY_ERR_cudaErrorInitializationError: return "The API call failed because the CUDA driver and runtime could not be initialized.";
-    case RGY_ERR_cudaErrorCudartUnloading: return "This indicates that a CUDA Runtime API call cannot be executed because it is being called during process shut down, at a point in time after CUDA driver has been unloaded.";
-    case RGY_ERR_cudaErrorProfilerDisabled: return "This indicates profiler is not initialized for this run. This can happen when the application is running with external profiling tools like visual profiler.";
-    case RGY_ERR_cudaErrorProfilerNotInitialized: return "This error return is deprecated as of CUDA 5.0. It is no longer an error to attempt to enable/disable the profiling via ::cudaProfilerStart or ::cudaProfilerStop without initialization.";
-    case RGY_ERR_cudaErrorProfilerAlreadyStarted: return "This error return is deprecated as of CUDA 5.0. It is no longer an error to call cudaProfilerStart() when profiling is already enabled.";
-    case RGY_ERR_cudaErrorProfilerAlreadyStopped: return "This error return is deprecated as of CUDA 5.0. It is no longer an error to call cudaProfilerStop() when profiling is already disabled.";
-    case RGY_ERR_cudaErrorInvalidConfiguration: return "This indicates that a kernel launch is requesting resources that can never be satisfied by the current device. Requesting more shared memory per block than the device supports will trigger this error, as will requesting too many threads or blocks. See ::cudaDeviceProp for more device limitations.";
-    case RGY_ERR_cudaErrorInvalidPitchValue: return "This indicates that one or more of the pitch-related parameters passed to the API call is not within the acceptable range for pitch.";
-    case RGY_ERR_cudaErrorInvalidSymbol: return "This indicates that the symbol name/identifier passed to the API call is not a valid name or identifier.";
-    case RGY_ERR_cudaErrorInvalidHostPointer: return "This indicates that at least one host pointer passed to the API call is not a valid host pointer. This error return is deprecated as of CUDA 10.1.";
-    case RGY_ERR_cudaErrorInvalidDevicePointer: return "This indicates that at least one device pointer passed to the API call is not a valid device pointer. This error return is deprecated as of CUDA 10.1.";
-    case RGY_ERR_cudaErrorInvalidTexture: return "This indicates that the texture passed to the API call is not a valid texture.";
-    case RGY_ERR_cudaErrorInvalidTextureBinding: return "This indicates that the texture binding is not valid. This occurs if you call ::cudaGetTextureAlignmentOffset() with an unbound texture.";
-    case RGY_ERR_cudaErrorInvalidChannelDescriptor: return "This indicates that the channel descriptor passed to the API call is not valid. This occurs if the format is not one of the formats specified by ::cudaChannelFormatKind, or if one of the dimensions is invalid.";
-    case RGY_ERR_cudaErrorInvalidMemcpyDirection: return "This indicates that the direction of the memcpy passed to the API call is not one of the types specified by ::cudaMemcpyKind.";
-    case RGY_ERR_cudaErrorAddressOfConstant: return "This indicated that the user has taken the address of a constant variable, which was forbidden up until the CUDA 3.1 release. This error return is deprecated as of CUDA 3.1. Variables in constant memory may now have their address taken by the runtime via ::cudaGetSymbolAddress().";
-    case RGY_ERR_cudaErrorTextureFetchFailed: return "This indicated that a texture fetch was not able to be performed. This was previously used for device emulation of texture operations. This error return is deprecated as of CUDA 3.1. Device emulation mode was removed with the CUDA 3.1 release.";
-    case RGY_ERR_cudaErrorTextureNotBound: return "This indicated that a texture was not bound for access. This was previously used for device emulation of texture operations. This error return is deprecated as of CUDA 3.1. Device emulation mode was removed with the CUDA 3.1 release.";
-    case RGY_ERR_cudaErrorSynchronizationError: return "This indicated that a synchronization operation had failed. This was previously used for some device emulation functions. This error return is deprecated as of CUDA 3.1. Device emulation mode was removed with the CUDA 3.1 release.";
-    case RGY_ERR_cudaErrorInvalidFilterSetting: return "This indicates that a non-float texture was being accessed with linear filtering. This is not supported by CUDA.";
-    case RGY_ERR_cudaErrorInvalidNormSetting: return "This indicates that an attempt was made to read a non-float texture as a normalized float. This is not supported by CUDA.";
-    case RGY_ERR_cudaErrorMixedDeviceExecution: return "Mixing of device and device emulation code was not allowed. This error return is deprecated as of CUDA 3.1. Device emulation mode was removed with the CUDA 3.1 release.";
-    case RGY_ERR_cudaErrorNotYetImplemented: return "This indicates that the API call is not yet implemented. Production releases of CUDA will never return this error. This error return is deprecated as of CUDA 4.1.";
-    case RGY_ERR_cudaErrorMemoryValueTooLarge: return "This indicated that an emulated device pointer exceeded the 32-bit address range. This error return is deprecated as of CUDA 3.1. Device emulation mode was removed with the CUDA 3.1 release.";
-    case RGY_ERR_cudaErrorStubLibrary: return "This indicates that the CUDA driver that the application has loaded is a stub library. Applications that run with the stub rather than a real driver loaded will result in CUDA API returning this error.";
-    case RGY_ERR_cudaErrorInsufficientDriver: return "This indicates that the installed NVIDIA CUDA driver is older than the CUDA runtime library. This is not a supported configuration. Users should install an updated NVIDIA display driver to allow the application to run.";
-    case RGY_ERR_cudaErrorCallRequiresNewerDriver: return "This indicates that the API call requires a newer CUDA driver than the one currently installed. Users should install an updated NVIDIA CUDA driver to allow the API call to succeed.";
-    case RGY_ERR_cudaErrorInvalidSurface: return "This indicates that the surface passed to the API call is not a valid surface.";
-    case RGY_ERR_cudaErrorDuplicateVariableName: return "This indicates that multiple global or constant variables (across separate CUDA source files in the application) share the same string name.";
-    case RGY_ERR_cudaErrorDuplicateTextureName: return "This indicates that multiple textures (across separate CUDA source files in the application) share the same string name.";
-    case RGY_ERR_cudaErrorDuplicateSurfaceName: return "This indicates that multiple surfaces (across separate CUDA source files in the application) share the same string name.";
-    case RGY_ERR_cudaErrorDevicesUnavailable: return "This indicates that all CUDA devices are busy or unavailable at the current time. Devices are often busy/unavailable due to use of ::cudaComputeModeProhibited, ::cudaComputeModeExclusiveProcess, or when long running CUDA kernels have filled up the GPU and are blocking new work from starting. They can also be unavailable due to memory constraints on a device that already has active CUDA work being performed.";
-    case RGY_ERR_cudaErrorIncompatibleDriverContext: return "This indicates that the current context is not compatible with this the CUDA Runtime. This can only occur if you are using CUDA Runtime/Driver interoperability and have created an existing Driver context using the driver API. The Driver context may be incompatible either because the Driver context was created using an older version of the API, because the Runtime API call expects a primary driver context and the Driver context is not primary, or because the Driver context has been destroyed. Please see CUDART_DRIVER Interactions with the CUDA Driver API for more information.";
-    case RGY_ERR_cudaErrorMissingConfiguration: return "The device function being invoked (usually via ::cudaLaunchKernel()) was not previously configured via the ::cudaConfigureCall() function.";
-    case RGY_ERR_cudaErrorPriorLaunchFailure: return "This indicated that a previous kernel launch failed. This was previously used for device emulation of kernel launches. This error return is deprecated as of CUDA 3.1. Device emulation mode was removed with the CUDA 3.1 release.";
-    case RGY_ERR_cudaErrorLaunchMaxDepthExceeded: return "This error indicates that a device runtime grid launch did not occur because the depth of the child grid would exceed the maximum supported number of nested grid launches.";
-    case RGY_ERR_cudaErrorLaunchFileScopedTex: return "This error indicates that a grid launch did not occur because the kernel uses file-scoped textures which are unsupported by the device runtime. Kernels launched via the device runtime only support textures created with the Texture Object API's.";
-    case RGY_ERR_cudaErrorLaunchFileScopedSurf: return "This error indicates that a grid launch did not occur because the kernel uses file-scoped surfaces which are unsupported by the device runtime. Kernels launched via the device runtime only support surfaces created with the Surface Object API's.";
-    case RGY_ERR_cudaErrorSyncDepthExceeded: return "This error indicates that a call to ::cudaDeviceSynchronize made from the device runtime failed because the call was made at grid depth greater than than either the default (2 levels of grids) or user specified device limit ::cudaLimitDevRuntimeSyncDepth. To be able to synchronize on launched grids at a greater depth successfully, the maximum nested depth at which ::cudaDeviceSynchronize will be called must be specified with the ::cudaLimitDevRuntimeSyncDepth limit to the ::cudaDeviceSetLimit api before the host-side launch of a kernel using the device runtime. Keep in mind that additional levels of sync depth require the runtime to reserve large amounts of device memory that cannot be used for user allocations.";
-    case RGY_ERR_cudaErrorLaunchPendingCountExceeded: return "This error indicates that a device runtime grid launch failed because the launch would exceed the limit ::cudaLimitDevRuntimePendingLaunchCount. For this launch to proceed successfully, ::cudaDeviceSetLimit must be called to set the ::cudaLimitDevRuntimePendingLaunchCount to be higher than the upper bound of outstanding launches that can be issued to the device runtime. Keep in mind that raising the limit of pending device runtime launches will require the runtime to reserve device memory that cannot be used for user allocations.";
-    case RGY_ERR_cudaErrorInvalidDeviceFunction: return "The requested device function does not exist or is not compiled for the proper device architecture.";
-    case RGY_ERR_cudaErrorNoDevice: return "This indicates that no CUDA-capable devices were detected by the installed CUDA driver.";
-    case RGY_ERR_cudaErrorInvalidDevice: return "This indicates that the device ordinal supplied by the user does not correspond to a valid CUDA device or that the action requested is invalid for the specified device.";
-    case RGY_ERR_cudaErrorDeviceNotLicensed: return "This indicates that the device doesn't have a valid Grid License.";
-    case RGY_ERR_cudaErrorSoftwareValidityNotEstablished: return "By default, the CUDA runtime may perform a minimal set of self-tests, as well as CUDA driver tests, to establish the validity of both. Introduced in CUDA 11.2, this error return indicates that at least one of these tests has failed and the validity of either the runtime or the driver could not be established.";
-    case RGY_ERR_cudaErrorStartupFailure: return "This indicates an internal startup failure in the CUDA runtime.";
-    case RGY_ERR_cudaErrorInvalidKernelImage: return "This indicates that the device kernel image is invalid.";
-    case RGY_ERR_cudaErrorDeviceUninitialized: return "This most frequently indicates that there is no context bound to the current thread. This can also be returned if the context passed to an API call is not a valid handle (such as a context that has had ::cuCtxDestroy() invoked on it). This can also be returned if a user mixes different API versions (i.e. 3010 context with 3020 API calls). See ::cuCtxGetApiVersion() for more details.";
-    case RGY_ERR_cudaErrorMapBufferObjectFailed: return "This indicates that the buffer object could not be mapped.";
-    case RGY_ERR_cudaErrorUnmapBufferObjectFailed: return "This indicates that the buffer object could not be unmapped.";
-    case RGY_ERR_cudaErrorArrayIsMapped: return "This indicates that the specified array is currently mapped and thus cannot be destroyed.";
-    case RGY_ERR_cudaErrorAlreadyMapped: return "This indicates that the resource is already mapped.";
-    case RGY_ERR_cudaErrorNoKernelImageForDevice: return "This indicates that there is no kernel image available that is suitable for the device. This can occur when a user specifies code generation options for a particular CUDA source file that do not include the corresponding device configuration.";
-    case RGY_ERR_cudaErrorAlreadyAcquired: return "This indicates that a resource has already been acquired.";
-    case RGY_ERR_cudaErrorNotMapped: return "This indicates that a resource is not mapped.";
-    case RGY_ERR_cudaErrorNotMappedAsArray: return "This indicates that a mapped resource is not available for access as an array.";
-    case RGY_ERR_cudaErrorNotMappedAsPointer: return "This indicates that a mapped resource is not available for access as a pointer.";
-    case RGY_ERR_cudaErrorECCUncorrectable: return "This indicates that an uncorrectable ECC error was detected during execution.";
-    case RGY_ERR_cudaErrorUnsupportedLimit: return "This indicates that the ::cudaLimit passed to the API call is not supported by the active device.";
-    case RGY_ERR_cudaErrorDeviceAlreadyInUse: return "This indicates that a call tried to access an exclusive-thread device that is already in use by a different thread.";
-    case RGY_ERR_cudaErrorPeerAccessUnsupported: return "This error indicates that P2P access is not supported across the given devices.";
-    case RGY_ERR_cudaErrorInvalidPtx: return "A PTX compilation failed. The runtime may fall back to compiling PTX if an application does not contain a suitable binary for the current device.";
-    case RGY_ERR_cudaErrorInvalidGraphicsContext: return "This indicates an error with the OpenGL or DirectX context.";
-    case RGY_ERR_cudaErrorNvlinkUncorrectable: return "This indicates that an uncorrectable NVLink error was detected during the execution.";
-    case RGY_ERR_cudaErrorJitCompilerNotFound: return "This indicates that the PTX JIT compiler library was not found. The JIT Compiler library is used for PTX compilation. The runtime may fall back to compiling PTX if an application does not contain a suitable binary for the current device.";
-    case RGY_ERR_cudaErrorUnsupportedPtxVersion: return "This indicates that the provided PTX was compiled with an unsupported toolchain. The most common reason for this, is the PTX was generated by a compiler newer than what is supported by the CUDA driver and PTX JIT compiler.";
-    case RGY_ERR_cudaErrorJitCompilationDisabled: return "This indicates that the JIT compilation was disabled. The JIT compilation compiles PTX. The runtime may fall back to compiling PTX if an application does not contain a suitable binary for the current device.";
-    case RGY_ERR_cudaErrorUnsupportedExecAffinity: return "This indicates that the provided execution affinity is not supported by the device.";
-    case RGY_ERR_cudaErrorInvalidSource: return "This indicates that the device kernel source is invalid.";
-    case RGY_ERR_cudaErrorFileNotFound: return "This indicates that the file specified was not found.";
-    case RGY_ERR_cudaErrorSharedObjectSymbolNotFound: return "This indicates that a link to a shared object failed to resolve.";
-    case RGY_ERR_cudaErrorSharedObjectInitFailed: return "This indicates that initialization of a shared object failed.";
-    case RGY_ERR_cudaErrorOperatingSystem: return "This error indicates that an OS call failed.";
-    case RGY_ERR_cudaErrorInvalidResourceHandle: return "This indicates that a resource handle passed to the API call was not valid. Resource handles are opaque types like ::cudaStream_t and ::cudaEvent_t.";
-    case RGY_ERR_cudaErrorIllegalState: return "This indicates that a resource required by the API call is not in a valid state to perform the requested operation.";
-    case RGY_ERR_cudaErrorSymbolNotFound: return "This indicates that a named symbol was not found. Examples of symbols are global/constant variable names, driver function names, texture names, and surface names.";
-    case RGY_ERR_cudaErrorNotReady: return "This indicates that asynchronous operations issued previously have not completed yet. This result is not actually an error, but must be indicated differently than ::cudaSuccess (which indicates completion). Calls that may return this value include ::cudaEventQuery() and ::cudaStreamQuery().";
-    case RGY_ERR_cudaErrorIllegalAddress: return "The device encountered a load or store instruction on an invalid memory address. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.";
-    case RGY_ERR_cudaErrorLaunchOutOfResources: return "This indicates that a launch did not occur because it did not have appropriate resources. Although this error is similar to ::cudaErrorInvalidConfiguration, this error usually indicates that the user has attempted to pass too many arguments to the device kernel, or the kernel launch specifies too many threads for the kernel's register count.";
-    case RGY_ERR_cudaErrorLaunchTimeout: return "This indicates that the device kernel took too long to execute. This can only occur if timeouts are enabled - see the device property ref ::cudaDeviceProp::kernelExecTimeoutEnabled for more information. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.";
-    case RGY_ERR_cudaErrorLaunchIncompatibleTexturing: return "This error indicates a kernel launch that uses an incompatible texturing mode.";
-    case RGY_ERR_cudaErrorPeerAccessAlreadyEnabled: return "This error indicates that a call to ::cudaDeviceEnablePeerAccess() is trying to re-enable peer addressing on from a context which has already had peer addressing enabled.";
-    case RGY_ERR_cudaErrorPeerAccessNotEnabled: return "This error indicates that ::cudaDeviceDisablePeerAccess() is trying to disable peer addressing which has not been enabled yet via ::cudaDeviceEnablePeerAccess().";
-    case RGY_ERR_cudaErrorSetOnActiveProcess: return "This indicates that the user has called ::cudaSetValidDevices(), ::cudaSetDeviceFlags(), ::cudaD3D9SetDirect3DDevice(), ::cudaD3D10SetDirect3DDevice, ::cudaD3D11SetDirect3DDevice(), or ::cudaVDPAUSetVDPAUDevice() after initializing the CUDA runtime by calling non-device management operations (allocating memory and launching kernels are examples of non-device management operations). This error can also be returned if using runtime/driver interoperability and there is an existing ::CUcontext active on the host thread.";
-    case RGY_ERR_cudaErrorContextIsDestroyed: return "This error indicates that the context current to the calling thread has been destroyed using ::cuCtxDestroy, or is a primary context which has not yet been initialized.";
-    case RGY_ERR_cudaErrorAssert: return "An assert triggered in device code during kernel execution. The device cannot be used again. All existing allocations are invalid. To continue using CUDA, the process must be terminated and relaunched.";
-    case RGY_ERR_cudaErrorTooManyPeers: return "This error indicates that the hardware resources required to enable peer access have been exhausted for one or more of the devices passed to ::cudaEnablePeerAccess().";
-    case RGY_ERR_cudaErrorHostMemoryAlreadyRegistered: return "This error indicates that the memory range passed to ::cudaHostRegister() has already been registered.";
-    case RGY_ERR_cudaErrorHostMemoryNotRegistered: return "This error indicates that the pointer passed to ::cudaHostUnregister() does not correspond to any currently registered memory region.";
-    case RGY_ERR_cudaErrorHardwareStackError: return "Device encountered an error in the call stack during kernel execution, possibly due to stack corruption or exceeding the stack size limit. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.";
-    case RGY_ERR_cudaErrorIllegalInstruction: return "The device encountered an illegal instruction during kernel execution This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.";
-    case RGY_ERR_cudaErrorMisalignedAddress: return "The device encountered a load or store instruction on a memory address which is not aligned. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.";
-    case RGY_ERR_cudaErrorInvalidAddressSpace: return "While executing a kernel, the device encountered an instruction which can only operate on memory locations in certain address spaces (global, shared, or local), but was supplied a memory address not belonging to an allowed address space. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.";
-    case RGY_ERR_cudaErrorInvalidPc: return "The device encountered an invalid program counter. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.";
-    case RGY_ERR_cudaErrorLaunchFailure: return "An exception occurred on the device while executing a kernel. Common causes include dereferencing an invalid device pointer and accessing out of bounds shared memory. Less common cases can be system specific - more information about these cases can be found in the system specific user guide. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.";
-    case RGY_ERR_cudaErrorCooperativeLaunchTooLarge: return "This error indicates that the number of blocks launched per grid for a kernel that was launched via either ::cudaLaunchCooperativeKernel or ::cudaLaunchCooperativeKernelMultiDevice exceeds the maximum number of blocks as allowed by ::cudaOccupancyMaxActiveBlocksPerMultiprocessor or ::cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags times the number of multiprocessors as specified by the device attribute ::cudaDevAttrMultiProcessorCount.";
-    case RGY_ERR_cudaErrorNotPermitted: return "This error indicates the attempted operation is not permitted.";
-    case RGY_ERR_cudaErrorNotSupported: return "This error indicates the attempted operation is not supported on the current system or device.";
-    case RGY_ERR_cudaErrorSystemNotReady: return "This error indicates that the system is not yet ready to start any CUDA work.  To continue using CUDA, verify the system configuration is in a valid state and all required driver daemons are actively running. More information about this error can be found in the system specific user guide.";
-    case RGY_ERR_cudaErrorSystemDriverMismatch: return "This error indicates that there is a mismatch between the versions of the display driver and the CUDA driver. Refer to the compatibility documentation for supported versions.";
-    case RGY_ERR_cudaErrorCompatNotSupportedOnDevice: return "This error indicates that the system was upgraded to run with forward compatibility but the visible hardware detected by CUDA does not support this configuration. Refer to the compatibility documentation for the supported hardware matrix or ensure that only supported hardware is visible during initialization via the CUDA_VISIBLE_DEVICES environment variable.";
-    case RGY_ERR_cudaErrorMpsConnectionFailed: return "This error indicates that the MPS client failed to connect to the MPS control daemon or the MPS server.";
-    case RGY_ERR_cudaErrorMpsRpcFailure: return "This error indicates that the remote procedural call between the MPS server and the MPS client failed.";
-    case RGY_ERR_cudaErrorMpsServerNotReady: return "This error indicates that the MPS server is not ready to accept new MPS client requests. This error can be returned when the MPS server is in the process of recovering from a fatal failure.";
-    case RGY_ERR_cudaErrorMpsMaxClientsReached: return "This error indicates that the hardware resources required to create MPS client have been exhausted.";
-    case RGY_ERR_cudaErrorMpsMaxConnectionsReached: return "This error indicates the the hardware resources required to device connections have been exhausted.";
-    case RGY_ERR_cudaErrorStreamCaptureUnsupported: return "The operation is not permitted when the stream is capturing.";
-    case RGY_ERR_cudaErrorStreamCaptureInvalidated: return "The current capture sequence on the stream has been invalidated due to a previous error.";
-    case RGY_ERR_cudaErrorStreamCaptureMerge: return "The operation would have resulted in a merge of two independent capture sequences.";
-    case RGY_ERR_cudaErrorStreamCaptureUnmatched: return "The capture was not initiated in this stream.";
-    case RGY_ERR_cudaErrorStreamCaptureUnjoined: return "The capture sequence contains a fork that was not joined to the primary stream.";
-    case RGY_ERR_cudaErrorStreamCaptureIsolation: return "A dependency would have been created which crosses the capture sequence boundary. Only implicit in-stream ordering dependencies are allowed to cross the boundary.";
-    case RGY_ERR_cudaErrorStreamCaptureImplicit: return "The operation would have resulted in a disallowed implicit dependency on a current capture sequence from cudaStreamLegacy.";
-    case RGY_ERR_cudaErrorCapturedEvent: return "The operation is not permitted on an event which was last recorded in a capturing stream.";
-    case RGY_ERR_cudaErrorStreamCaptureWrongThread: return "A stream capture sequence not initiated with the ::cudaStreamCaptureModeRelaxed argument to ::cudaStreamBeginCapture was passed to ::cudaStreamEndCapture in a different thread.";
-    case RGY_ERR_cudaErrorTimeout: return "This indicates that the wait operation has timed out.";
-    case RGY_ERR_cudaErrorGraphExecUpdateFailure: return "This error indicates that the graph update was not performed because it included changes which violated constraints specific to instantiated graph update.";
-    case RGY_ERR_cudaErrorExternalDevice: return "This indicates that an async error has occurred in a device outside of CUDA. If CUDA was waiting for an external device's signal before consuming shared data, the external device signaled an error indicating that the data is not valid for consumption. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.";
-    case RGY_ERR_cudaErrorUnknown: return "This indicates that an unknown internal error has occurred.";
-    case RGY_ERR_cudaErrorApiFailureBase: return "Any unhandled CUDA driver error is added to this value and returned via the runtime. Production releases of CUDA should not return such errors. This error return is deprecated as of CUDA 4.1.";
+    case RGY_ERR_cudaErrorInvalidValue: return _T("cudaErrorInvalidValue: This indicates that one or more of the parameters passed to the API call is not within an acceptable range of values.");
+    case RGY_ERR_cudaErrorMemoryAllocation: return _T("cudaErrorMemoryAllocation: The API call failed because it was unable to allocate enough memory to perform the requested operation.");
+    case RGY_ERR_cudaErrorInitializationError: return _T("cudaErrorInitializationError: The API call failed because the CUDA driver and runtime could not be initialized.");
+    case RGY_ERR_cudaErrorCudartUnloading: return _T("cudaErrorCudartUnloading: This indicates that a CUDA Runtime API call cannot be executed because it is being called during process shut down, at a point in time after CUDA driver has been unloaded.");
+    case RGY_ERR_cudaErrorProfilerDisabled: return _T("cudaErrorProfilerDisabled: This indicates profiler is not initialized for this run. This can happen when the application is running with external profiling tools like visual profiler.");
+    case RGY_ERR_cudaErrorProfilerNotInitialized: return _T("cudaErrorProfilerNotInitialized: This error return is deprecated as of CUDA 5.0. It is no longer an error to attempt to enable/disable the profiling via ::cudaProfilerStart or ::cudaProfilerStop without initialization.");
+    case RGY_ERR_cudaErrorProfilerAlreadyStarted: return _T("cudaErrorProfilerAlreadyStarted: This error return is deprecated as of CUDA 5.0. It is no longer an error to call cudaProfilerStart() when profiling is already enabled.");case RGY_ERR_cudaErrorProfilerAlreadyStopped: return _T("cudaErrorProfilerAlreadyStopped: This error return is deprecated as of CUDA 5.0. It is no longer an error to call cudaProfilerStop() when profiling is already disabled.");case RGY_ERR_cudaErrorInvalidConfiguration: return _T("cudaErrorInvalidConfiguration: This indicates that a kernel launch is requesting resources that can never be satisfied by the current device. Requesting more shared memory per block than the device supports will trigger this error, as will requesting too many threads or blocks. See ::cudaDeviceProp for more device limitations.");
+    case RGY_ERR_cudaErrorInvalidPitchValue: return _T("cudaErrorInvalidPitchValue: This indicates that one or more of the pitch-related parameters passed to the API call is not within the acceptable range for pitch.");
+    case RGY_ERR_cudaErrorInvalidSymbol: return _T("cudaErrorInvalidSymbol: This indicates that the symbol name/identifier passed to the API call is not a valid name or identifier.");
+    case RGY_ERR_cudaErrorInvalidHostPointer: return _T("cudaErrorInvalidHostPointer: This indicates that at least one host pointer passed to the API call is not a valid host pointer. This error return is deprecated as of CUDA 10.1.");
+    case RGY_ERR_cudaErrorInvalidDevicePointer: return _T("cudaErrorInvalidDevicePointer: This indicates that at least one device pointer passed to the API call is not a valid device pointer. This error return is deprecated as of CUDA 10.1.");
+    case RGY_ERR_cudaErrorInvalidTexture: return _T("cudaErrorInvalidTexture: This indicates that the texture passed to the API call is not a valid texture.");
+    case RGY_ERR_cudaErrorInvalidTextureBinding: return _T("cudaErrorInvalidTextureBinding: This indicates that the texture binding is not valid. This occurs if you call ::cudaGetTextureAlignmentOffset() with an unbound texture.");
+    case RGY_ERR_cudaErrorInvalidChannelDescriptor: return _T("cudaErrorInvalidChannelDescriptor: This indicates that the channel descriptor passed to the API call is not valid. This occurs if the format is not one of the formats specified by ::cudaChannelFormatKind, or if one of the dimensions is invalid.");
+    case RGY_ERR_cudaErrorInvalidMemcpyDirection: return _T("cudaErrorInvalidMemcpyDirection: This indicates that the direction of the memcpy passed to the API call is not one of the types specified by ::cudaMemcpyKind.");
+    case RGY_ERR_cudaErrorAddressOfConstant: return _T("cudaErrorAddressOfConstant: This indicated that the user has taken the address of a constant variable, which was forbidden up until the CUDA 3.1 release. This error return is deprecated as of CUDA 3.1. Variables in constant memory may now have their address taken by the runtime via ::cudaGetSymbolAddress().");
+    case RGY_ERR_cudaErrorTextureFetchFailed: return _T("cudaErrorTextureFetchFailed: This indicated that a texture fetch was not able to be performed. This was previously used for device emulation of texture operations. This error return is deprecated as of CUDA 3.1. Device emulation mode was removed with the CUDA 3.1 release.");
+    case RGY_ERR_cudaErrorTextureNotBound: return _T("cudaErrorTextureNotBound: This indicated that a texture was not bound for access. This was previously used for device emulation of texture operations. This error return is deprecated as of CUDA 3.1. Device emulation mode was removed with the CUDA 3.1 release.");
+    case RGY_ERR_cudaErrorSynchronizationError: return _T("cudaErrorSynchronizationError: This indicated that a synchronization operation had failed. This was previously used for some device emulation functions. This error return is deprecated as of CUDA 3.1. Device emulation mode was removed with the CUDA 3.1 release.");
+    case RGY_ERR_cudaErrorInvalidFilterSetting: return _T("cudaErrorInvalidFilterSetting: This indicates that a non-float texture was being accessed with linear filtering. This is not supported by CUDA.");
+    case RGY_ERR_cudaErrorInvalidNormSetting: return _T("cudaErrorInvalidNormSetting: This indicates that an attempt was made to read a non-float texture as a normalized float. This is not supported by CUDA.");
+    case RGY_ERR_cudaErrorMixedDeviceExecution: return _T("cudaErrorMixedDeviceExecution: Mixing of device and device emulation code was not allowed. This error return is deprecated as of CUDA 3.1. Device emulation mode was removed with the CUDA 3.1 release.");
+    case RGY_ERR_cudaErrorNotYetImplemented: return _T("cudaErrorNotYetImplemented: This indicates that the API call is not yet implemented. Production releases of CUDA will never return this error. This error return is deprecated as of CUDA 4.1.");
+    case RGY_ERR_cudaErrorMemoryValueTooLarge: return _T("cudaErrorMemoryValueTooLarge: This indicated that an emulated device pointer exceeded the 32-bit address range. This error return is deprecated as of CUDA 3.1. Device emulation mode was removed with the CUDA 3.1 release.");
+    case RGY_ERR_cudaErrorStubLibrary: return _T("cudaErrorStubLibrary: This indicates that the CUDA driver that the application has loaded is a stub library. Applications that run with the stub rather than a real driver loaded will result in CUDA API returning this error.");
+    case RGY_ERR_cudaErrorInsufficientDriver: return _T("cudaErrorInsufficientDriver: This indicates that the installed NVIDIA CUDA driver is older than the CUDA runtime library. This is not a supported configuration. Users should install an updated NVIDIA display driver to allow the application to run.");
+    case RGY_ERR_cudaErrorCallRequiresNewerDriver: return _T("cudaErrorCallRequiresNewerDriver: This indicates that the API call requires a newer CUDA driver than the one currently installed. Users should install an updated NVIDIA CUDA driver to allow the API call to succeed.");
+    case RGY_ERR_cudaErrorInvalidSurface: return _T("cudaErrorInvalidSurface: This indicates that the surface passed to the API call is not a valid surface.");
+    case RGY_ERR_cudaErrorDuplicateVariableName: return _T("cudaErrorDuplicateVariableName: This indicates that multiple global or constant variables (across separate CUDA source files in the application) share the same string name.");
+    case RGY_ERR_cudaErrorDuplicateTextureName: return _T("cudaErrorDuplicateTextureName: This indicates that multiple textures (across separate CUDA source files in the application) share the same string name.");
+    case RGY_ERR_cudaErrorDuplicateSurfaceName: return _T("cudaErrorDuplicateSurfaceName: This indicates that multiple surfaces (across separate CUDA source files in the application) share the same string name.");
+    case RGY_ERR_cudaErrorDevicesUnavailable: return _T("cudaErrorDevicesUnavailable: This indicates that all CUDA devices are busy or unavailable at the current time. Devices are often busy/unavailable due to use of ::cudaComputeModeProhibited, ::cudaComputeModeExclusiveProcess, or when long running CUDA kernels have filled up the GPU and are blocking new work from starting. They can also be unavailable due to memory constraints on a device that already has active CUDA work being performed.");
+    case RGY_ERR_cudaErrorIncompatibleDriverContext: return _T("cudaErrorIncompatibleDriverContext: This indicates that the current context is not compatible with this the CUDA Runtime. This can only occur if you are using CUDA Runtime/Driver interoperability and have created an existing Driver context using the driver API. The Driver context may be incompatible either because the Driver context was created using an older version of the API, because the Runtime API call expects a primary driver context and the Driver context is not primary, or because the Driver context has been destroyed. Please see CUDART_DRIVER Interactions with the CUDA Driver API for more information.");
+    case RGY_ERR_cudaErrorMissingConfiguration: return _T("cudaErrorMissingConfiguration: The device function being invoked (usually via ::cudaLaunchKernel()) was not previously configured via the ::cudaConfigureCall() function.");
+    case RGY_ERR_cudaErrorPriorLaunchFailure: return _T("cudaErrorPriorLaunchFailure: This indicated that a previous kernel launch failed. This was previously used for device emulation of kernel launches. This error return is deprecated as of CUDA 3.1. Device emulation mode was removed with the CUDA 3.1 release.");
+    case RGY_ERR_cudaErrorLaunchMaxDepthExceeded: return _T("cudaErrorLaunchMaxDepthExceeded: This error indicates that a device runtime grid launch did not occur because the depth of the child grid would exceed the maximum supported number of nested grid launches.");
+    case RGY_ERR_cudaErrorLaunchFileScopedTex: return _T("cudaErrorLaunchFileScopedTex: This error indicates that a grid launch did not occur because the kernel uses file-scoped textures which are unsupported by the device runtime. Kernels launched via the device runtime only support textures created with the Texture Object API's.");
+    case RGY_ERR_cudaErrorLaunchFileScopedSurf: return _T("cudaErrorLaunchFileScopedSurf: This error indicates that a grid launch did not occur because the kernel uses file-scoped surfaces which are unsupported by the device runtime. Kernels launched via the device runtime only support surfaces created with the Surface Object API's.");
+    case RGY_ERR_cudaErrorSyncDepthExceeded: return _T("cudaErrorSyncDepthExceeded: This error indicates that a call to ::cudaDeviceSynchronize made from the device runtime failed because the call was made at grid depth greater than than either the default (2 levels of grids) or user specified device limit ::cudaLimitDevRuntimeSyncDepth. To be able to synchronize on launched grids at a greater depth successfully, the maximum nested depth at which ::cudaDeviceSynchronize will be called must be specified with the ::cudaLimitDevRuntimeSyncDepth limit to the ::cudaDeviceSetLimit api before the host-side launch of a kernel using the device runtime. Keep in mind that additional levels of sync depth require the runtime to reserve large amounts of device memory that cannot be used for user allocations.");
+    case RGY_ERR_cudaErrorLaunchPendingCountExceeded: return _T("cudaErrorLaunchPendingCountExceeded: This error indicates that a device runtime grid launch failed because the launch would exceed the limit ::cudaLimitDevRuntimePendingLaunchCount. For this launch to proceed successfully, ::cudaDeviceSetLimit must be called to set the ::cudaLimitDevRuntimePendingLaunchCount to be higher than the upper bound of outstanding launches that can be issued to the device runtime. Keep in mind that raising the limit of pending device runtime launches will require the runtime to reserve device memory that cannot be used for user allocations.");
+    case RGY_ERR_cudaErrorInvalidDeviceFunction: return _T("cudaErrorInvalidDeviceFunction: The requested device function does not exist or is not compiled for the proper device architecture.");
+    case RGY_ERR_cudaErrorNoDevice: return _T("cudaErrorNoDevice: This indicates that no CUDA-capable devices were detected by the installed CUDA driver.");
+    case RGY_ERR_cudaErrorInvalidDevice: return _T("cudaErrorInvalidDevice: This indicates that the device ordinal supplied by the user does not correspond to a valid CUDA device or that the action requested is invalid for the specified device.");
+    case RGY_ERR_cudaErrorDeviceNotLicensed: return _T("cudaErrorDeviceNotLicensed: This indicates that the device doesn't have a valid Grid License.");
+    case RGY_ERR_cudaErrorSoftwareValidityNotEstablished: return _T("cudaErrorSoftwareValidityNotEstablished: By default, the CUDA runtime may perform a minimal set of self-tests, as well as CUDA driver tests, to establish the validity of both. Introduced in CUDA 11.2, this error return indicates that at least one of these tests has failed and the validity of either the runtime or the driver could not be established.");
+    case RGY_ERR_cudaErrorStartupFailure: return _T("cudaErrorStartupFailure: This indicates an internal startup failure in the CUDA runtime.");
+    case RGY_ERR_cudaErrorInvalidKernelImage: return _T("cudaErrorInvalidKernelImage: This indicates that the device kernel image is invalid.");
+    case RGY_ERR_cudaErrorDeviceUninitialized: return _T("cudaErrorDeviceUninitialized: This most frequently indicates that there is no context bound to the current thread. This can also be returned if the context passed to an API call is not a valid handle (such as a context that has had ::cuCtxDestroy() invoked on it). This can also be returned if a user mixes different API versions (i.e. 3010 context with 3020 API calls). See ::cuCtxGetApiVersion() for more details.");
+    case RGY_ERR_cudaErrorMapBufferObjectFailed: return _T("cudaErrorMapBufferObjectFailed: This indicates that the buffer object could not be mapped.");
+    case RGY_ERR_cudaErrorUnmapBufferObjectFailed: return _T("cudaErrorUnmapBufferObjectFailed: This indicates that the buffer object could not be unmapped.");
+    case RGY_ERR_cudaErrorArrayIsMapped: return _T("cudaErrorArrayIsMapped: This indicates that the specified array is currently mapped and thus cannot be destroyed.");
+    case RGY_ERR_cudaErrorAlreadyMapped: return _T("cudaErrorAlreadyMapped: This indicates that the resource is already mapped.");
+    case RGY_ERR_cudaErrorNoKernelImageForDevice: return _T("cudaErrorNoKernelImageForDevice: This indicates that there is no kernel image available that is suitable for the device. This can occur when a user specifies code generation options for a particular CUDA source file that do not include the corresponding device configuration.");
+    case RGY_ERR_cudaErrorAlreadyAcquired: return _T("cudaErrorAlreadyAcquired: This indicates that a resource has already been acquired.");
+    case RGY_ERR_cudaErrorNotMapped: return _T("cudaErrorNotMapped: This indicates that a resource is not mapped.");
+    case RGY_ERR_cudaErrorNotMappedAsArray: return _T("cudaErrorNotMappedAsArray: This indicates that a mapped resource is not available for access as an array.");
+    case RGY_ERR_cudaErrorNotMappedAsPointer: return _T("cudaErrorNotMappedAsPointer: This indicates that a mapped resource is not available for access as a pointer.");
+    case RGY_ERR_cudaErrorECCUncorrectable: return _T("cudaErrorECCUncorrectable: This indicates that an uncorrectable ECC error was detected during execution.");
+    case RGY_ERR_cudaErrorUnsupportedLimit: return _T("cudaErrorUnsupportedLimit: This indicates that the ::cudaLimit passed to the API call is not supported by the active device.");
+    case RGY_ERR_cudaErrorDeviceAlreadyInUse: return _T("cudaErrorDeviceAlreadyInUse: This indicates that a call tried to access an exclusive-thread device that is already in use by a different thread.");
+    case RGY_ERR_cudaErrorPeerAccessUnsupported: return _T("cudaErrorPeerAccessUnsupported: This error indicates that P2P access is not supported across the given devices.");
+    case RGY_ERR_cudaErrorInvalidPtx: return _T("cudaErrorInvalidPtx: A PTX compilation failed. The runtime may fall back to compiling PTX if an application does not contain a suitable binary for the current device.");
+    case RGY_ERR_cudaErrorInvalidGraphicsContext: return _T("cudaErrorInvalidGraphicsContext: This indicates an error with the OpenGL or DirectX context.");
+    case RGY_ERR_cudaErrorNvlinkUncorrectable: return _T("cudaErrorNvlinkUncorrectable: This indicates that an uncorrectable NVLink error was detected during the execution.");
+    case RGY_ERR_cudaErrorJitCompilerNotFound: return _T("cudaErrorJitCompilerNotFound: This indicates that the PTX JIT compiler library was not found. The JIT Compiler library is used for PTX compilation. The runtime may fall back to compiling PTX if an application does not contain a suitable binary for the current device.");
+    case RGY_ERR_cudaErrorUnsupportedPtxVersion: return _T("cudaErrorUnsupportedPtxVersion: This indicates that the provided PTX was compiled with an unsupported toolchain. The most common reason for this, is the PTX was generated by a compiler newer than what is supported by the CUDA driver and PTX JIT compiler.");
+    case RGY_ERR_cudaErrorJitCompilationDisabled: return _T("cudaErrorJitCompilationDisabled: This indicates that the JIT compilation was disabled. The JIT compilation compiles PTX. The runtime may fall back to compiling PTX if an application does not contain a suitable binary for the current device.");
+    case RGY_ERR_cudaErrorUnsupportedExecAffinity: return _T("cudaErrorUnsupportedExecAffinity: This indicates that the provided execution affinity is not supported by the device.");
+    case RGY_ERR_cudaErrorInvalidSource: return _T("cudaErrorInvalidSource: This indicates that the device kernel source is invalid.");
+    case RGY_ERR_cudaErrorFileNotFound: return _T("cudaErrorFileNotFound: This indicates that the file specified was not found.");
+    case RGY_ERR_cudaErrorSharedObjectSymbolNotFound: return _T("cudaErrorSharedObjectSymbolNotFound: This indicates that a link to a shared object failed to resolve.");
+    case RGY_ERR_cudaErrorSharedObjectInitFailed: return _T("cudaErrorSharedObjectInitFailed: This indicates that initialization of a shared object failed.");
+    case RGY_ERR_cudaErrorOperatingSystem: return _T("cudaErrorOperatingSystem: This error indicates that an OS call failed.");
+    case RGY_ERR_cudaErrorInvalidResourceHandle: return _T("cudaErrorInvalidResourceHandle: This indicates that a resource handle passed to the API call was not valid. Resource handles are opaque types like ::cudaStream_t and ::cudaEvent_t.");
+    case RGY_ERR_cudaErrorIllegalState: return _T("cudaErrorIllegalState: This indicates that a resource required by the API call is not in a valid state to perform the requested operation.");
+    case RGY_ERR_cudaErrorSymbolNotFound: return _T("cudaErrorSymbolNotFound: This indicates that a named symbol was not found. Examples of symbols are global/constant variable names, driver function names, texture names, and surface names.");
+    case RGY_ERR_cudaErrorNotReady: return _T("cudaErrorNotReady: This indicates that asynchronous operations issued previously have not completed yet. This result is not actually an error, but must be indicated differently than ::cudaSuccess (which indicates completion). Calls that may return this value include ::cudaEventQuery() and ::cudaStreamQuery().");
+    case RGY_ERR_cudaErrorIllegalAddress: return _T("cudaErrorIllegalAddress: The device encountered a load or store instruction on an invalid memory address. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.");
+    case RGY_ERR_cudaErrorLaunchOutOfResources: return _T("cudaErrorLaunchOutOfResources: This indicates that a launch did not occur because it did not have appropriate resources. Although this error is similar to ::cudaErrorInvalidConfiguration, this error usually indicates that the user has attempted to pass too many arguments to the device kernel, or the kernel launch specifies too many threads for the kernel's register count.");
+    case RGY_ERR_cudaErrorLaunchTimeout: return _T("cudaErrorLaunchTimeout: This indicates that the device kernel took too long to execute. This can only occur if timeouts are enabled - see the device property ::cudaDeviceProp::kernelExecTimeoutEnabled for more information. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.");
+    case RGY_ERR_cudaErrorLaunchIncompatibleTexturing: return _T("cudaErrorLaunchIncompatibleTexturing: This error indicates a kernel launch that uses an incompatible texturing mode.");
+    case RGY_ERR_cudaErrorPeerAccessAlreadyEnabled: return _T("cudaErrorPeerAccessAlreadyEnabled: This error indicates that a call to ::cudaDeviceEnablePeerAccess() is trying to re-enable peer addressing on from a context which has already had peer addressing enabled.");
+    case RGY_ERR_cudaErrorPeerAccessNotEnabled: return _T("cudaErrorPeerAccessNotEnabled: This error indicates that ::cudaDeviceDisablePeerAccess() is trying to disable peer addressing which has not been enabled yet via ::cudaDeviceEnablePeerAccess().");
+    case RGY_ERR_cudaErrorSetOnActiveProcess: return _T("cudaErrorSetOnActiveProcess: This indicates that the user has called ::cudaSetValidDevices(), ::cudaSetDeviceFlags(), ::cudaD3D9SetDirect3DDevice(), ::cudaD3D10SetDirect3DDevice, ::cudaD3D11SetDirect3DDevice(), or ::cudaVDPAUSetVDPAUDevice() after initializing the CUDA runtime by calling non-device management operations (allocating memory and launching kernels are examples of non-device management operations). This error can also be returned if using runtime/driver interoperability and there is an existing ::CUcontext active on the host thread.");
+    case RGY_ERR_cudaErrorContextIsDestroyed: return _T("cudaErrorContextIsDestroyed: This error indicates that the context current to the calling thread has been destroyed using ::cuCtxDestroy, or is a primary context which has not yet been initialized.");
+    case RGY_ERR_cudaErrorAssert: return _T("cudaErrorAssert: An assert triggered in device code during kernel execution. The device cannot be used again. All existing allocations are invalid. To continue using CUDA, the process must be terminated and relaunched.");
+    case RGY_ERR_cudaErrorTooManyPeers: return _T("cudaErrorTooManyPeers: This error indicates that the hardware resources required to enable peer access have been exhausted for one or more of the devices passed to ::cudaEnablePeerAccess().");
+    case RGY_ERR_cudaErrorHostMemoryAlreadyRegistered: return _T("cudaErrorHostMemoryAlreadyRegistered: This error indicates that the memory range passed to ::cudaHostRegister() has already been registered.");
+    case RGY_ERR_cudaErrorHostMemoryNotRegistered: return _T("cudaErrorHostMemoryNotRegistered: This error indicates that the pointer passed to ::cudaHostUnregister() does not correspond to any currently registered memory region.");
+    case RGY_ERR_cudaErrorHardwareStackError: return _T("cudaErrorHardwareStackError: Device encountered an error in the call stack during kernel execution, possibly due to stack corruption or exceeding the stack size limit. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.");
+    case RGY_ERR_cudaErrorIllegalInstruction: return _T("cudaErrorIllegalInstruction: The device encountered an illegal instruction during kernel execution This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.");
+    case RGY_ERR_cudaErrorMisalignedAddress: return _T("cudaErrorMisalignedAddress: The device encountered a load or store instruction on a memory address which is not aligned. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.");
+    case RGY_ERR_cudaErrorInvalidAddressSpace: return _T("cudaErrorInvalidAddressSpace: While executing a kernel, the device encountered an instruction which can only operate on memory locations in certain address spaces (global, shared, or local), but was supplied a memory address not belonging to an allowed address space. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.");
+    case RGY_ERR_cudaErrorInvalidPc: return _T("cudaErrorInvalidPc: The device encountered an invalid program counter. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.");
+    case RGY_ERR_cudaErrorLaunchFailure: return _T("cudaErrorLaunchFailure: An exception occurred on the device while executing a kernel. Common causes include dereferencing an invalid device pointer and accessing out of bounds shared memory. Less common cases can be system specific - more information about these cases can be found in the system specific user guide. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.");
+    case RGY_ERR_cudaErrorCooperativeLaunchTooLarge: return _T("cudaErrorCooperativeLaunchTooLarge: This error indicates that the number of blocks launched per grid for a kernel that was launched via either ::cudaLaunchCooperativeKernel or ::cudaLaunchCooperativeKernelMultiDevice exceeds the maximum number of blocks as allowed by ::cudaOccupancyMaxActiveBlocksPerMultiprocessor or ::cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags times the number of multiprocessors as specified by the device attribute ::cudaDevAttrMultiProcessorCount.");
+    case RGY_ERR_cudaErrorNotPermitted: return _T("cudaErrorNotPermitted: This error indicates the attempted operation is not permitted.");
+    case RGY_ERR_cudaErrorNotSupported: return _T("cudaErrorNotSupported: This error indicates the attempted operation is not supported on the current system or device.");
+    case RGY_ERR_cudaErrorSystemNotReady: return _T("cudaErrorSystemNotReady: This error indicates that the system is not yet ready to start any CUDA work.  To continue using CUDA, verify the system configuration is in a valid state and all required driver daemons are actively running. More information about this error can be found in the system specific user guide.");
+    case RGY_ERR_cudaErrorSystemDriverMismatch: return _T("cudaErrorSystemDriverMismatch: This error indicates that there is a mismatch between the versions of the display driver and the CUDA driver. Refer to the compatibility documentation for supported versions.");
+    case RGY_ERR_cudaErrorCompatNotSupportedOnDevice: return _T("cudaErrorCompatNotSupportedOnDevice: This error indicates that the system was upgraded to run with forward compatibility but the visible hardware detected by CUDA does not support this configuration. Refer to the compatibility documentation for the supported hardware matrix or ensure that only supported hardware is visible during initialization via the CUDA_VISIBLE_DEVICES environment variable.");
+    case RGY_ERR_cudaErrorMpsConnectionFailed: return _T("cudaErrorMpsConnectionFailed: This error indicates that the MPS client failed to connect to the MPS control daemon or the MPS server.");
+    case RGY_ERR_cudaErrorMpsRpcFailure: return _T("cudaErrorMpsRpcFailure: This error indicates that the remote procedural call between the MPS server and the MPS client failed.");
+    case RGY_ERR_cudaErrorMpsServerNotReady: return _T("cudaErrorMpsServerNotReady: This error indicates that the MPS server is not ready to accept new MPS client requests. This error can be returned when the MPS server is in the process of recovering from a fatal failure.");
+    case RGY_ERR_cudaErrorMpsMaxClientsReached: return _T("cudaErrorMpsMaxClientsReached: This error indicates that the hardware resources required to create MPS client have been exhausted.");
+    case RGY_ERR_cudaErrorMpsMaxConnectionsReached: return _T("cudaErrorMpsMaxConnectionsReached: This error indicates the the hardware resources required to device connections have been exhausted.");
+    case RGY_ERR_cudaErrorStreamCaptureUnsupported: return _T("cudaErrorStreamCaptureUnsupported: The operation is not permitted when the stream is capturing.");
+    case RGY_ERR_cudaErrorStreamCaptureInvalidated: return _T("cudaErrorStreamCaptureInvalidated: The current capture sequence on the stream has been invalidated due to a previous error.");
+    case RGY_ERR_cudaErrorStreamCaptureMerge: return _T("cudaErrorStreamCaptureMerge: The operation would have resulted in a merge of two independent capture sequences.");
+    case RGY_ERR_cudaErrorStreamCaptureUnmatched: return _T("cudaErrorStreamCaptureUnmatched: The capture was not initiated in this stream.");
+    case RGY_ERR_cudaErrorStreamCaptureUnjoined: return _T("cudaErrorStreamCaptureUnjoined: The capture sequence contains a fork that was not joined to the primary stream.");
+    case RGY_ERR_cudaErrorStreamCaptureIsolation: return _T("cudaErrorStreamCaptureIsolation: A dependency would have been created which crosses the capture sequence boundary. Only implicit in-stream ordering dependencies are allowed to cross the boundary.");
+    case RGY_ERR_cudaErrorStreamCaptureImplicit: return _T("cudaErrorStreamCaptureImplicit: The operation would have resulted in a disallowed implicit dependency on a current capture sequence from cudaStreamLegacy.");
+    case RGY_ERR_cudaErrorCapturedEvent: return _T("cudaErrorCapturedEvent: The operation is not permitted on an event which was last recorded in a capturing stream.");
+    case RGY_ERR_cudaErrorStreamCaptureWrongThread: return _T("cudaErrorStreamCaptureWrongThread: A stream capture sequence not initiated with the ::cudaStreamCaptureModeRelaxed argument to ::cudaStreamBeginCapture was passed to ::cudaStreamEndCapture in a different thread.");
+    case RGY_ERR_cudaErrorTimeout: return _T("cudaErrorTimeout: This indicates that the wait operation has timed out.");
+    case RGY_ERR_cudaErrorGraphExecUpdateFailure: return _T("cudaErrorGraphExecUpdateFailure: This error indicates that the graph update was not performed because it included changes which violated constraints specific to instantiated graph update.");
+    case RGY_ERR_cudaErrorExternalDevice: return _T("cudaErrorExternalDevice: This indicates that an async error has occurred in a device outside of CUDA. If CUDA was waiting for an external device's signal before consuming shared data, the external device signaled an error indicating that the data is not valid for consumption. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.");
+    case RGY_ERR_cudaErrorUnknown: return _T("cudaErrorUnknown: This indicates that an unknown internal error has occurred.");
+    case RGY_ERR_cudaErrorApiFailureBase: return _T("cudaErrorApiFailureBase: Any unhandled CUDA driver error is added to this value and returned via the runtime. Production releases of CUDA should not return such errors. This error return is deprecated as of CUDA 4.1.");
 
-    case RGY_ERR_CUDA_ERROR_INVALID_VALUE: return "This indicates that one or more of the parameters passed to the API call is not within an acceptable range of values.";
-    case RGY_ERR_CUDA_ERROR_OUT_OF_MEMORY: return "The API call failed because it was unable to allocate enough memory to perform the requested operation.";
-    case RGY_ERR_CUDA_ERROR_NOT_INITIALIZED: return "This indicates that the CUDA driver has not been initialized with ::cuInit() or that initialization has failed.";
-    case RGY_ERR_CUDA_ERROR_DEINITIALIZED: return "This indicates that the CUDA driver is in the process of shutting down.";
-    case RGY_ERR_CUDA_ERROR_PROFILER_DISABLED: return "This indicates profiler is not initialized for this run. This can happen when the application is running with external profiling tools like visual profiler.";
-    case RGY_ERR_CUDA_ERROR_PROFILER_NOT_INITIALIZED: return "This error return is deprecated as of CUDA 5.0. It is no longer an error to attempt to enable/disable the profiling via ::cuProfilerStart or ::cuProfilerStop without initialization.";
-    case RGY_ERR_CUDA_ERROR_PROFILER_ALREADY_STARTED: return "This error return is deprecated as of CUDA 5.0. It is no longer an error to call cuProfilerStart() when profiling is already enabled.";
-    case RGY_ERR_CUDA_ERROR_PROFILER_ALREADY_STOPPED: return "This error return is deprecated as of CUDA 5.0. It is no longer an error to call cuProfilerStop() when profiling is already disabled.";
-    case RGY_ERR_CUDA_ERROR_NO_DEVICE: return "This indicates that no CUDA-capable devices were detected by the installed CUDA driver.";
-    case RGY_ERR_CUDA_ERROR_INVALID_DEVICE: return "This indicates that the device ordinal supplied by the user does not correspond to a valid CUDA device.";
-    case RGY_ERR_CUDA_ERROR_INVALID_IMAGE: return "This indicates that the device kernel image is invalid. This can also indicate an invalid CUDA module.";
-    case RGY_ERR_CUDA_ERROR_INVALID_CONTEXT: return "This most frequently indicates that there is no context bound to the current thread. This can also be returned if the context passed to an API call is not a valid handle (such as a context that has had ::cuCtxDestroy() invoked on it). This can also be returned if a user mixes different API versions (i.e. 3010 context with 3020 API calls). See ::cuCtxGetApiVersion() for more details.";
-    case RGY_ERR_CUDA_ERROR_CONTEXT_ALREADY_CURRENT: return "This indicated that the context being supplied as a parameter to the API call was already the active context. This error return is deprecated as of CUDA 3.2. It is no longer an error to attempt to push the active context via ::cuCtxPushCurrent().";
-    case RGY_ERR_CUDA_ERROR_MAP_FAILED: return "This indicates that a map or register operation has failed.";
-    case RGY_ERR_CUDA_ERROR_UNMAP_FAILED: return "This indicates that an unmap or unregister operation has failed.";
-    case RGY_ERR_CUDA_ERROR_ARRAY_IS_MAPPED: return "This indicates that the specified array is currently mapped and thus cannot be destroyed.";
-    case RGY_ERR_CUDA_ERROR_ALREADY_MAPPED: return "This indicates that the resource is already mapped.";
-    case RGY_ERR_CUDA_ERROR_NO_BINARY_FOR_GPU: return "This indicates that there is no kernel image available that is suitable for the device. This can occur when a user specifies code generation options for a particular CUDA source file that do not include the corresponding device configuration.";
-    case RGY_ERR_CUDA_ERROR_ALREADY_ACQUIRED: return "This indicates that a resource has already been acquired.";
-    case RGY_ERR_CUDA_ERROR_NOT_MAPPED: return "This indicates that a resource is not mapped.";
-    case RGY_ERR_CUDA_ERROR_NOT_MAPPED_AS_ARRAY: return "This indicates that a mapped resource is not available for access as an array.";
-    case RGY_ERR_CUDA_ERROR_NOT_MAPPED_AS_POINTER: return "This indicates that a mapped resource is not available for access as a pointer.";
-    case RGY_ERR_CUDA_ERROR_ECC_UNCORRECTABLE: return "This indicates that an uncorrectable ECC error was detected during execution.";
-    case RGY_ERR_CUDA_ERROR_UNSUPPORTED_LIMIT: return "This indicates that the ::CUlimit passed to the API call is not supported by the active device.";
-    case RGY_ERR_CUDA_ERROR_CONTEXT_ALREADY_IN_USE: return "This indicates that the ::CUcontext passed to the API call can only be bound to a single CPU thread at a time but is already bound to a CPU thread.";
-    case RGY_ERR_CUDA_ERROR_PEER_ACCESS_UNSUPPORTED: return "This indicates that peer access is not supported across the given devices.";
-    case RGY_ERR_CUDA_ERROR_INVALID_PTX: return "This indicates that a PTX JIT compilation failed.";
-    case RGY_ERR_CUDA_ERROR_INVALID_GRAPHICS_CONTEXT: return "This indicates an error with OpenGL or DirectX context.";
-    case RGY_ERR_CUDA_ERROR_NVLINK_UNCORRECTABLE: return "This indicates that an uncorrectable NVLink error was detected during the execution.";
-    case RGY_ERR_CUDA_ERROR_JIT_COMPILER_NOT_FOUND: return "This indicates that the PTX JIT compiler library was not found.";
-    case RGY_ERR_CUDA_ERROR_INVALID_SOURCE: return "This indicates that the device kernel source is invalid.";
-    case RGY_ERR_CUDA_ERROR_FILE_NOT_FOUND: return "This indicates that the file specified was not found.";
-    case RGY_ERR_CUDA_ERROR_SHARED_OBJECT_SYMBOL_NOT_FOUND: return "This indicates that a link to a shared object failed to resolve.";
-    case RGY_ERR_CUDA_ERROR_SHARED_OBJECT_INIT_FAILED: return "This indicates that initialization of a shared object failed.";
-    case RGY_ERR_CUDA_ERROR_OPERATING_SYSTEM: return "This indicates that an OS call failed.";
-    case RGY_ERR_CUDA_ERROR_INVALID_HANDLE: return "This indicates that a resource handle passed to the API call was not valid. Resource handles are opaque types like ::CUstream and ::CUevent.";
-    case RGY_ERR_CUDA_ERROR_ILLEGAL_STATE: return "This indicates that a resource required by the API call is not in a valid state to perform the requested operation.";
-    case RGY_ERR_CUDA_ERROR_NOT_FOUND: return "This indicates that a named symbol was not found. Examples of symbols are global/constant variable names, texture names, and surface names.";
-    case RGY_ERR_CUDA_ERROR_NOT_READY: return "This indicates that asynchronous operations issued previously have not completed yet. This result is not actually an error, but must be indicated differently than ::CUDA_SUCCESS (which indicates completion). Calls that may return this value include ::cuEventQuery() and ::cuStreamQuery().";
-    case RGY_ERR_CUDA_ERROR_ILLEGAL_ADDRESS: return "While executing a kernel, the device encountered a load or store instruction on an invalid memory address. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.";
-    case RGY_ERR_CUDA_ERROR_LAUNCH_OUT_OF_RESOURCES: return "This indicates that a launch did not occur because it did not have appropriate resources. This error usually indicates that the user has attempted to pass too many arguments to the device kernel, or the kernel launch specifies too many threads for the kernel's register count. Passing arguments of the wrong size (i.e. a 64-bit pointer when a 32-bit int is expected) is equivalent to passing too many arguments and can also result in this error.";
-    case RGY_ERR_CUDA_ERROR_LAUNCH_TIMEOUT: return "This indicates that the device kernel took too long to execute. This can only occur if timeouts are enabled - see the device attribute ::CU_DEVICE_ATTRIBUTE_KERNEL_EXEC_TIMEOUT for more information. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.";
-    case RGY_ERR_CUDA_ERROR_LAUNCH_INCOMPATIBLE_TEXTURING: return "This error indicates a kernel launch that uses an incompatible texturing mode.";
-    case RGY_ERR_CUDA_ERROR_PEER_ACCESS_ALREADY_ENABLED: return "This error indicates that a call to ::cuCtxEnablePeerAccess() is trying to re-enable peer access to a context which has already had peer access to it enabled.";
-    case RGY_ERR_CUDA_ERROR_PEER_ACCESS_NOT_ENABLED: return "This error indicates that ::cuCtxDisablePeerAccess() is trying to disable peer access which has not been enabled yet via ::cuCtxEnablePeerAccess().";
-    case RGY_ERR_CUDA_ERROR_PRIMARY_CONTEXT_ACTIVE: return "This error indicates that the primary context for the specified device has already been initialized.";
-    case RGY_ERR_CUDA_ERROR_CONTEXT_IS_DESTROYED: return "This error indicates that the context current to the calling thread has been destroyed using ::cuCtxDestroy, or is a primary context which has not yet been initialized.";
-    case RGY_ERR_CUDA_ERROR_ASSERT: return "A device-side assert triggered during kernel execution. The context cannot be used anymore, and must be destroyed. All existing device memory allocations from this context are invalid and must be reconstructed if the program is to continue using CUDA.";
-    case RGY_ERR_CUDA_ERROR_TOO_MANY_PEERS: return "This error indicates that the hardware resources required to enable peer access have been exhausted for one or more of the devices passed to ::cuCtxEnablePeerAccess().";
-    case RGY_ERR_CUDA_ERROR_HOST_MEMORY_ALREADY_REGISTERED: return "This error indicates that the memory range passed to ::cuMemHostRegister() has already been registered.";
-    case RGY_ERR_CUDA_ERROR_HOST_MEMORY_NOT_REGISTERED: return "This error indicates that the pointer passed to ::cuMemHostUnregister() does not correspond to any currently registered memory region.";
-    case RGY_ERR_CUDA_ERROR_HARDWARE_STACK_ERROR: return "While executing a kernel, the device encountered a stack error. This can be due to stack corruption or exceeding the stack size limit. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.";
-    case RGY_ERR_CUDA_ERROR_ILLEGAL_INSTRUCTION: return "While executing a kernel, the device encountered an illegal instruction. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.";
-    case RGY_ERR_CUDA_ERROR_MISALIGNED_ADDRESS: return "While executing a kernel, the device encountered a load or store instruction on a memory address which is not aligned. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.";
-    case RGY_ERR_CUDA_ERROR_INVALID_ADDRESS_SPACE: return "While executing a kernel, the device encountered an instruction which can only operate on memory locations in certain address spaces (global, shared, or local), but was supplied a memory address not belonging to an allowed address space. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.";
-    case RGY_ERR_CUDA_ERROR_INVALID_PC: return "While executing a kernel, the device program counter wrapped its address space. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.";
-    case RGY_ERR_CUDA_ERROR_LAUNCH_FAILED: return "An exception occurred on the device while executing a kernel. Common causes include dereferencing an invalid device pointer and accessing out of bounds shared memory. Less common cases can be system specific - more information about these cases can be found in the system specific user guide. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.";
-    case RGY_ERR_CUDA_ERROR_COOPERATIVE_LAUNCH_TOO_LARGE: return "This error indicates that the number of blocks launched per grid for a kernel that was launched via either ::cuLaunchCooperativeKernel or ::cuLaunchCooperativeKernelMultiDevice exceeds the maximum number of blocks as allowed by ::cuOccupancyMaxActiveBlocksPerMultiprocessor or ::cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags times the number of multiprocessors as specified by the device attribute ::CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT.";
-    case RGY_ERR_CUDA_ERROR_NOT_PERMITTED: return "This error indicates that the attempted operation is not permitted.";
-    case RGY_ERR_CUDA_ERROR_NOT_SUPPORTED: return "This error indicates that the attempted operation is not supported on the current system or device.";
-    case RGY_ERR_CUDA_ERROR_SYSTEM_NOT_READY: return "This error indicates that the system is not yet ready to start any CUDA work.  To continue using CUDA, verify the system configuration is in a valid state and all required driver daemons are actively running. More information about this error can be found in the system specific user guide.";
-    case RGY_ERR_CUDA_ERROR_SYSTEM_DRIVER_MISMATCH: return "This error indicates that there is a mismatch between the versions of the display driver and the CUDA driver. Refer to the compatibility documentation for supported versions.";
-    case RGY_ERR_CUDA_ERROR_COMPAT_NOT_SUPPORTED_ON_DEVICE: return "This error indicates that the system was upgraded to run with forward compatibility but the visible hardware detected by CUDA does not support this configuration. Refer to the compatibility documentation for the supported hardware matrix or ensure that only supported hardware is visible during initialization via the CUDA_VISIBLE_DEVICES environment variable.";
-    case RGY_ERR_CUDA_ERROR_STREAM_CAPTURE_UNSUPPORTED: return "This error indicates that the operation is not permitted when the stream is capturing.";
-    case RGY_ERR_CUDA_ERROR_STREAM_CAPTURE_INVALIDATED: return "This error indicates that the current capture sequence on the stream has been invalidated due to a previous error.";
-    case RGY_ERR_CUDA_ERROR_STREAM_CAPTURE_MERGE: return "This error indicates that the operation would have resulted in a merge of two independent capture sequences.";
-    case RGY_ERR_CUDA_ERROR_STREAM_CAPTURE_UNMATCHED: return "This error indicates that the capture was not initiated in this stream.";
-    case RGY_ERR_CUDA_ERROR_STREAM_CAPTURE_UNJOINED: return "This error indicates that the capture sequence contains a fork that was not joined to the primary stream.";
-    case RGY_ERR_CUDA_ERROR_STREAM_CAPTURE_ISOLATION: return "This error indicates that a dependency would have been created which crosses the capture sequence boundary. Only implicit in-stream ordering dependencies are allowed to cross the boundary.";
-    case RGY_ERR_CUDA_ERROR_STREAM_CAPTURE_IMPLICIT: return "This error indicates a disallowed implicit dependency on a current capture sequence from cudaStreamLegacy.";
-    case RGY_ERR_CUDA_ERROR_CAPTURED_EVENT: return "This error indicates that the operation is not permitted on an event which was last recorded in a capturing stream.";
-    case RGY_ERR_CUDA_ERROR_STREAM_CAPTURE_WRONG_THREAD: return "A stream capture sequence not initiated with the ::CU_STREAM_CAPTURE_MODE_RELAXED argument to ::cuStreamBeginCapture was passed to ::cuStreamEndCapture in a different thread.";
-    case RGY_ERR_CUDA_ERROR_UNKNOWN: return "This indicates that an unknown internal error has occurred.";
+    case RGY_ERR_CUDA_ERROR_INVALID_VALUE: return _T("CUDA_ERROR_INVALID_VALUE: This indicates that one or more of the parameters passed to the API call is not within an acceptable range of values.");
+    case RGY_ERR_CUDA_ERROR_OUT_OF_MEMORY: return _T("CUDA_ERROR_OUT_OF_MEMORY: The API call failed because it was unable to allocate enough memory to perform the requested operation.");
+    case RGY_ERR_CUDA_ERROR_NOT_INITIALIZED: return _T("CUDA_ERROR_NOT_INITIALIZED: This indicates that the CUDA driver has not been initialized with ::cuInit() or that initialization has failed.");
+    case RGY_ERR_CUDA_ERROR_DEINITIALIZED: return _T("CUDA_ERROR_DEINITIALIZED: This indicates that the CUDA driver is in the process of shutting down.");
+    case RGY_ERR_CUDA_ERROR_PROFILER_DISABLED: return _T("CUDA_ERROR_PROFILER_DISABLED: This indicates profiler is not initialized for this run. This can happen when the application is running with external profiling tools like visual profiler.");
+    case RGY_ERR_CUDA_ERROR_PROFILER_NOT_INITIALIZED: return _T("CUDA_ERROR_PROFILER_NOT_INITIALIZED: This error return is deprecated as of CUDA 5.0. It is no longer an error to attempt to enable/disable the profiling via ::cuProfilerStart or ::cuProfilerStop without initialization.");
+    case RGY_ERR_CUDA_ERROR_PROFILER_ALREADY_STARTED: return _T("CUDA_ERROR_PROFILER_ALREADY_STARTED: This error return is deprecated as of CUDA 5.0. It is no longer an error to call cuProfilerStart() when profiling is already enabled.");
+    case RGY_ERR_CUDA_ERROR_PROFILER_ALREADY_STOPPED: return _T("CUDA_ERROR_PROFILER_ALREADY_STOPPED: This error return is deprecated as of CUDA 5.0. It is no longer an error to call cuProfilerStop() when profiling is already disabled.");
+    case RGY_ERR_CUDA_ERROR_STUB_LIBRARY: return _T("CUDA_ERROR_STUB_LIBRARY: This indicates that the CUDA driver that the application has loaded is a stub library. Applications that run with the stub rather than a real driver loaded will result in CUDA API returning this error.");
+    case RGY_ERR_CUDA_ERROR_DEVICE_UNAVAILABLE: return _T("CUDA_ERROR_DEVICE_UNAVAILABLE: This indicates that requested CUDA device is unavailable at the current time. Devices are often unavailable due to use of ::CU_COMPUTEMODE_EXCLUSIVE_PROCESS or ::CU_COMPUTEMODE_PROHIBITED.");
+    case RGY_ERR_CUDA_ERROR_NO_DEVICE: return _T("CUDA_ERROR_NO_DEVICE: This indicates that no CUDA-capable devices were detected by the installed CUDA driver.");
+    case RGY_ERR_CUDA_ERROR_INVALID_DEVICE: return _T("CUDA_ERROR_INVALID_DEVICE: This indicates that the device ordinal supplied by the user does not correspond to a valid CUDA device or that the action requested is invalid for the specified device.");
+    case RGY_ERR_CUDA_ERROR_DEVICE_NOT_LICENSED: return _T("CUDA_ERROR_DEVICE_NOT_LICENSED: This error indicates that the Grid license is not applied.");
+    case RGY_ERR_CUDA_ERROR_INVALID_IMAGE: return _T("CUDA_ERROR_INVALID_IMAGE: This indicates that the device kernel image is invalid. This can also indicate an invalid CUDA module.");
+    case RGY_ERR_CUDA_ERROR_INVALID_CONTEXT: return _T("CUDA_ERROR_INVALID_CONTEXT: This most frequently indicates that there is no context bound to the current thread. This can also be returned if the context passed to an API call is not a valid handle (such as a context that has had ::cuCtxDestroy() invoked on it). This can also be returned if a user mixes different API versions (i.e. 3010 context with 3020 API calls). See ::cuCtxGetApiVersion() for more details.");
+    case RGY_ERR_CUDA_ERROR_CONTEXT_ALREADY_CURRENT: return _T("CUDA_ERROR_CONTEXT_ALREADY_CURRENT: This indicated that the context being supplied as a parameter to the API call was already the active context. This error return is deprecated as of CUDA 3.2. It is no longer an error to attempt to push the active context via ::cuCtxPushCurrent().");
+    case RGY_ERR_CUDA_ERROR_MAP_FAILED: return _T("CUDA_ERROR_MAP_FAILED: This indicates that a map or register operation has failed.");
+    case RGY_ERR_CUDA_ERROR_UNMAP_FAILED: return _T("CUDA_ERROR_UNMAP_FAILED: This indicates that an unmap or unregister operation has failed.");
+    case RGY_ERR_CUDA_ERROR_ARRAY_IS_MAPPED: return _T("CUDA_ERROR_ARRAY_IS_MAPPED: This indicates that the specified array is currently mapped and thus cannot be destroyed.");
+    case RGY_ERR_CUDA_ERROR_ALREADY_MAPPED: return _T("CUDA_ERROR_ALREADY_MAPPED: This indicates that the resource is already mapped.");
+    case RGY_ERR_CUDA_ERROR_NO_BINARY_FOR_GPU: return _T("CUDA_ERROR_NO_BINARY_FOR_GPU: This indicates that there is no kernel image available that is suitable for the device. This can occur when a user specifies code generation options for a particular CUDA source file that do not include the corresponding device configuration.");
+    case RGY_ERR_CUDA_ERROR_ALREADY_ACQUIRED: return _T("CUDA_ERROR_ALREADY_ACQUIRED: This indicates that a resource has already been acquired.");
+    case RGY_ERR_CUDA_ERROR_NOT_MAPPED: return _T("CUDA_ERROR_NOT_MAPPED: This indicates that a resource is not mapped.");
+    case RGY_ERR_CUDA_ERROR_NOT_MAPPED_AS_ARRAY: return _T("CUDA_ERROR_NOT_MAPPED_AS_ARRAY: This indicates that a mapped resource is not available for access as an array.");
+    case RGY_ERR_CUDA_ERROR_NOT_MAPPED_AS_POINTER: return _T("CUDA_ERROR_NOT_MAPPED_AS_POINTER: This indicates that a mapped resource is not available for access as a pointer.");
+    case RGY_ERR_CUDA_ERROR_ECC_UNCORRECTABLE: return _T("CUDA_ERROR_ECC_UNCORRECTABLE: This indicates that an uncorrectable ECC error was detected during execution.");
+    case RGY_ERR_CUDA_ERROR_UNSUPPORTED_LIMIT: return _T("CUDA_ERROR_UNSUPPORTED_LIMIT: This indicates that the ::CUlimit passed to the API call is not supported by the active device.");
+    case RGY_ERR_CUDA_ERROR_CONTEXT_ALREADY_IN_USE: return _T("CUDA_ERROR_CONTEXT_ALREADY_IN_USE: This indicates that the ::CUcontext passed to the API call can only be bound to a single CPU thread at a time but is already bound to a CPU thread.");
+    case RGY_ERR_CUDA_ERROR_PEER_ACCESS_UNSUPPORTED: return _T("CUDA_ERROR_PEER_ACCESS_UNSUPPORTED: This indicates that peer access is not supported across the given devices.");
+    case RGY_ERR_CUDA_ERROR_INVALID_PTX: return _T("CUDA_ERROR_INVALID_PTX: This indicates that a PTX JIT compilation failed.");
+    case RGY_ERR_CUDA_ERROR_INVALID_GRAPHICS_CONTEXT: return _T("CUDA_ERROR_INVALID_GRAPHICS_CONTEXT: This indicates an error with OpenGL or DirectX context.");
+    case RGY_ERR_CUDA_ERROR_NVLINK_UNCORRECTABLE: return _T("CUDA_ERROR_NVLINK_UNCORRECTABLE: This indicates that an uncorrectable NVLink error was detected during the execution.");
+    case RGY_ERR_CUDA_ERROR_JIT_COMPILER_NOT_FOUND: return _T("CUDA_ERROR_JIT_COMPILER_NOT_FOUND: This indicates that the PTX JIT compiler library was not found.");
+    case RGY_ERR_CUDA_ERROR_UNSUPPORTED_PTX_VERSION: return _T("CUDA_ERROR_UNSUPPORTED_PTX_VERSION: This indicates that the provided PTX was compiled with an unsupported toolchain.");
+    case RGY_ERR_CUDA_ERROR_JIT_COMPILATION_DISABLED: return _T("CUDA_ERROR_JIT_COMPILATION_DISABLED: This indicates that the PTX JIT compilation was disabled.");
+    case RGY_ERR_CUDA_ERROR_UNSUPPORTED_EXEC_AFFINITY: return _T("CUDA_ERROR_UNSUPPORTED_EXEC_AFFINITY: This indicates that the ::CUexecAffinityType passed to the API call is not supported by the active device.");
+    case RGY_ERR_CUDA_ERROR_INVALID_SOURCE: return _T("CUDA_ERROR_INVALID_SOURCE: This indicates that the device kernel source is invalid. This includes compilation/linker errors encountered in device code or user error.");
+    case RGY_ERR_CUDA_ERROR_FILE_NOT_FOUND: return _T("CUDA_ERROR_FILE_NOT_FOUND: This indicates that the file specified was not found.");
+    case RGY_ERR_CUDA_ERROR_SHARED_OBJECT_SYMBOL_NOT_FOUND: return _T("CUDA_ERROR_SHARED_OBJECT_SYMBOL_NOT_FOUND: This indicates that a link to a shared object failed to resolve.");
+    case RGY_ERR_CUDA_ERROR_SHARED_OBJECT_INIT_FAILED: return _T("CUDA_ERROR_SHARED_OBJECT_INIT_FAILED: This indicates that initialization of a shared object failed.");
+    case RGY_ERR_CUDA_ERROR_OPERATING_SYSTEM: return _T("CUDA_ERROR_OPERATING_SYSTEM: This indicates that an OS call failed.");
+    case RGY_ERR_CUDA_ERROR_INVALID_HANDLE: return _T("CUDA_ERROR_INVALID_HANDLE: This indicates that a resource handle passed to the API call was not valid. Resource handles are opaque types like ::CUstream and ::CUevent.");
+    case RGY_ERR_CUDA_ERROR_ILLEGAL_STATE: return _T("CUDA_ERROR_ILLEGAL_STATE: This indicates that a resource required by the API call is not in a valid state to perform the requested operation.");
+    case RGY_ERR_CUDA_ERROR_NOT_FOUND: return _T("CUDA_ERROR_NOT_FOUND: This indicates that a named symbol was not found. Examples of symbols are global/constant variable names, driver function names, texture names, and surface names.");
+    case RGY_ERR_CUDA_ERROR_NOT_READY: return _T("CUDA_ERROR_NOT_READY: This indicates that asynchronous operations issued previously have not completed yet. This result is not actually an error, but must be indicated differently than ::CUDA_SUCCESS (which indicates completion). Calls that may return this value include ::cuEventQuery() and ::cuStreamQuery().");
+    case RGY_ERR_CUDA_ERROR_ILLEGAL_ADDRESS: return _T("CUDA_ERROR_ILLEGAL_ADDRESS: While executing a kernel, the device encountered a load or store instruction on an invalid memory address. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.");
+    case RGY_ERR_CUDA_ERROR_LAUNCH_OUT_OF_RESOURCES: return _T("CUDA_ERROR_LAUNCH_OUT_OF_RESOURCES: This indicates that a launch did not occur because it did not have appropriate resources. This error usually indicates that the user has attempted to pass too many arguments to the device kernel, or the kernel launch specifies too many threads for the kernel's register count. Passing arguments of the wrong size (i.e. a 64-bit pointer when a 32-bit int is expected) is equivalent to passing too many arguments and can also result in this error.");
+    case RGY_ERR_CUDA_ERROR_LAUNCH_TIMEOUT: return _T("CUDA_ERROR_LAUNCH_TIMEOUT: This indicates that the device kernel took too long to execute. This can only occur if timeouts are enabled - see the device attribute ::CU_DEVICE_ATTRIBUTE_KERNEL_EXEC_TIMEOUT for more information. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.");
+    case RGY_ERR_CUDA_ERROR_LAUNCH_INCOMPATIBLE_TEXTURING: return _T("CUDA_ERROR_LAUNCH_INCOMPATIBLE_TEXTURING: This error indicates a kernel launch that uses an incompatible texturing mode.");
+    case RGY_ERR_CUDA_ERROR_PEER_ACCESS_ALREADY_ENABLED: return _T("CUDA_ERROR_PEER_ACCESS_ALREADY_ENABLED: This error indicates that a call to ::cuCtxEnablePeerAccess() is trying to re-enable peer access to a context which has already had peer access to it enabled.");
+    case RGY_ERR_CUDA_ERROR_PEER_ACCESS_NOT_ENABLED: return _T("CUDA_ERROR_PEER_ACCESS_NOT_ENABLED: This error indicates that ::cuCtxDisablePeerAccess() is trying to disable peer access which has not been enabled yet via ::cuCtxEnablePeerAccess().");
+    case RGY_ERR_CUDA_ERROR_PRIMARY_CONTEXT_ACTIVE: return _T("CUDA_ERROR_PRIMARY_CONTEXT_ACTIVE: This error indicates that the primary context for the specified device has already been initialized.");
+    case RGY_ERR_CUDA_ERROR_CONTEXT_IS_DESTROYED: return _T("CUDA_ERROR_CONTEXT_IS_DESTROYED: This error indicates that the context current to the calling thread has been destroyed using ::cuCtxDestroy, or is a primary context which has not yet been initialized.");
+    case RGY_ERR_CUDA_ERROR_ASSERT: return _T("CUDA_ERROR_ASSERT: A device-side assert triggered during kernel execution. The context cannot be used anymore, and must be destroyed. All existing device memory allocations from this context are invalid and must be reconstructed if the program is to continue using CUDA.");
+    case RGY_ERR_CUDA_ERROR_TOO_MANY_PEERS: return _T("CUDA_ERROR_TOO_MANY_PEERS: This error indicates that the hardware resources required to enable peer access have been exhausted for one or more of the devices passed to ::cuCtxEnablePeerAccess().");
+    case RGY_ERR_CUDA_ERROR_HOST_MEMORY_ALREADY_REGISTERED: return _T("CUDA_ERROR_HOST_MEMORY_ALREADY_REGISTERED: This error indicates that the memory range passed to ::cuMemHostRegister() has already been registered.");
+    case RGY_ERR_CUDA_ERROR_HOST_MEMORY_NOT_REGISTERED: return _T("CUDA_ERROR_HOST_MEMORY_NOT_REGISTERED: This error indicates that the pointer passed to ::cuMemHostUnregister() does not correspond to any currently registered memory region.");
+    case RGY_ERR_CUDA_ERROR_HARDWARE_STACK_ERROR: return _T("CUDA_ERROR_HARDWARE_STACK_ERROR: While executing a kernel, the device encountered a stack error. This can be due to stack corruption or exceeding the stack size limit. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.");
+    case RGY_ERR_CUDA_ERROR_ILLEGAL_INSTRUCTION: return _T("CUDA_ERROR_ILLEGAL_INSTRUCTION: While executing a kernel, the device encountered an illegal instruction. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.");
+    case RGY_ERR_CUDA_ERROR_MISALIGNED_ADDRESS: return _T("CUDA_ERROR_MISALIGNED_ADDRESS: While executing a kernel, the device encountered a load or store instruction on a memory address which is not aligned. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.");
+    case RGY_ERR_CUDA_ERROR_INVALID_ADDRESS_SPACE: return _T("CUDA_ERROR_INVALID_ADDRESS_SPACE: While executing a kernel, the device encountered an instruction which can only operate on memory locations in certain address spaces (global, shared, or local), but was supplied a memory address not belonging to an allowed address space. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.");
+    case RGY_ERR_CUDA_ERROR_INVALID_PC: return _T("CUDA_ERROR_INVALID_PC: While executing a kernel, the device program counter wrapped its address space. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.");
+    case RGY_ERR_CUDA_ERROR_LAUNCH_FAILED: return _T("CUDA_ERROR_LAUNCH_FAILED: An exception occurred on the device while executing a kernel. Common causes include dereferencing an invalid device pointer and accessing out of bounds shared memory. Less common cases can be system specific - more information about these cases can be found in the system specific user guide. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.");
+    case RGY_ERR_CUDA_ERROR_COOPERATIVE_LAUNCH_TOO_LARGE: return _T("CUDA_ERROR_COOPERATIVE_LAUNCH_TOO_LARGE: This error indicates that the number of blocks launched per grid for a kernel that was launched via either ::cuLaunchCooperativeKernel or ::cuLaunchCooperativeKernelMultiDevice exceeds the maximum number of blocks as allowed by ::cuOccupancyMaxActiveBlocksPerMultiprocessor or ::cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags times the number of multiprocessors as specified by the device attribute ::CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT.");
+    case RGY_ERR_CUDA_ERROR_NOT_PERMITTED: return _T("CUDA_ERROR_NOT_PERMITTED: This error indicates that the attempted operation is not permitted.");
+    case RGY_ERR_CUDA_ERROR_NOT_SUPPORTED: return _T("CUDA_ERROR_NOT_SUPPORTED: This error indicates that the attempted operation is not supported on the current system or device.");
+    case RGY_ERR_CUDA_ERROR_SYSTEM_NOT_READY: return _T("CUDA_ERROR_SYSTEM_NOT_READY: This error indicates that the system is not yet ready to start any CUDA work.  To continue using CUDA, verify the system configuration is in a valid state and all required driver daemons are actively running. More information about this error can be found in the system specific user guide.");
+    case RGY_ERR_CUDA_ERROR_SYSTEM_DRIVER_MISMATCH: return _T("CUDA_ERROR_SYSTEM_DRIVER_MISMATCH: This error indicates that there is a mismatch between the versions of the display driver and the CUDA driver. Refer to the compatibility documentation for supported versions.");
+    case RGY_ERR_CUDA_ERROR_COMPAT_NOT_SUPPORTED_ON_DEVICE: return _T("CUDA_ERROR_COMPAT_NOT_SUPPORTED_ON_DEVICE: This error indicates that the system was upgraded to run with forward compatibility but the visible hardware detected by CUDA does not support this configuration. Refer to the compatibility documentation for the supported hardware matrix or ensure that only supported hardware is visible during initialization via the CUDA_VISIBLE_DEVICES environment variable.");
+    case RGY_ERR_CUDA_ERROR_MPS_CONNECTION_FAILED: return _T("CUDA_ERROR_MPS_CONNECTION_FAILED: This error indicates that the MPS client failed to connect to the MPS control daemon or the MPS server.");
+    case RGY_ERR_CUDA_ERROR_MPS_RPC_FAILURE: return _T("CUDA_ERROR_MPS_RPC_FAILURE: This error indicates that the remote procedural call between the MPS server and the MPS client failed.");
+    case RGY_ERR_CUDA_ERROR_MPS_SERVER_NOT_READY: return _T("CUDA_ERROR_MPS_SERVER_NOT_READY: This error indicates that the MPS server is not ready to accept new MPS client requests. This error can be returned when the MPS server is in the process of recovering from a fatal failure.");
+    case RGY_ERR_CUDA_ERROR_MPS_MAX_CLIENTS_REACHED: return _T("CUDA_ERROR_MPS_MAX_CLIENTS_REACHED: This error indicates that the hardware resources required to create MPS client have been exhausted.");
+    case RGY_ERR_CUDA_ERROR_MPS_MAX_CONNECTIONS_REACHED: return _T("CUDA_ERROR_MPS_MAX_CONNECTIONS_REACHED: This error indicates the the hardware resources required to support device connections have been exhausted.");
+    case RGY_ERR_CUDA_ERROR_STREAM_CAPTURE_UNSUPPORTED: return _T("CUDA_ERROR_STREAM_CAPTURE_UNSUPPORTED: This error indicates that the operation is not permitted when the stream is capturing.");
+    case RGY_ERR_CUDA_ERROR_STREAM_CAPTURE_INVALIDATED: return _T("CUDA_ERROR_STREAM_CAPTURE_INVALIDATED: This error indicates that the current capture sequence on the stream has been invalidated due to a previous error.");
+    case RGY_ERR_CUDA_ERROR_STREAM_CAPTURE_MERGE: return _T("CUDA_ERROR_STREAM_CAPTURE_MERGE: This error indicates that the operation would have resulted in a merge of two independent capture sequences.");
+    case RGY_ERR_CUDA_ERROR_STREAM_CAPTURE_UNMATCHED: return _T("CUDA_ERROR_STREAM_CAPTURE_UNMATCHED: This error indicates that the capture was not initiated in this stream.");
+    case RGY_ERR_CUDA_ERROR_STREAM_CAPTURE_UNJOINED: return _T("CUDA_ERROR_STREAM_CAPTURE_UNJOINED: This error indicates that the capture sequence contains a fork that was not joined to the primary stream.");
+    case RGY_ERR_CUDA_ERROR_STREAM_CAPTURE_ISOLATION: return _T("CUDA_ERROR_STREAM_CAPTURE_ISOLATION: This error indicates that a dependency would have been created which crosses the capture sequence boundary. Only implicit in-stream ordering dependencies are allowed to cross the boundary.");
+    case RGY_ERR_CUDA_ERROR_STREAM_CAPTURE_IMPLICIT: return _T("CUDA_ERROR_STREAM_CAPTURE_IMPLICIT: This error indicates a disallowed implicit dependency on a current capture sequence from cudaStreamLegacy.");
+    case RGY_ERR_CUDA_ERROR_CAPTURED_EVENT: return _T("CUDA_ERROR_CAPTURED_EVENT: This error indicates that the operation is not permitted on an event which was last recorded in a capturing stream.");
+    case RGY_ERR_CUDA_ERROR_STREAM_CAPTURE_WRONG_THREAD: return _T("CUDA_ERROR_STREAM_CAPTURE_WRONG_THREAD: A stream capture sequence not initiated with the ::CU_STREAM_CAPTURE_MODE_RELAXED argument to ::cuStreamBeginCapture was passed to ::cuStreamEndCapture in a different thread.");
+    case RGY_ERR_CUDA_ERROR_TIMEOUT: return _T("CUDA_ERROR_TIMEOUT: This error indicates that the timeout specified for the wait operation has lapsed.");
+    case RGY_ERR_CUDA_ERROR_GRAPH_EXEC_UPDATE_FAILURE: return _T("CUDA_ERROR_GRAPH_EXEC_UPDATE_FAILURE: This error indicates that the graph update was not performed because it included changes which violated constraints specific to instantiated graph update.");
+    case RGY_ERR_CUDA_ERROR_EXTERNAL_DEVICE: return _T("CUDA_ERROR_EXTERNAL_DEVICE: This indicates that an async error has occurred in a device outside of CUDA. If CUDA was waiting for an external device's signal before consuming shared data, the external device signaled an error indicating that the data is not valid for consumption. This leaves the process in an inconsistent state and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched.");
+    case RGY_ERR_CUDA_ERROR_UNKNOWN: return _T("CUDA_ERROR_UNKNOWN: This indicates that an unknown internal error has occurred.");
 
 #define CASE_ERR_NPP(x) case RGY_ERR_ ## x: return _T(#x);
     CASE_ERR_NPP(NPP_NOT_SUPPORTED_MODE_ERROR);

@@ -428,6 +428,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cufilters_chain.h" />
+    <ClInclude Include="cufilters_exe.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="cufilters_exe.rc" />

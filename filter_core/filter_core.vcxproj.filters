@@ -33,6 +33,7 @@
     <ClCompile Include="rgy_cmd.cpp" />
     <ClCompile Include="rgy_language.cpp" />
     <ClCompile Include="rgy_frame_info.cpp" />
+    <ClCompile Include="rgy_filter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="rgy_prm.h" />
@@ -71,5 +72,6 @@
     <ClInclude Include="rgy_avutil.h" />
     <ClInclude Include="convert_csp.h" />
     <ClInclude Include="rgy_frame_info.h" />
+    <ClInclude Include="rgy_filter.h" />
   </ItemGroup>
 </Project>

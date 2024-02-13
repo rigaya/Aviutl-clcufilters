@@ -62,7 +62,7 @@
     <None Include="rgy_filter_warpsharp.cl" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="rgy_filter.cpp" />
+    <ClCompile Include="rgy_filter_cl.cpp" />
     <ClCompile Include="rgy_filter_colorspace.cpp" />
     <ClCompile Include="rgy_filter_convolution3d.cpp" />
     <ClCompile Include="rgy_filter_crop.cpp" />
@@ -81,7 +81,7 @@
     <ClCompile Include="rgy_opencl.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="rgy_filter.h" />
+    <ClInclude Include="rgy_filter_cl.h" />
     <ClInclude Include="rgy_filter_colorspace.h" />
     <ClInclude Include="rgy_filter_colorspace_func.h" />
     <ClInclude Include="rgy_filter_convolution3d.h" />

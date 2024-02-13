@@ -33,20 +33,38 @@ std::string getClfiltersExePath() {
     char aviutlPath[4096] = { 0 };
     GetModuleFileName(nullptr, aviutlPath, _countof(aviutlPath) - 1);
     auto [ret, aviutlDir] = PathRemoveFileSpecFixed(aviutlPath);
-    auto exeDir = PathCombineS(PathCombineS(aviutlDir, "exe_files"), "clfilters");
+    auto exeDir = PathCombineS(PathCombineS(PathCombineS(aviutlDir, "exe_files"), "x64"), "clfilters");
     return PathCombineS(exeDir, "clfilters.exe");
 }
 
-clFiltersAufDevices::clFiltersAufDevices() :
+std::string getCUfiltersExePath() {
+    char aviutlPath[4096] = { 0 };
+    GetModuleFileName(nullptr, aviutlPath, _countof(aviutlPath) - 1);
+    auto [ret, aviutlDir] = PathRemoveFileSpecFixed(aviutlPath);
+    auto exeDir = PathCombineS(PathCombineS(PathCombineS(aviutlDir, "exe_files"), "x64"), "cufilters");
+    return PathCombineS(exeDir, "cufilters.exe");
+}
+
+clcuFiltersAufDevices::clcuFiltersAufDevices() :
     m_platforms() {
 }
-clFiltersAufDevices::~clFiltersAufDevices() {};
+clcuFiltersAufDevices::~clcuFiltersAufDevices() {};
 
-int clFiltersAufDevices::createList() {
+int clcuFiltersAufDevices::createList() {
+    m_platforms.clear();
+    for (auto& exe : { getCUfiltersExePath(), getClfiltersExePath() }) {
+        if (createList(exe) != 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int clcuFiltersAufDevices::createList(const tstring& exePath) {
     std::string deviceListStr;
     auto proc = createRGYPipeProcess();
     proc->init(PIPE_MODE_DISABLE, PIPE_MODE_ENABLE, PIPE_MODE_DISABLE);
-    const std::vector<tstring> args = { getClfiltersExePath(), _T("--check-device") };
+    const std::vector<tstring> args = { exePath, _T("--check-device") };
     if (proc->run(args, nullptr, 0, true, true) != 0) {
         return 1;
     }
@@ -69,7 +87,7 @@ int clFiltersAufDevices::createList() {
     return 0;
 }
 
-clFiltersAuf::clFiltersAuf() :
+clcuFiltersAuf::clcuFiltersAuf() :
     m_process(createRGYPipeProcess()),
     m_eventMesStart(unique_event(nullptr, CloseEvent)),
     m_eventMesEnd(unique_event(nullptr, CloseEvent)),
@@ -81,7 +99,7 @@ clFiltersAuf::clFiltersAuf() :
     m_threadProcErr(),
     m_log(std::make_shared<RGYLog>(nullptr, RGY_LOG_DEBUG)) {
 }
-clFiltersAuf::~clFiltersAuf() {
+clcuFiltersAuf::~clcuFiltersAuf() {
     if (m_process && m_process->processAlive()) {
         // プロセス側に処理開始を通知
         clfitersSharedMesData *message = (clfitersSharedMesData*)m_sharedMessage->ptr();
@@ -115,13 +133,19 @@ clFiltersAuf::~clFiltersAuf() {
     m_eventMesStart.reset();
 
 }
-void clFiltersAuf::initShared() {
+void clcuFiltersAuf::initShared() {
     auto sharedMes = (clfitersSharedMesData *)m_sharedMessage->ptr();
     auto sharedPrms = (clfitersSharedPrms *)m_sharedPrms->ptr();
     initPrms(sharedMes);
     initPrms(sharedPrms);
 }
-int clFiltersAuf::runProcess(const HINSTANCE aufHandle, const int maxw, const int maxh) {
+
+bool clcuFiltersAuf::isCUDA() const {
+    auto sharedPrms = (clfitersSharedPrms *)m_sharedPrms->ptr();
+    return sharedPrms->pd.s.platform == CLCU_PLATFORM_CUDA;
+}
+
+int clcuFiltersAuf::runProcess(const HINSTANCE aufHandle, const int maxw, const int maxh, const bool isCUDA) {
     const auto aviutlPid = GetCurrentProcessId();
     SECURITY_ATTRIBUTES sa;
     memset(&sa, 0, sizeof(sa));

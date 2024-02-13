@@ -26,67 +26,48 @@
 //
 // ------------------------------------------------------------------------------------------
 
-#ifndef __CLFILTER_CHAIN_H__
-#define __CLFILTER_CHAIN_H__
+#ifndef __CLFILTERS_CHAIN_H__
+#define __CLFILTERS_CHAIN_H__
 
 #include "clcufilters_chain.h"
-#include "rgy_filter.h"
+#include "rgy_filter_cl.h"
 
 class clFilterFrameBuffer : public clcuFilterFrameBuffer {
 public:
     clFilterFrameBuffer(std::shared_ptr<RGYOpenCLContext> cl);
-    ~clFilterFrameBuffer();
+    virtual ~clFilterFrameBuffer();
 
-    void freeFrames();
-    void resetCachedFrames();
-    RGYCLFrame *get_in(const int width, const int height);
-    RGYCLFrame *get_out();
-    RGYCLFrame *get_out(const int frameID);
-    void in_to_next();
-    void out_to_next();
-private:
+    virtual std::unique_ptr<RGYFrame> allocateFrame(const int width, const int height) override;
+    virtual void resetMappedFrame(RGYFrame *frame) override;
+protected:
     std::shared_ptr<RGYOpenCLContext> m_cl;
 };
 
-class clFilterChain {
+struct clFilterDeviceParam : public clcuFilterDeviceParam {
+    int platformID;
+    cl_device_type deviceType;
+
+    clFilterDeviceParam() : platformID(0), deviceType(CL_DEVICE_TYPE_GPU) {};
+};
+
+class clFilterChain : public clcuFilterChain {
 public:
     clFilterChain();
-    ~clFilterChain();
+    virtual ~clFilterChain();
 
-    RGY_ERR init(const int platformID, const int deviceID, const cl_device_type device_type, const RGYLogLevel log_level, const bool log_to_file);
+    virtual RGY_ERR sendInFrame(const RGYFrameInfo *pInputFrame) override;
+    virtual RGY_ERR proc(const int frameID, const clFilterChainParam& prm) override;
+    virtual RGY_ERR getOutFrame(RGYFrameInfo *pOutputFrame) override;
 
-    void resetPipeline();
-    RGY_ERR sendInFrame(const RGYFrameInfo *pInputFrame);
-    RGY_ERR proc(const int frameID, const clFilterChainParam& prm);
-    RGY_ERR getOutFrame(RGYFrameInfo *pOutputFrame);
-    int getNextOutFrameId() const;
+    virtual int platformID() const override { return m_platformID; }
+protected:
+    virtual RGY_ERR initDevice(const clcuFilterDeviceParam *param) override;
+    virtual void close() override;
+    virtual RGY_ERR configureOneFilter(std::unique_ptr<RGYFilterBase>& filter, RGYFrameInfo& inputFrame, const VppType filterType, const int resizeWidth, const int resizeHeight) override;
 
-    std::string getDeviceName() const { return m_deviceName; }
-    int platformID() const { return m_platformID; }
-    int deviceID() const { return m_deviceID; }
-    const clFilterChainParam& getPrm() const { return m_prm; }
-private:
-    void close();
-    RGY_ERR initOpenCL(const int platformID, const int deviceID, const cl_device_type device_type);
-    bool filterChainEqual(const std::vector<VppType>& objchain) const;
-    RGY_ERR filterChainCreate(const RGYFrameInfo *pInputFrame, const int outWidth, const int outHeight);
-    RGY_ERR configureOneFilter(std::unique_ptr<RGYFilter>& filter, RGYFrameInfo& inputFrame, const VppType filterType, const int resizeWidth, const int resizeHeight);
-    void PrintMes(const RGYLogLevel logLevel, const TCHAR *format, ...);
-    tstring printFilterChain(const std::vector<VppType>& objchain) const;
-
-    std::shared_ptr<RGYLog> m_log;
-    clFilterChainParam m_prm;
     std::shared_ptr<RGYOpenCLContext> m_cl;
     int m_platformID;
-    int m_deviceID;
-    std::string m_deviceName;
-    std::unique_ptr<clFilterFrameBuffer> m_frameIn;
-    std::unique_ptr<clFilterFrameBuffer> m_frameOut;
     RGYOpenCLQueue m_queueSendIn;
-    std::vector<std::pair<VppType, std::unique_ptr<RGYFilter>>> m_filters;
-    std::unique_ptr<RGYConvertCSP> m_convert_yc48_to_yuv444_16;
-    std::unique_ptr<RGYConvertCSP> m_convert_yuv444_16_to_yc48;
 };
 
-
-#endif //__CLFILTER_CHAIN_H__
+#endif //__CLFILTERS_CHAIN_H__

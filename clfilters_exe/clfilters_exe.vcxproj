@@ -518,6 +518,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="clfilters_chain.h" />
+    <ClInclude Include="clfilters_exe.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

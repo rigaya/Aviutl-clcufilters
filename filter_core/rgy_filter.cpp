@@ -1,8 +1,9 @@
+﻿// -----------------------------------------------------------------------------------------
+//  QSVEnc/VCEEnc/rkmppenc by rigaya
 // -----------------------------------------------------------------------------------------
-//
 // The MIT License
 //
-// Copyright (c) 2024 rigaya
+// Copyright (c) 2019-2021 rigaya
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,17 +19,24 @@
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// IABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
 // ------------------------------------------------------------------------------------------
 
-#ifndef __CLCUFILTERS_EXE_CMD_H__
-#define __CLCUFILTERS_EXE_CMD_H__
+#include "rgy_filter.h"
 
-#include "clcufilters_chain_prm.h"
+RGYFilterBase::RGYFilterBase() :
+    m_name(),
+    m_infoStr(),
+    m_pLog(),
+    m_param(),
+    m_pathThrough(FILTER_PATHTHROUGH_ALL),
+    m_perfMonitor() {
 
-int parse_cmd(AviutlAufExeParams& prms, const bool ignore_parse_err, const int nArgNum, const TCHAR** strInput);
+}
 
-#endif //__CLCUFILTERS_EXE_CMD_H__
+RGYFilterBase::~RGYFilterBase() {
+
+}

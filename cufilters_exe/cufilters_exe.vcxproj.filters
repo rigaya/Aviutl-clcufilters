@@ -26,6 +26,9 @@
     <ClInclude Include="cufilters_chain.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="cufilters_exe.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="cufilters_exe.rc">

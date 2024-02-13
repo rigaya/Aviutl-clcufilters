@@ -1,20 +1,95 @@
-﻿#include <memory>
+﻿// -----------------------------------------------------------------------------------------
+// clfilters by rigaya
+// -----------------------------------------------------------------------------------------
+//
+// The MIT License
+//
+// Copyright (c) 2022 rigaya
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+//
+// ------------------------------------------------------------------------------------------
+
+#include <memory>
 #include <iostream>
 #include "rgy_osdep.h"
 #include "rgy_tchar.h"
 #include "rgy_log.h"
 #include "rgy_event.h"
 #include "rgy_shared_mem.h"
-#include "clfilters_shared.h"
+#include "clcufilters_shared.h"
+#include "clcufilters_chain_prm.h"
+#include "clcufilters_exe_cmd.h"
+#include "clcufilters_version.h"
+#include "clfilters_exe.h"
 #include "clfilters_chain.h"
-#include "clfilters_chain_prm.h"
-#include "clfilters_exe_cmd.h"
-#include "clfilters_version.h"
 #include "rgy_util.h"
 #include "rgy_opencl.h"
 #include "rgy_cmd.h"
 
 
+clFiltersExe::clFiltersExe() :
+    clcuFiltersExe(),
+    m_clplatforms() { }
+clFiltersExe::~clFiltersExe() {
+}
+
+std::string clFiltersExe::checkDevices() {
+    return checkClPlatforms();
+}
+
+std::string clFiltersExe::checkClPlatforms() {
+    if (m_clplatforms.size() == 0) {
+        auto log = m_log;
+        RGYOpenCL cl(m_log ? m_log : std::make_shared<RGYLog>(nullptr, RGY_LOG_INFO));
+        m_clplatforms = cl.getPlatforms(nullptr);
+        for (auto& platform : m_clplatforms) {
+            platform->createDeviceList(CL_DEVICE_TYPE_GPU);
+        }
+    }
+    std::string devices;
+    for (size_t ip = 0; ip < m_clplatforms.size(); ip++) {
+        for (int idev = 0; idev < (int)m_clplatforms[ip]->devs().size(); idev++) {
+            CL_PLATFORM_DEVICE pd;
+            pd.s.platform = (int16_t)ip;
+            pd.s.device = (int16_t)idev;
+            const auto devInfo = m_clplatforms[ip]->dev(idev).info();
+            auto devName = (devInfo.board_name_amd.length() > 0) ? devInfo.board_name_amd : devInfo.name;
+            devName = str_replace(devName, "(TM)", "");
+            devName = str_replace(devName, "(R)", "");
+            devName = str_replace(devName, "  ", " ");
+            devices += strsprintf("%x/%s\n", pd.i, devName.c_str());
+            AddMessage(RGY_LOG_DEBUG, _T("Found platform %d, device %d: %s.\n"), pd.s.platform, pd.s.device, char_to_tstring(devName).c_str());
+        }
+    }
+    return devices;
+}
+
+RGY_ERR clFiltersExe::initDevice(const clfitersSharedPrms *sharedPrms, clFilterChainParam& prm) {
+    m_filter = std::make_unique<clFilterChain>();
+    const auto dev_pd = sharedPrms->pd;
+    clFilterDeviceParam dev_param;
+    dev_param.platformID = dev_pd.s.platform;
+    dev_param.deviceID = dev_pd.s.device;
+    dev_param.deviceType = CL_DEVICE_TYPE_GPU;
+    return m_filter->init(&dev_param, prm.log_level.get(RGY_LOGT_APP), prm.log_to_file);
+}
 
 int _tmain(const int argc, const TCHAR **argv) {
     AviutlAufExeParams prms;
@@ -28,7 +103,7 @@ int _tmain(const int argc, const TCHAR **argv) {
     }
     if (prms.checkDevice) {
         clFiltersExe clfilterexe;
-        const auto str = clfilterexe.checkClPlatforms();
+        const auto str = clfilterexe.checkDevices();
         _ftprintf(stdout, _T("%s\n"), str.c_str());
         return 0;
     }
