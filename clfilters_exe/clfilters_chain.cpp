@@ -464,7 +464,8 @@ RGY_ERR clFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
     for (size_t ifilter = 0; ifilter < filterfin; ifilter++) {
         int nOutFrames = 0;
         RGYFrameInfo *outInfo[16] = { 0 };
-        err = m_filters[ifilter].second->filter(&frameInfo, (RGYFrameInfo **)&outInfo, &nOutFrames);
+        auto clfilter = dynamic_cast<RGYFilter*>(m_filters[ifilter].second.get());
+        err = clfilter->filter(&frameInfo, (RGYFrameInfo **)&outInfo, &nOutFrames);
         if (err != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("Error while running filter \"%s\": %s.\n"), m_filters[ifilter].second->name().c_str(), get_err_mes(err));
             return err;
@@ -486,7 +487,8 @@ RGY_ERR clFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
         int nOutFrames = 0;
         RGYFrameInfo *outInfo[16] = { 0 };
         outInfo[0] = &frameDevOut->frame;
-        err = lastFilter.second->filter(&frameInfo, (RGYFrameInfo **)&outInfo, &nOutFrames);
+        auto clfilter = dynamic_cast<RGYFilter*>(lastFilter.second.get());
+        err = clfilter->filter(&frameInfo, (RGYFrameInfo **)&outInfo, &nOutFrames);
         if (err != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("Error while running filter \"%s\": %s.\n"), lastFilter.second->name().c_str(), get_err_mes(err));
             return err;

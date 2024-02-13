@@ -27,7 +27,7 @@
 // ------------------------------------------------------------------------------------------
 
 #include <winres.h>
-#include "clfilters_version.h"
+#include "clcufilters_version.h"
 
 RGY_FILTER_CL               EXE_DATA DISCARDABLE "..\\clfilters_common\\rgy_filter.cl"
 RGY_FILTER_RESIZE_CL        EXE_DATA DISCARDABLE "..\\clfilters_common\\rgy_filter_resize.cl"

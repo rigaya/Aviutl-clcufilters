@@ -129,13 +129,13 @@ RGY_ERR cuDevice::init(const int deviceID, std::shared_ptr<RGYLog> log) {
 #define GETATTRIB_CHECK(val, attrib, dev) { \
         auto cuErr = cudaDeviceGetAttribute(&(val), (attrib), (dev)); \
         if (cuErr == cudaErrorInvalidDevice || cuErr == cudaErrorInvalidValue) { \
-            auto sts = err_to_rgy(cuErr); \
-            PrintMes(RGY_LOG_ERROR, _T("  Error: cudaDeviceGetAttribute(): %s\n"), get_err_mes(sts)); \
+            auto custs = err_to_rgy(cuErr); \
+            PrintMes(RGY_LOG_ERROR, _T("  Error: cudaDeviceGetAttribute(): %s\n"), get_err_mes(custs)); \
             return sts; \
         } \
         if (cuErr != cudaSuccess) { \
-            auto sts = err_to_rgy(cuErr); \
-            PrintMes(RGY_LOG_ERROR, _T("  Warn: cudaDeviceGetAttribute(): %s\n"), get_err_mes(sts)); \
+            auto custs = err_to_rgy(cuErr); \
+            PrintMes(RGY_LOG_ERROR, _T("  Warn: cudaDeviceGetAttribute(): %s\n"), get_err_mes(custs)); \
             val = 0; \
         } \
     }
@@ -159,6 +159,7 @@ RGY_ERR cuDevice::init(const int deviceID, std::shared_ptr<RGYLog> log) {
 
     m_deviceName = char_to_tstring(dev_name);
     PrintMes(RGY_LOG_INFO, _T("created initialized CUDA, selcted device %s.\n"), m_deviceName.c_str());
+    return RGY_ERR_NONE;
 }
 
 cuFilterChain::cuFilterChain() :
@@ -472,14 +473,12 @@ RGY_ERR cuFilterChain::sendInFrame(const RGYFrameInfo *pInputFrame) {
     copyFramePropWithoutCsp(&frameDevIn->frame, pInputFrame);
 
     {
-        auto frameHostIn = &m_frameHostIn->frame;
-
         //YC48->YUV444(16bit)
         int crop[4] = { 0 };
         m_convert_yc48_to_yuv444_16->run(false,
-            frameHostIn->ptr().data(), (const void **)&pInputFrame->ptr[0],
+            m_frameHostIn->ptr().data(), (const void **)&pInputFrame->ptr[0],
             pInputFrame->width, pInputFrame->pitch[0], pInputFrame->pitch[0],
-            frameHostIn->pitch(0), pInputFrame->height, frameHostIn->height(), crop);
+            m_frameHostIn->pitch(0), pInputFrame->height, m_frameHostIn->height(), crop);
     }
 
     auto err = copyFrameAsync(&frameDevIn->frame, &m_frameHostIn->frame, *m_streamIn.get());
@@ -516,13 +515,12 @@ RGY_ERR cuFilterChain::getOutFrame(RGYFrameInfo *pOutputFrame) {
         return err;
     }
     {
-        auto frameHostOut = &m_frameHostOut->frame;
         //YUV444(16bit)->YC48
         int crop[4] = { 0 };
         m_convert_yuv444_16_to_yc48->run(false,
-            (void **)&pOutputFrame->ptr[0], (const void **)frameHostOut->ptr().data(),
-            frameHostOut->width(), frameHostOut->pitch(0), frameHostOut->pitch(0),
-            pOutputFrame->pitch[0], frameHostOut->height(), pOutputFrame->height, crop);
+            (void **)&pOutputFrame->ptr[0], (const void **)m_frameHostOut->ptr().data(),
+            m_frameHostOut->width(), m_frameHostOut->pitch(0), m_frameHostOut->pitch(0),
+            pOutputFrame->pitch[0], m_frameHostOut->height(), pOutputFrame->height, crop);
     }
     return RGY_ERR_NONE;
 }
@@ -544,6 +542,8 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
     auto frameDevOut = dynamic_cast<CUFrameBuf*>(m_frameOut->get_in(prm.outWidth, prm.outHeight));
     m_frameOut->in_to_next();
 
+    cudaStream_t streamFiltering = cudaStreamDefault;
+
     //フィルタチェーン更新
     auto err = filterChainCreate(&frameDevIn->frame, prm.outWidth, prm.outHeight);
     if (err != RGY_ERR_NONE) {
@@ -551,7 +551,7 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
         return err;
     }
 
-    auto err = err_to_rgy(cudaStreamWaitEvent(cudaStreamDefault, frameDevIn->event, 0));
+    err = err_to_rgy(cudaStreamWaitEvent(streamFiltering, frameDevIn->event, 0));
     if (err != RGY_ERR_NONE) {
         PrintMes(RGY_LOG_ERROR, _T("proc: cudaStreamWaitEvent: %s.\n"), get_err_mes(err));
         return err;
@@ -566,7 +566,7 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
         int nOutFrames = 0;
         RGYFrameInfo *outInfo[16] = { 0 };
         auto cufilter = dynamic_cast<NVEncFilter*>(m_filters[ifilter].second.get());
-        err = cufilter->filter(&frameInfo, (RGYFrameInfo **)&outInfo, &nOutFrames, cudaStreamDefault);
+        err = cufilter->filter(&frameInfo, (RGYFrameInfo **)&outInfo, &nOutFrames, streamFiltering);
         if (err != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("Error while running filter \"%s\": %s.\n"), m_filters[ifilter].second->name().c_str(), get_err_mes(err));
             return err;
@@ -579,7 +579,7 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
     }
     //最後のフィルタ
     if (m_filters.back().second->GetFilterParam()->bOutOverwrite) {
-        if ((err = m_cl->copyFrame(&frameDevOut->frame, &frameInfo)) != RGY_ERR_NONE) {
+        if ((err = copyFrameAsync(&frameDevOut->frame, &frameInfo, streamFiltering)) != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("Error in frame copy: %s.\n"), get_err_mes(err));
             return err;
         }
@@ -589,7 +589,7 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
         RGYFrameInfo *outInfo[16] = { 0 };
         outInfo[0] = &frameDevOut->frame;
         auto cufilter = dynamic_cast<NVEncFilter*>(lastFilter.second.get());
-        err = cufilter->filter(&frameInfo, (RGYFrameInfo **)&outInfo, &nOutFrames, cudaStreamDefault);
+        err = cufilter->filter(&frameInfo, (RGYFrameInfo **)&outInfo, &nOutFrames, streamFiltering);
         if (err != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("Error while running filter \"%s\": %s.\n"), lastFilter.second->name().c_str(), get_err_mes(err));
             return err;
@@ -605,7 +605,7 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
         }
     }
 
-    err = err_to_rgy(cudaEventRecord(*m_eventOut.get(), cudaStreamDefault));
+    err = err_to_rgy(cudaEventRecord(*m_eventOut.get(), streamFiltering));
     if (err != RGY_ERR_NONE) {
         PrintMes(RGY_LOG_ERROR, _T("proc: cudaEventRecord: %s.\n"), get_err_mes(err));
         return err;

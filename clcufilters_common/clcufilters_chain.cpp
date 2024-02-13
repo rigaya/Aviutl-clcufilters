@@ -100,6 +100,16 @@ clcuFilterChain::~clcuFilterChain() {
     close();
 }
 
+void clcuFilterChain::close() {
+    m_filters.clear();
+    m_frameIn.reset();
+    m_frameOut.reset();
+    m_deviceName.clear();
+    m_convert_yc48_to_yuv444_16.reset();
+    m_convert_yuv444_16_to_yc48.reset();
+    m_log.reset();
+}
+
 void clcuFilterChain::PrintMes(const RGYLogLevel logLevel, const TCHAR *format, ...) {
     va_list args;
     va_start(args, format);

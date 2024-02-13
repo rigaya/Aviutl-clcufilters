@@ -78,8 +78,8 @@ std::string cuFiltersExe::checkCUDADevices() {
             AddMessage(RGY_LOG_DEBUG, _T("Found device %d: %s.\n"), idev, char_to_tstring(deviceName).c_str());
             CL_PLATFORM_DEVICE pd_dev;
             pd_dev.s.platform = CLCU_PLATFORM_CUDA;
-            pd_dev.s.device = idev;
-            devices += strsprintf("%x/%s\n", pd_dev.i, deviceName);
+            pd_dev.s.device = (int16_t)idev;
+            devices += strsprintf("%x/%s\n", pd_dev.i, deviceName.c_str());
         }
     }
     return devices;

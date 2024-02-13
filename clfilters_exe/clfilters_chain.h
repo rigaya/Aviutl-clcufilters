@@ -43,11 +43,13 @@ protected:
     std::shared_ptr<RGYOpenCLContext> m_cl;
 };
 
-struct clFilterDeviceParam : public clcuFilterDeviceParam {
+class clFilterDeviceParam : public clcuFilterDeviceParam {
+public:
     int platformID;
     cl_device_type deviceType;
 
     clFilterDeviceParam() : platformID(0), deviceType(CL_DEVICE_TYPE_GPU) {};
+    virtual ~clFilterDeviceParam() {};
 };
 
 class clFilterChain : public clcuFilterChain {

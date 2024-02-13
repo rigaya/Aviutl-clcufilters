@@ -72,10 +72,12 @@ protected:
     int m_out;
 };
 
-struct clcuFilterDeviceParam {
+class clcuFilterDeviceParam {
+public:
     int deviceID;
 
     clcuFilterDeviceParam() : deviceID(0) {};
+    virtual ~clcuFilterDeviceParam() {};
 };
 
 class clcuFilterChain {

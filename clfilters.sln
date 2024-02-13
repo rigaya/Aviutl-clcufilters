@@ -30,6 +30,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cufilters_exe", "cufilters_
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "clcufilters_common", "clcufilters_common\clcufilters_common.vcxproj", "{234EE082-07A4-42B6-A478-1049F872D136}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NVVfxLinker", "NVVfxLinker\NVVfxLinker.vcxproj", "{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -173,6 +175,26 @@ Global
 		{234EE082-07A4-42B6-A478-1049F872D136}.ReleaseEN|x64.Build.0 = Release|x64
 		{234EE082-07A4-42B6-A478-1049F872D136}.ReleaseEN|x86.ActiveCfg = Release|Win32
 		{234EE082-07A4-42B6-A478-1049F872D136}.ReleaseEN|x86.Build.0 = Release|Win32
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.Debug|x64.ActiveCfg = Debug|x64
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.Debug|x64.Build.0 = Debug|x64
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.Debug|x86.ActiveCfg = Debug|Win32
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.Debug|x86.Build.0 = Debug|Win32
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.DebugCU|x64.ActiveCfg = DebugCU|x64
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.DebugCU|x64.Build.0 = DebugCU|x64
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.DebugCU|x86.ActiveCfg = DebugCU|Win32
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.DebugCU|x86.Build.0 = DebugCU|Win32
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.Release|x64.ActiveCfg = Release|x64
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.Release|x64.Build.0 = Release|x64
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.Release|x86.ActiveCfg = Release|Win32
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.Release|x86.Build.0 = Release|Win32
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.ReleaseCU|x64.ActiveCfg = ReleaseCU|x64
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.ReleaseCU|x64.Build.0 = ReleaseCU|x64
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.ReleaseCU|x86.ActiveCfg = ReleaseCU|Win32
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.ReleaseCU|x86.Build.0 = ReleaseCU|Win32
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.ReleaseEN|x64.ActiveCfg = Release|x64
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.ReleaseEN|x64.Build.0 = Release|x64
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.ReleaseEN|x86.ActiveCfg = ReleaseCU|Win32
+		{FE9E0A80-E492-45BF-AB4D-042F8B44CC72}.ReleaseEN|x86.Build.0 = ReleaseCU|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

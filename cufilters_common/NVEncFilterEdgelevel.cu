@@ -164,11 +164,11 @@ static RGY_ERR edgelevel_frame(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *p
     if (err != RGY_ERR_NONE) {
         return err;
     }
-    err = copyPlane(&planeOutputU, &planeInputU, stream);
+    err = copyPlaneAsync(&planeOutputU, &planeInputU, stream);
     if (err != RGY_ERR_NONE) {
         return err;
     }
-    err = copyPlane(&planeOutputV, &planeInputV, stream);
+    err = copyPlaneAsync(&planeOutputV, &planeInputV, stream);
     if (err != RGY_ERR_NONE) {
         return err;
     }
