@@ -77,6 +77,9 @@ void cuDevice::close() {
 }
 
 void cuDevice::PrintMes(const RGYLogLevel logLevel, const TCHAR *format, ...) {
+    if (m_log == nullptr || logLevel < m_log->getLogLevel(RGY_LOGT_APP)) {
+        return;
+    }
     va_list args;
     va_start(args, format);
 
@@ -181,13 +184,13 @@ cuFilterChain::~cuFilterChain() {
 void cuFilterChain::close() {
     m_filters.clear();
     m_frameIn.reset();
-    m_streamIn.reset();
-    m_streamOut.reset();
+    m_frameOut.reset();
     m_eventIn.reset();
     m_eventOut.reset();
+    m_streamIn.reset();
+    m_streamOut.reset();
     //m_queueSendIn.finish(); // m_frameIn.reset() のあと
     //m_queueSendIn.clear();  // m_frameIn.reset() のあと
-    m_frameOut.reset();
     m_deviceName.clear();
     m_convert_yc48_to_yuv444_16.reset();
     m_convert_yuv444_16_to_yc48.reset();
@@ -480,13 +483,12 @@ RGY_ERR cuFilterChain::sendInFrame(const RGYFrameInfo *pInputFrame) {
             pInputFrame->width, pInputFrame->pitch[0], pInputFrame->pitch[0],
             m_frameHostIn->pitch(0), pInputFrame->height, m_frameHostIn->height(), crop);
     }
-
     auto err = copyFrameAsync(&frameDevIn->frame, &m_frameHostIn->frame, *m_streamIn.get());
     if (err != RGY_ERR_NONE) {
         PrintMes(RGY_LOG_ERROR, _T("failed to queue map input buffer: %s.\n"), get_err_mes(err));
         return err;
     }
-    cudaEventRecord(frameDevIn->event, *m_streamIn.get());
+    err = err_to_rgy(cudaEventRecord(frameDevIn->event, *m_streamIn.get()));
     if (err != RGY_ERR_NONE) {
         PrintMes(RGY_LOG_ERROR, _T("sendInFrame: cudaEventRecord: %s.\n"), get_err_mes(err));
         return err;
@@ -583,6 +585,7 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
             PrintMes(RGY_LOG_ERROR, _T("Error in frame copy: %s.\n"), get_err_mes(err));
             return err;
         }
+        copyFramePropWithoutCsp(&frameDevOut->frame, &frameInfo);
     } else {
         auto& lastFilter = m_filters[m_filters.size() - 1];
         int nOutFrames = 0;
@@ -620,7 +623,7 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
         PrintMes(RGY_LOG_ERROR, _T("failed to copy output frame: %s.\n"), get_err_mes(err));
         return err;
     }
-    err = err_to_rgy(cudaEventRecord(m_frameHostOut->event, *m_streamOut.get()));
+    err = err_to_rgy(cudaEventRecord(frameDevOut->event, *m_streamOut.get()));
     if (err != RGY_ERR_NONE) {
         PrintMes(RGY_LOG_ERROR, _T("proc: cudaEventRecord: %s.\n"), get_err_mes(err));
         return err;

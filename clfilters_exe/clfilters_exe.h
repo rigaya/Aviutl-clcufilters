@@ -36,6 +36,7 @@ class clFiltersExe : public clcuFiltersExe {
 public:
     clFiltersExe();
     virtual ~clFiltersExe();
+    virtual RGY_ERR initDevices() override;
     virtual std::string checkDevices() override;
     virtual bool isCUDA() const override { return false; }
 protected:

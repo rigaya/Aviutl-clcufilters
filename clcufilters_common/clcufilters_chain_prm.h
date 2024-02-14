@@ -112,6 +112,10 @@ union CL_PLATFORM_DEVICE {
     int i;
 };
 
+static bool platformIsCUDA(int16_t platform) {
+    return platform == CLCU_PLATFORM_CUDA;
+}
+
 // 保存モード(is_saving=true)の時に、どのくらい先まで処理をしておくべきか?
 static const int frameInOffset = 2;
 static const int frameProcOffset = 1;

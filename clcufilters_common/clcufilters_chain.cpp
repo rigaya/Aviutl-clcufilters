@@ -87,6 +87,7 @@ void clcuFilterFrameBuffer::out_to_next() { m_out = (m_out + 1) % m_frame.size()
 clcuFilterChain::clcuFilterChain() :
     m_log(),
     m_prm(),
+    m_deviceID(-1),
     m_deviceName(),
     m_frameIn(),
     m_frameOut(),

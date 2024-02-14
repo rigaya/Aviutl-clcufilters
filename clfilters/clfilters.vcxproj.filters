@@ -15,26 +15,26 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="clfilters.cpp">
+    <ClCompile Include="clcufilters.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="clfilters_add_res.cpp">
+    <ClCompile Include="clcufilters_add_res.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="clfilters_auf.cpp">
+    <ClCompile Include="clcufilters_auf.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="clfilters.def">
+    <None Include="clcufilters.def">
       <Filter>ソース ファイル</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="clfilters.h">
+    <ClInclude Include="clcufilters.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="clfilters_auf.h">
+    <ClInclude Include="clcufilters_auf.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>

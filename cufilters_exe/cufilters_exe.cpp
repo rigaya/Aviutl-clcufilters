@@ -47,6 +47,13 @@ cuFiltersExe::cuFiltersExe() :
 cuFiltersExe::~cuFiltersExe() {
 }
 
+RGY_ERR cuFiltersExe::initDevices() {
+    //ひとまず、これまでのすべてのエラーをflush
+    cudaGetLastError();
+
+    auto err = cuInit(0);
+    return err_to_rgy(err);
+}
 
 std::string cuFiltersExe::checkDevices() {
     return checkCUDADevices();

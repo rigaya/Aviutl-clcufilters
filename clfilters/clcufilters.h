@@ -26,11 +26,11 @@
 //
 // ------------------------------------------------------------------------------------------
 
-#ifndef __CUFILTERS_H__
-#define __CUFILTERS_H__
+#ifndef __CLCUFILTERS_H__
+#define __CLCUFILTERS_H__
 
 #define ID_TX_RESIZE_RES_ADD 40020
 
 BOOL CALLBACK add_res_dlg(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam);
 
-#endif //__CUFILTERS_H__
+#endif //__CLCUFILTERS_H__

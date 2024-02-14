@@ -1,4 +1,4 @@
-﻿LIBRARY clfilters.auf
+﻿LIBRARY clcufilters.auf
 
 EXPORTS
     GetFilterTable @1

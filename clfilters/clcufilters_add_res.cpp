@@ -35,9 +35,9 @@
 
 #define DEFINE_GLOBAL
 #include "filter.h"
-#include "clfilters_version.h"
 #include "rgy_prm.h"
-#include "clfilters.h"
+#include "clcufilters_version.h"
+#include "clcufilters.h"
 
 
 /*====================================================================

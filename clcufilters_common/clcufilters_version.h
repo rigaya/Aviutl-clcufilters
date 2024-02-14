@@ -35,9 +35,9 @@
 
 #define AUF_VERSION      VER_FILEVERSION
 #define AUF_VERSION_STR  VER_STR_FILEVERSION
-#define AUF_NAME         "clfilters.auf"
-#define AUF_FULL_NAME    "clfilters"
-#define AUF_VERSION_NAME "clfilters " VER_STR_FILEVERSION
+#define AUF_NAME         "clcufilters.auf"
+#define AUF_FULL_NAME    "clcufilters"
+#define AUF_VERSION_NAME "clcufilters " VER_STR_FILEVERSION
 #define AUF_VERSION_INFO AUF_VERSION_NAME
 
 #ifdef DEBUG
@@ -54,7 +54,7 @@
 #define VER_STR_INTERNALNAME     AUF_FULL_NAME
 #define VER_STR_ORIGINALFILENAME AUF_NAME
 #define VER_STR_LEGALCOPYRIGHT   AUF_FULL_NAME
-#define VER_STR_PRODUCTNAME      "clfilters"
+#define VER_STR_PRODUCTNAME      "clcufilters"
 #define VER_PRODUCTVERSION       VER_FILEVERSION
 #define VER_STR_PRODUCTVERSION   VER_STR_FILEVERSION
 

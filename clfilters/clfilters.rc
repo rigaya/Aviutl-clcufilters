@@ -27,13 +27,13 @@
 // ------------------------------------------------------------------------------------------
 
 #include <winres.h>
-#include "clfilters_version.h"
-#include "clfilters.h"
+#include "clcufilters_version.h"
+#include "clcufilters.h"
 
 //	文字列表示ダイアログ
 //
 ADD_RES_DLG DIALOG 0, 0, 175, 52
-CAPTION "cufilter リサイズ 解像度追加"
+CAPTION "clcufilter リサイズ 解像度追加"
 STYLE   WS_VISIBLE | WS_POPUP | WS_CAPTION | DS_MODALFRAME | WS_SYSMENU
 FONT 9, "ＭＳ Ｐゴシック"
 {

@@ -324,6 +324,9 @@
       <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common;..\clcufilters_common</AdditionalIncludeDirectories>
       <AdditionalOptions>/c 65001 %(AdditionalOptions)</AdditionalOptions>
     </ResourceCompile>
+    <PostBuildEvent>
+      <Command>copy /y "$(OutputPath)$(TargetFileName)" C:\ProgramEx\aviutl\exe_files\cufilters\x64</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugCU|x64'">
     <ClCompile>
@@ -354,6 +357,9 @@
       <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common;..\clcufilters_common</AdditionalIncludeDirectories>
       <AdditionalOptions>/c 65001 %(AdditionalOptions)</AdditionalOptions>
     </ResourceCompile>
+    <PostBuildEvent>
+      <Command>copy /y "$(OutputPath)$(TargetFileName)" C:\ProgramEx\aviutl\exe_files\cufilters\x64</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -391,6 +397,9 @@
       <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common;..\clcufilters_common</AdditionalIncludeDirectories>
       <AdditionalOptions>/c 65001 %(AdditionalOptions)</AdditionalOptions>
     </ResourceCompile>
+    <PostBuildEvent>
+      <Command>copy /y "$(OutputPath)$(TargetFileName)" C:\ProgramEx\aviutl\exe_files\cufilters\x64</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseCU|x64'">
     <ClCompile>
@@ -428,6 +437,9 @@
       <AdditionalIncludeDirectories>..\filter_core;..\clfilters_common;..\clcufilters_common</AdditionalIncludeDirectories>
       <AdditionalOptions>/c 65001 %(AdditionalOptions)</AdditionalOptions>
     </ResourceCompile>
+    <PostBuildEvent>
+      <Command>copy /y "$(OutputPath)$(TargetFileName)" C:\ProgramEx\aviutl\exe_files\cufilters\x64</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="cufilters_chain.cpp" />

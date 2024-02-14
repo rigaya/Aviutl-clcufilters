@@ -26,23 +26,23 @@
 //
 // ------------------------------------------------------------------------------------------
 
-#include "clfilters_auf.h"
+#include "clcufilters_auf.h"
 #include "rgy_filesystem.h"
 
-std::string getClfiltersExePath() {
+static std::string getClCUfiltersExePath(const tstring& exeName) {
     char aviutlPath[4096] = { 0 };
     GetModuleFileName(nullptr, aviutlPath, _countof(aviutlPath) - 1);
     auto [ret, aviutlDir] = PathRemoveFileSpecFixed(aviutlPath);
-    auto exeDir = PathCombineS(PathCombineS(PathCombineS(aviutlDir, "exe_files"), "x64"), "clfilters");
-    return PathCombineS(exeDir, "clfilters.exe");
+    auto exeDir = PathCombineS(PathCombineS(PathCombineS(aviutlDir, "exe_files"), exeName), "x64");
+    return PathCombineS(exeDir, exeName + ".exe");
+}
+
+std::string getClfiltersExePath() {
+    return getClCUfiltersExePath("clfilters");
 }
 
 std::string getCUfiltersExePath() {
-    char aviutlPath[4096] = { 0 };
-    GetModuleFileName(nullptr, aviutlPath, _countof(aviutlPath) - 1);
-    auto [ret, aviutlDir] = PathRemoveFileSpecFixed(aviutlPath);
-    auto exeDir = PathCombineS(PathCombineS(PathCombineS(aviutlDir, "exe_files"), "x64"), "cufilters");
-    return PathCombineS(exeDir, "cufilters.exe");
+    return getClCUfiltersExePath("cufilters");
 }
 
 clcuFiltersAufDevices::clcuFiltersAufDevices() :
@@ -141,7 +141,8 @@ void clcuFiltersAuf::initShared() {
 }
 
 bool clcuFiltersAuf::isCUDA() const {
-    auto sharedPrms = (clfitersSharedPrms *)m_sharedPrms->ptr();
+    if (!m_sharedPrms) return false;
+    auto sharedPrms = (const clfitersSharedPrms *)m_sharedPrms->ptr();
     return sharedPrms->pd.s.platform == CLCU_PLATFORM_CUDA;
 }
 
@@ -190,7 +191,7 @@ int clcuFiltersAuf::runProcess(const HINSTANCE aufHandle, const int maxw, const 
     initShared();
 
     // exeのパスを取得
-    const auto exePath = getClfiltersExePath();
+    const auto exePath = (isCUDA) ? getCUfiltersExePath() : getClfiltersExePath();
     if (!rgy_file_exists(exePath)) {
         AddMessage(RGY_LOG_ERROR, _T("Failed to find exe: %s.\n"), exePath.c_str());
         return 1;
@@ -260,6 +261,9 @@ int clcuFiltersAuf::runProcess(const HINSTANCE aufHandle, const int maxw, const 
         }
         AddMessage(RGY_LOG_DEBUG, _T("Reached process stderr EOF.\n"));
     });
+
+    //デバッグ用
+    //SetEvent(m_eventMesStart.get());
 
     // プロセス初期化処理の終了を待機
     while (WaitForSingleObject(m_eventMesEnd.get(), 1000) == WAIT_TIMEOUT) {

@@ -90,6 +90,7 @@ public:
         va_end(args);
         AddMessage(log_level, buffer);
     }
+    virtual RGY_ERR initDevices() = 0;
     virtual std::string checkDevices() = 0;
     virtual bool isCUDA() const = 0;
 protected:

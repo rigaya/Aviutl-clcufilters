@@ -353,7 +353,7 @@ public:
         return allocHost();
     }
     static void clearMemory(RGYFrameInfo& fi) {
-        for (int i = 0; i < ((fi.singleAlloc) ? 1 : (int)_countof(fi.ptr)); i++) {
+        for (int i = 0; i < ((fi.singleAlloc) ? 1 : RGY_CSP_PLANES[fi.csp]); i++) {
             if (fi.ptr[i]) {
                 cudaFree(fi.ptr[i]);
             }
@@ -364,7 +364,7 @@ public:
     void clear() {
         CUFrameBuf::clearMemory(frame);
     }
-    ~CUFrameBuf() {
+    virtual ~CUFrameBuf() {
         clear();
         if (event) {
             cudaEventDestroy(event);

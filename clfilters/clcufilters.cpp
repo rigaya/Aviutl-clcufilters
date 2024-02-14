@@ -37,8 +37,8 @@
 #include "filter.h"
 #include "clcufilters_version.h"
 #include "clcufilters_shared.h"
-#include "clfilters_auf.h"
-#include "clfilters.h"
+#include "clcufilters_auf.h"
+#include "clcufilters.h"
 
 void init_dialog(HWND hwnd, FILTER *fp);
 void update_cx(FILTER *fp);
@@ -1387,7 +1387,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     SendMessage(lb_opencl_device, WM_SETFONT, (WPARAM)b_font, 0);
     SendMessage(lb_opencl_device, WM_SETTEXT, 0, (LPARAM)LB_CX_OPENCL_DEVICE);
 
-    cx_opencl_device = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 68, cb_opencl_platform_y, 205, 100, hwnd, (HMENU)ID_CX_OPENCL_DEVICE, hinst, NULL);
+    cx_opencl_device = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 68, cb_opencl_platform_y, 245, 100, hwnd, (HMENU)ID_CX_OPENCL_DEVICE, hinst, NULL);
     SendMessage(cx_opencl_device, WM_SETFONT, (WPARAM)b_font, 0);
 
     init_device_list();
@@ -1400,7 +1400,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     }
 
     //OpenCL info
-    bt_opencl_info = CreateWindow("BUTTON", "clinfo", WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, 278, cb_opencl_platform_y, 48, 22, hwnd, (HMENU)ID_BT_OPENCL_INFO, hinst, NULL);
+    bt_opencl_info = CreateWindow("BUTTON", "clinfo", WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, 318, cb_opencl_platform_y, 48, 22, hwnd, (HMENU)ID_BT_OPENCL_INFO, hinst, NULL);
     SendMessage(bt_opencl_info, WM_SETFONT, (WPARAM)b_font, 0);
 
     //checkboxの移動
@@ -1705,10 +1705,6 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp, const FILTER_PRO
     prm.vpp.nnedi.precision     = VPP_FP_PRECISION_AUTO;
 
     return prm;
-}
-
-static bool platformIsCUDA(int16_t platform) {
-    return platform == CLCU_PLATFORM_CUDA;
 }
 
 BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {

@@ -28,6 +28,7 @@
     <ProjectGuid>{816576df-8d75-48de-b659-ecef80ae271f}</ProjectGuid>
     <RootNamespace>clfilters</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>clcufilters</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -133,7 +134,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>clfilters.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>clcufilters.def</ModuleDefinitionFile>
     </Link>
     <ResourceCompile>
       <Culture>0x0411</Culture>
@@ -166,7 +167,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>clfilters.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>clcufilters.def</ModuleDefinitionFile>
     </Link>
     <ResourceCompile>
       <Culture>0x0411</Culture>
@@ -209,7 +210,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>clfilters.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>clcufilters.def</ModuleDefinitionFile>
     </Link>
     <ResourceCompile>
       <Culture>0x0411</Culture>
@@ -252,7 +253,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>clfilters.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>clcufilters.def</ModuleDefinitionFile>
     </Link>
     <ResourceCompile>
       <Culture>0x0411</Culture>
@@ -295,7 +296,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>clfilters.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>clcufilters.def</ModuleDefinitionFile>
     </Link>
     <ResourceCompile>
       <Culture>0x0409</Culture>
@@ -309,16 +310,16 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="clfilters.cpp" />
-    <ClCompile Include="clfilters_add_res.cpp" />
-    <ClCompile Include="clfilters_auf.cpp" />
+    <ClCompile Include="clcufilters.cpp" />
+    <ClCompile Include="clcufilters_add_res.cpp" />
+    <ClCompile Include="clcufilters_auf.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="clfilters.def" />
+    <None Include="clcufilters.def" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="clfilters.h" />
-    <ClInclude Include="clfilters_auf.h" />
+    <ClInclude Include="clcufilters.h" />
+    <ClInclude Include="clcufilters_auf.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="clfilters.rc" />

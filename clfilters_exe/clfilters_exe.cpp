@@ -50,11 +50,7 @@ clFiltersExe::clFiltersExe() :
 clFiltersExe::~clFiltersExe() {
 }
 
-std::string clFiltersExe::checkDevices() {
-    return checkClPlatforms();
-}
-
-std::string clFiltersExe::checkClPlatforms() {
+RGY_ERR clFiltersExe::initDevices() {
     if (m_clplatforms.size() == 0) {
         auto log = m_log;
         RGYOpenCL cl(m_log ? m_log : std::make_shared<RGYLog>(nullptr, RGY_LOG_INFO));
@@ -62,6 +58,17 @@ std::string clFiltersExe::checkClPlatforms() {
         for (auto& platform : m_clplatforms) {
             platform->createDeviceList(CL_DEVICE_TYPE_GPU);
         }
+    }
+    return RGY_ERR_NONE;
+}
+
+std::string clFiltersExe::checkDevices() {
+    return checkClPlatforms();
+}
+
+std::string clFiltersExe::checkClPlatforms() {
+    if (m_clplatforms.size() == 0) {
+        initDevices();
     }
     std::string devices;
     for (size_t ip = 0; ip < m_clplatforms.size(); ip++) {

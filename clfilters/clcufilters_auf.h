@@ -26,8 +26,8 @@
 //
 // ------------------------------------------------------------------------------------------
 
-#ifndef _CLFILTERS_AUF_H_
-#define _CLFILTERS_AUF_H_
+#ifndef _CLCUFILTERS_AUF_H_
+#define _CLCUFILTERS_AUF_H_
 
 #include "rgy_osdep.h"
 #include <thread>
@@ -102,4 +102,4 @@ protected:
     std::shared_ptr<RGYLog> m_log;
 };
 
-#endif // _CLFILTERS_AUF_H_
+#endif // _CLCUFILTERS_AUF_H_

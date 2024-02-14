@@ -373,7 +373,7 @@
       <AdditionalOptions>/c 65001 %(AdditionalOptions)</AdditionalOptions>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>copy /y "$(OutputPath)$(TargetFileName)" C:\ProgramEx\aviutl\exe_files\clfilters</Command>
+      <Command>copy /y "$(OutputPath)$(TargetFileName)" C:\ProgramEx\aviutl\exe_files\clfilters\x64</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugCU|x64'">
@@ -398,7 +398,7 @@
       <AdditionalOptions>/c 65001 %(AdditionalOptions)</AdditionalOptions>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>copy /y "$(OutputPath)$(TargetFileName)" C:\ProgramEx\aviutl\exe_files\clfilters</Command>
+      <Command>copy /y "$(OutputPath)$(TargetFileName)" C:\ProgramEx\aviutl\exe_files\clfilters\x64</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -430,7 +430,7 @@
       <AdditionalOptions>/c 65001 %(AdditionalOptions)</AdditionalOptions>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>copy /y "$(OutputPath)$(TargetFileName)" C:\ProgramEx\aviutl\exe_files\clfilters</Command>
+      <Command>copy /y "$(OutputPath)$(TargetFileName)" C:\ProgramEx\aviutl\exe_files\clfilters\x64</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseCU|x64'">
@@ -462,7 +462,7 @@
       <AdditionalOptions>/c 65001 %(AdditionalOptions)</AdditionalOptions>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>copy /y "$(OutputPath)$(TargetFileName)" C:\ProgramEx\aviutl\exe_files\clfilters</Command>
+      <Command>copy /y "$(OutputPath)$(TargetFileName)" C:\ProgramEx\aviutl\exe_files\clfilters\x64</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseEN|x64'">
@@ -494,7 +494,7 @@
       <AdditionalOptions>/c 65001 %(AdditionalOptions)</AdditionalOptions>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>copy /y "$(OutputPath)$(TargetFileName)" C:\ProgramEx\aviutl\exe_files\clfilters</Command>
+      <Command>copy /y "$(OutputPath)$(TargetFileName)" C:\ProgramEx\aviutl\exe_files\clfilters\x64</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
