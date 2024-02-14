@@ -185,6 +185,7 @@ cuFilterChain::~cuFilterChain() {
 }
 
 void cuFilterChain::close() {
+    cudaDeviceSynchronize();
     m_filters.clear();
     m_frameIn.reset();
     m_frameOut.reset();
