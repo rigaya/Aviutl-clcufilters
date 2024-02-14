@@ -52,7 +52,7 @@ clcuFiltersAufDevices::~clcuFiltersAufDevices() {};
 
 int clcuFiltersAufDevices::createList() {
     m_platforms.clear();
-    for (auto& exe : { getCUfiltersExePath(), getClfiltersExePath() }) {
+    for (auto& exe : { getClfiltersExePath(), getCUfiltersExePath() }) {
         if (createList(exe) != 0) {
             return 1;
         }
