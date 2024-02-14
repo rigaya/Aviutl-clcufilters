@@ -45,7 +45,6 @@ public:
     virtual ~cuFilterFrameBuffer();
 
     virtual std::unique_ptr<RGYFrame> allocateFrame(const int width, const int height) override;
-    virtual void resetMappedFrame(RGYFrame *frame) override;
 protected:
 };
 

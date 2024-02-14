@@ -58,7 +58,7 @@ public:
     virtual ~clcuFilterFrameBuffer();
 
     virtual std::unique_ptr<RGYFrame> allocateFrame(const int width, const int height) = 0;
-    virtual void resetMappedFrame(RGYFrame *frame) = 0;
+    virtual void resetMappedFrame([[maybe_unused]]RGYFrame *frame) { };
     void freeFrames();
     void resetCachedFrames();
     RGYFrame *get_in(const int width, const int height);

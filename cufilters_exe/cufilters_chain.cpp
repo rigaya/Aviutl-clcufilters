@@ -56,10 +56,6 @@ std::unique_ptr<RGYFrame> cuFilterFrameBuffer::allocateFrame(const int width, co
     return uptr;
 }
 
-void cuFilterFrameBuffer::resetMappedFrame(RGYFrame *frame) {
-
-}
-
 cuDevice::cuDevice() :
     m_deviceID(-1),
     m_device(0),
