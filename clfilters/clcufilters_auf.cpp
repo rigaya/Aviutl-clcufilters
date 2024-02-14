@@ -263,7 +263,7 @@ int clcuFiltersAuf::runProcess(const HINSTANCE aufHandle, const int maxw, const 
     });
 
     //デバッグ用
-    //SetEvent(m_eventMesStart.get());
+    SetEvent(m_eventMesStart.get());
 
     // プロセス初期化処理の終了を待機
     while (WaitForSingleObject(m_eventMesEnd.get(), 1000) == WAIT_TIMEOUT) {

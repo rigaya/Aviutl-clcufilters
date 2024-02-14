@@ -92,7 +92,7 @@ int clcuFiltersExe::init(AviutlAufExeParams& prms) {
     AddMessage(RGY_LOG_DEBUG, _T("Opened shared mem for frame(out).\n"));
 
     //デバッグ用
-    //WaitForSingleObject(m_eventMesStart, INFINITE);
+    WaitForSingleObject(m_eventMesStart, INFINITE);
 
     initDevices();
     // プロセス初期化処理の終了を通知
