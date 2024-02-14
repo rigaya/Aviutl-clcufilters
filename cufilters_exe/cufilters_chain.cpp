@@ -62,6 +62,7 @@ void cuFilterFrameBuffer::resetMappedFrame(RGYFrame *frame) {
 
 cuDevice::cuDevice() :
     m_deviceID(-1),
+    m_device(0),
     m_deviceName(),
     m_cuda_driver_version(0),
     m_cuda_version() {}
@@ -121,6 +122,7 @@ RGY_ERR cuDevice::init(const int deviceID, std::shared_ptr<RGYLog> log) {
         return RGY_ERR_DEVICE_NOT_FOUND;
     }
     PrintMes(RGY_LOG_DEBUG, _T("  cuDeviceGet(%d): success\n"), m_deviceID);
+    m_device = cuDevice;
 
     char dev_name[256] = { 0 };
     if ((sts = err_to_rgy(cuDeviceGetName(dev_name, _countof(dev_name), cuDevice))) != RGY_ERR_NONE) {
@@ -168,6 +170,7 @@ RGY_ERR cuDevice::init(const int deviceID, std::shared_ptr<RGYLog> log) {
 cuFilterChain::cuFilterChain() :
     clcuFilterChain(),
     m_cuDevice(),
+    m_cuCtx(std::unique_ptr<std::remove_pointer<CUcontext>::type, decltype(&cuCtxDestroy)>(nullptr, cuCtxDestroy)),
     m_frameHostIn(),
     m_frameHostOut(),
     m_eventIn(),
@@ -191,6 +194,7 @@ void cuFilterChain::close() {
     m_streamOut.reset();
     //m_queueSendIn.finish(); // m_frameIn.reset() のあと
     //m_queueSendIn.clear();  // m_frameIn.reset() のあと
+    m_cuCtx.reset();
     m_deviceName.clear();
     m_convert_yc48_to_yuv444_16.reset();
     m_convert_yuv444_16_to_yc48.reset();
@@ -204,6 +208,14 @@ RGY_ERR cuFilterChain::initDevice(const clcuFilterDeviceParam *param) {
     if (err != RGY_ERR_NONE) {
         return err;
     }
+
+    auto ctxFlags = 0;
+    CUcontext cuCtxCreated;
+    if ((err = err_to_rgy(cuCtxCreate(&cuCtxCreated, ctxFlags, m_cuDevice->dev()))) != RGY_ERR_NONE) {
+        PrintMes(RGY_LOG_ERROR, _T("failed to cuCtxCreate: %s.\n"), get_err_mes(err));
+        return err;
+    }
+    m_cuCtx = std::unique_ptr<std::remove_pointer<CUcontext>::type, decltype(&cuCtxDestroy)>(cuCtxCreated, cuCtxDestroy);
 
     m_deviceID = param->deviceID;
     m_deviceName = m_cuDevice->getDeviceName();

@@ -55,6 +55,7 @@ public:
     ~cuDevice();
     RGY_ERR init(const int deviceID, std::shared_ptr<RGYLog> log);
     void close();
+    CUdevice dev() const { return m_device; }
     const tstring& getDeviceName() const { return m_deviceName; }
     int getDriverVersion() const { return m_cuda_driver_version; }
     std::pair<int, int> getCUDAVer() const { return m_cuda_version; }
@@ -62,6 +63,7 @@ protected:
     void PrintMes(const RGYLogLevel logLevel, const TCHAR *format, ...);
 
     std::shared_ptr<RGYLog> m_log;
+    CUdevice m_device;
     int m_deviceID;
     tstring m_deviceName;
     int m_cuda_driver_version;
@@ -83,6 +85,7 @@ private:
     virtual RGY_ERR configureOneFilter(std::unique_ptr<RGYFilterBase>& filter, RGYFrameInfo& inputFrame, const VppType filterType, const int resizeWidth, const int resizeHeight) override;
 
     std::unique_ptr<cuDevice> m_cuDevice;
+    std::unique_ptr<std::remove_pointer<CUcontext>::type, decltype(&cuCtxDestroy)> m_cuCtx;
     std::unique_ptr<CUFrameBuf> m_frameHostIn;
     std::unique_ptr<CUFrameBuf> m_frameHostOut;
     std::unique_ptr<cudaEvent_t, cudaevent_deleter> m_eventIn;
