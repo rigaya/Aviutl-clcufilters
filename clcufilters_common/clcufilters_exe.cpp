@@ -149,9 +149,6 @@ int clcuFiltersExe::funcProc() {
     // 保存モード(is_saving=true)の時に、どのくらい先まで処理をしておくべきか?
     static_assert(frameInOffset < clcuFilterFrameBuffer::bufSize);
     static_assert(frameInOffset < _countof(clfitersSharedPrms::srcFrame));
-    if (frame_n <= 0 || current_frame < 0) {
-        return TRUE; // 何もしない
-    }
     if (resetPipeline
         || m_filter->getNextOutFrameId() != current_frame) { // 出てくる予定のフレームがずれていたらリセット
         m_filter->resetPipeline();
@@ -161,10 +158,12 @@ int clcuFiltersExe::funcProc() {
     // frameIn の終了フレーム
     //const int frameInFin = (is_saving) ? std::min(current_frame + frameInOffset, frame_n - 1) : current_frame;
     // フレーム転送の実行
+    auto sts = RGY_ERR_NONE;
     for (int i = 0; frameIn <= frameInFin; frameIn++, i++) {
         if (i > 0) {
             // 2フレーム目以降は、プラグイン側の処理完了を待つ必要がある
             while (WaitForSingleObject(m_eventMesStart, 100) == WAIT_TIMEOUT) {
+                // Aviutl側が終了していたら終了
                 if (m_aviutlHandle && WaitForSingleObject(m_aviutlHandle.get(), 0) != WAIT_TIMEOUT) {
                     return FALSE;
                 }
@@ -172,13 +171,20 @@ int clcuFiltersExe::funcProc() {
         }
         const auto& srcFrame = sharedPrms->srcFrame[i];
         const RGYFrameInfo in = setFrameInfo(frameIn, srcFrame.width, srcFrame.height, m_sharedFramesIn->ptr());
-        if (m_filter->sendInFrame(&in) != RGY_ERR_NONE) {
-            return FALSE;
+        if (sts != RGY_ERR_NONE) {
+            sts = m_filter->sendInFrame(&in);
+            // エラーとなっても、フレームの受け取りは最後まで行っておく
         }
         if (frameIn < frameInFin) {
             // まだ受け取るフレームがあるなら、GPUへの転送完了を通知
             SetEvent(m_eventMesEnd);
         } 
+    }
+    if (sts != RGY_ERR_NONE) {
+        return sts;
+    }
+    if (frame_n <= 0 || current_frame < 0) {
+        return TRUE; // 何もしない
     }
     // -- フレームの処理 -----------------------------------------------------------------
     if (prm != m_filter->getPrm()) { // パラメータが変更されていたら、
