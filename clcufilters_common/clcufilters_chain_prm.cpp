@@ -40,6 +40,7 @@ const TCHAR *cmd_short_opt_to_long(const TCHAR short_opt) {
 AviutlAufExeParams::AviutlAufExeParams() :
     log_level(RGY_LOG_INFO),
     logfile(),
+    noNVCL(true),
     clinfo(false),
     checkDevice(false),
     ppid(0),

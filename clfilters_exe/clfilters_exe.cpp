@@ -44,9 +44,10 @@
 #include "rgy_cmd.h"
 
 
-clFiltersExe::clFiltersExe() :
+clFiltersExe::clFiltersExe(bool noNVCL) :
     clcuFiltersExe(),
-    m_clplatforms() { }
+    m_clplatforms(),
+    m_noNVCL(noNVCL) { }
 clFiltersExe::~clFiltersExe() {
 }
 
@@ -55,6 +56,15 @@ RGY_ERR clFiltersExe::initDevices() {
         auto log = m_log;
         RGYOpenCL cl(m_log ? m_log : std::make_shared<RGYLog>(nullptr, RGY_LOG_INFO));
         m_clplatforms = cl.getPlatforms(nullptr);
+        if (m_noNVCL) {
+            for (auto it = m_clplatforms.begin(); it != m_clplatforms.end();) {
+                if ((*it)->isVendor("NVIDIA")) {
+                    it = m_clplatforms.erase(it);
+                } else {
+                    it++;
+                }
+            }
+        }
         for (auto& platform : m_clplatforms) {
             platform->createDeviceList(CL_DEVICE_TYPE_GPU);
         }
@@ -109,7 +119,7 @@ int _tmain(const int argc, const TCHAR **argv) {
         return 0;
     }
     if (prms.checkDevice) {
-        clFiltersExe clfilterexe;
+        clFiltersExe clfilterexe(prms.noNVCL);
         const auto str = clfilterexe.checkDevices();
         _ftprintf(stdout, _T("%s\n"), str.c_str());
         return 0;
@@ -136,7 +146,7 @@ int _tmain(const int argc, const TCHAR **argv) {
         return 1;
     }
     // 実行開始
-    clFiltersExe clfilterexe;
+    clFiltersExe clfilterexe(prms.noNVCL);
     clfilterexe.init(prms);
     int ret = clfilterexe.run();
     return ret;

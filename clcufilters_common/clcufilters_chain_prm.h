@@ -87,6 +87,7 @@ static const auto filterList = make_array<std::pair<const TCHAR*, VppType>>(
 struct AviutlAufExeParams {
     RGYParamLogLevel log_level;
     tstring logfile;
+    bool noNVCL;
     bool clinfo;
     bool checkDevice;
     uint32_t ppid;

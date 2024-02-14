@@ -34,7 +34,7 @@
 
 class clFiltersExe : public clcuFiltersExe {
 public:
-    clFiltersExe();
+    clFiltersExe(bool noNVCL);
     virtual ~clFiltersExe();
     virtual RGY_ERR initDevices() override;
     virtual std::string checkDevices() override;
@@ -43,6 +43,7 @@ protected:
     std::string checkClPlatforms();
     virtual RGY_ERR initDevice(const clfitersSharedPrms *sharedPrms, clFilterChainParam& prm) override;
     std::vector<std::shared_ptr<RGYOpenCLPlatform>> m_clplatforms;
+    bool m_noNVCL;
 };
 
 #endif // !__CLFILTERS_EXE_H__
