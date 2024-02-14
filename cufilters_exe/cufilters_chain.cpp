@@ -476,7 +476,7 @@ RGY_ERR cuFilterChain::sendInFrame(const RGYFrameInfo *pInputFrame) {
     }
     m_frameIn->in_to_next();
 
-    if (!m_frameHostIn || cmpFrameInfoCspResolution(&frameDevIn->frame, &m_frameHostIn->frame)) {
+    if (!m_frameHostIn || m_frameHostIn->width() != pInputFrame->width || m_frameHostIn->height() != pInputFrame->height) {
         m_frameHostIn = std::make_unique<CUFrameBuf>(pInputFrame->width, pInputFrame->height, RGY_CSP_YUV444_16);
         auto sts = m_frameHostIn->allocHost();
         if (sts != RGY_ERR_NONE) {
@@ -611,7 +611,7 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
         }
     }
 
-    if (!m_frameHostOut || cmpFrameInfoCspResolution(&frameDevOut->frame, &m_frameHostOut->frame)) {
+    if (!m_frameHostOut || m_frameHostOut->width() != frameDevOut->frame.width || m_frameHostOut->height() != frameDevOut->frame.height) {
         m_frameHostOut = std::make_unique<CUFrameBuf>(frameDevOut->frame.width, frameDevOut->frame.height, RGY_CSP_YUV444_16);
         auto sts = m_frameHostOut->allocHost();
         if (sts != RGY_ERR_NONE) {
