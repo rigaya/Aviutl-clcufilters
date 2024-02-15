@@ -130,7 +130,7 @@ public:
         }
         return ptrarray;
     }
-    void ptr(void *array[3], bool bRGB) {
+    void ptrArray(void *array[3], bool bRGB) {
         auto frame = getInfo(); bRGB;
         array[0] = (void *)frame.ptr[0];
         array[1] = (void *)frame.ptr[1];
