@@ -49,6 +49,7 @@ Win32/
 *.log
 *.scc
 *.VC.db
+*.tlog
 
 # Visual C++ cache files
 .vs/
