@@ -179,7 +179,7 @@ RGY_ERR clcuFilterChain::filterChainCreate(const RGYFrameInfo *pInputFrame, cons
     const bool resizeRequired = pInputFrame->width != outWidth || pInputFrame->height != outHeight;
     const auto filterChain = m_prm.getFilterChain(resizeRequired);
     if (!filterChainEqual(filterChain)) {
-        PrintMes(RGY_LOG_INFO, _T("clFilterChain changed: %s\n"), printFilterChain(filterChain).c_str());
+        PrintMes(RGY_LOG_INFO, _T("clcuFilterChain changed: %s\n"), printFilterChain(filterChain).c_str());
 
         decltype(m_filters) newFilters;
         newFilters.reserve(filterChain.size());
@@ -208,7 +208,7 @@ RGY_ERR clcuFilterChain::filterChainCreate(const RGYFrameInfo *pInputFrame, cons
 void clcuFilterChain::resetPipeline() {
     m_frameIn->resetCachedFrames();
     m_frameOut->resetCachedFrames();
-    PrintMes(RGY_LOG_DEBUG, _T("clFilterChain reset pipeline.\n"));
+    PrintMes(RGY_LOG_DEBUG, _T("clcuFilterChain reset pipeline.\n"));
 }
 
 int clcuFilterChain::getNextOutFrameId() const {
