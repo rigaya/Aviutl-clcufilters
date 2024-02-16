@@ -181,10 +181,13 @@ cuFilterChain::~cuFilterChain() {
 }
 
 void cuFilterChain::close() {
+    cudaStreamSynchronize(*m_streamIn);
+    cudaStreamSynchronize(*m_streamOut);
+    cudaStreamSynchronize(cudaStreamDefault);
     cudaDeviceSynchronize();
+    m_frameOut.reset();
     m_filters.clear();
     m_frameIn.reset();
-    m_frameOut.reset();
     m_eventIn.reset();
     m_eventOut.reset();
     m_streamIn.reset();
