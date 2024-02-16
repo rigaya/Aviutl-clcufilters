@@ -53,6 +53,7 @@ clFiltersExe::~clFiltersExe() {
 
 RGY_ERR clFiltersExe::initDevices() {
     if (m_clplatforms.size() == 0) {
+        AddMessage(RGY_LOG_DEBUG, _T("clFiltersExe::initDevices, noNVCL = %s.\n"), m_noNVCL ? _T("true") : _T("false"));
         auto log = m_log;
         RGYOpenCL cl(m_log ? m_log : std::make_shared<RGYLog>(nullptr, RGY_LOG_INFO));
         m_clplatforms = cl.getPlatforms(nullptr);
@@ -105,6 +106,7 @@ RGY_ERR clFiltersExe::initDevice(const clfitersSharedPrms *sharedPrms, clFilterC
     dev_param.platformID = dev_pd.s.platform;
     dev_param.deviceID = dev_pd.s.device;
     dev_param.deviceType = CL_DEVICE_TYPE_GPU;
+    dev_param.noNVCL = m_noNVCL;
     return m_filter->init(&dev_param, prm.log_level.get(RGY_LOGT_APP), prm.log_to_file);
 }
 
