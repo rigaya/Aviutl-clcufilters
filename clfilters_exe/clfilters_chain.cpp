@@ -101,6 +101,16 @@ RGY_ERR clFilterChain::initDevice(const clcuFilterDeviceParam *param) {
         PrintMes(RGY_LOG_ERROR, _T("No OpenCL Platform found on this system.\n"));
         return RGY_ERR_DEVICE_NOT_FOUND;
     }
+    if (prm->noNVCL) {
+        PrintMes(RGY_LOG_DEBUG, _T("noNVCL = true.\n"));
+        for (auto it = platforms.begin(); it != platforms.end();) {
+            if ((*it)->isVendor("NVIDIA")) {
+                it = platforms.erase(it);
+            } else {
+                it++;
+            }
+        }
+    }
 
     if (platformID >= 0 && platformID >= (int)platforms.size()) {
         PrintMes(RGY_LOG_ERROR, _T("platform %d does not exist (platform count = %d)\n"), platformID, (int)platforms.size());

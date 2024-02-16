@@ -47,8 +47,9 @@ class clFilterDeviceParam : public clcuFilterDeviceParam {
 public:
     int platformID;
     cl_device_type deviceType;
+    bool noNVCL;
 
-    clFilterDeviceParam() : platformID(0), deviceType(CL_DEVICE_TYPE_GPU) {};
+    clFilterDeviceParam() : platformID(0), deviceType(CL_DEVICE_TYPE_GPU), noNVCL(true) {};
     virtual ~clFilterDeviceParam() {};
 };
 
