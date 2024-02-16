@@ -171,9 +171,10 @@ int clcuFiltersExe::funcProc() {
         }
         const auto& srcFrame = sharedPrms->srcFrame[i];
         const RGYFrameInfo in = setFrameInfo(frameIn, srcFrame.width, srcFrame.height, m_sharedFramesIn->ptr());
-        if (sts != RGY_ERR_NONE) {
+        // 受け取り中のエラーは保持するが、まずは最後まで受け取ることを優先する
+        if (sts == RGY_ERR_NONE) {
+            // 成功していた場合のみGPUに転送する
             sts = m_filter->sendInFrame(&in);
-            // エラーとなっても、フレームの受け取りは最後まで行っておく
         }
         if (frameIn < frameInFin) {
             // まだ受け取るフレームがあるなら、GPUへの転送完了を通知
