@@ -160,7 +160,8 @@ protected:
     virtual void close() override;
 
     bool m_bInterlacedWarn;
-    CUMemBuf m_weightSpline;
+    std::unique_ptr<CUMemBuf> m_weightSpline;
+    RGY_VPP_RESIZE_ALGO m_weightSplineAlgo;
     std::unique_ptr<NVEncFilterNvvfxSuperRes> m_nvvfxSuperRes;
 };
 
