@@ -180,6 +180,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>cudart_static.lib;cuda.lib;%(AdditionalDependencies);cudart.lib;cudadevrt.lib</AdditionalDependencies>
+      <DelayLoadDLLs>nvcuda.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
     </Link>
     <CudaCompile>
       <CodeGeneration>$(CUDA_CODE_GEN)</CodeGeneration>
@@ -209,6 +210,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>cudart_static.lib;cuda.lib;%(AdditionalDependencies);cudart.lib;cudadevrt.lib</AdditionalDependencies>
+      <DelayLoadDLLs>nvcuda.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
     </Link>
     <CudaCompile>
       <CodeGeneration>$(CUDA_CODE_GEN)</CodeGeneration>
@@ -245,6 +247,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>cudart_static.lib;cuda.lib;%(AdditionalDependencies);cudart.lib;cudadevrt.lib</AdditionalDependencies>
+      <DelayLoadDLLs>nvcuda.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
     </Link>
     <CudaCompile>
       <CodeGeneration>$(CUDA_CODE_GEN)</CodeGeneration>
@@ -282,6 +285,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>cudart_static.lib;cuda.lib;%(AdditionalDependencies);cudart.lib;cudadevrt.lib</AdditionalDependencies>
+      <DelayLoadDLLs>nvcuda.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
     </Link>
     <CudaCompile>
       <CodeGeneration>$(CUDA_CODE_GEN)</CodeGeneration>
@@ -311,6 +315,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>cudart_static.lib;cuda.lib;nppc.lib;nppif.lib;nppig.lib;nvrtc.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <DelayLoadDLLs>nvcuda.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
@@ -344,6 +349,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>cudart_static.lib;cuda.lib;nppc.lib;nppif.lib;nppig.lib;nvrtc.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <DelayLoadDLLs>nvcuda.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
@@ -383,6 +389,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>cudart_static.lib;cuda.lib;nppc.lib;nppif.lib;nppig.lib;nvrtc.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <DelayLoadDLLs>nvcuda.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
@@ -423,6 +430,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>cudart_static.lib;cuda.lib;nppc.lib;nppif.lib;nppig.lib;nvrtc.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <DelayLoadDLLs>nvcuda.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
