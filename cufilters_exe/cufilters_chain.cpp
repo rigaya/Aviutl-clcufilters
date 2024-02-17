@@ -545,6 +545,7 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
     }
     auto frameDevIn = dynamic_cast<CUFrameBuf*>(m_frameIn->get_out(frameID));
     m_frameIn->out_to_next();
+    CUDA_DEBUG_SYNC;
 
     if (!frameDevIn) {
         return RGY_ERR_OUT_OF_RANGE;
@@ -555,6 +556,7 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
 
     auto frameDevOut = dynamic_cast<CUFrameBuf*>(m_frameOut->get_in(prm.outWidth, prm.outHeight));
     m_frameOut->in_to_next();
+    CUDA_DEBUG_SYNC;
 
     cudaStream_t streamFiltering = cudaStreamDefault;
 
@@ -564,6 +566,7 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
         PrintMes(RGY_LOG_ERROR, _T("failed to update filter chain.\n"));
         return err;
     }
+    CUDA_DEBUG_SYNC;
 
     err = err_to_rgy(cudaStreamWaitEvent(streamFiltering, frameDevIn->event, 0));
     if (err != RGY_ERR_NONE) {
@@ -589,6 +592,7 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
             PrintMes(RGY_LOG_ERROR, _T("Currently only simple filters are supported.\n"));
             return RGY_ERR_UNSUPPORTED;
         }
+        CUDA_DEBUG_SYNC;
         frameInfo = *(outInfo[0]);
     }
     //最後のフィルタ
@@ -597,6 +601,7 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
             PrintMes(RGY_LOG_ERROR, _T("Error in frame copy: %s.\n"), get_err_mes(err));
             return err;
         }
+        CUDA_DEBUG_SYNC;
         copyFramePropWithoutCsp(&frameDevOut->frame, &frameInfo);
     } else {
         auto& lastFilter = m_filters[m_filters.size() - 1];
@@ -609,6 +614,7 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
             PrintMes(RGY_LOG_ERROR, _T("Error while running filter \"%s\": %s.\n"), lastFilter.second->name().c_str(), get_err_mes(err));
             return err;
         }
+        CUDA_DEBUG_SYNC;
     }
 
     if (!m_frameHostOut || m_frameHostOut->width() != frameDevOut->frame.width || m_frameHostOut->height() != frameDevOut->frame.height) {
@@ -616,8 +622,9 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
         auto sts = m_frameHostOut->allocHost();
         if (sts != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("failed to allocate frame for output buffer: %s.\n"), get_err_mes(sts));
-            return RGY_ERR_MEMORY_ALLOC;
+            return sts;
         }
+        CUDA_DEBUG_SYNC;
     }
 
     err = err_to_rgy(cudaEventRecord(*m_eventOut.get(), streamFiltering));
@@ -635,6 +642,7 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
         PrintMes(RGY_LOG_ERROR, _T("failed to copy output frame: %s.\n"), get_err_mes(err));
         return err;
     }
+    CUDA_DEBUG_SYNC;
     err = err_to_rgy(cudaEventRecord(frameDevOut->event, *m_streamOut.get()));
     if (err != RGY_ERR_NONE) {
         PrintMes(RGY_LOG_ERROR, _T("proc: cudaEventRecord: %s.\n"), get_err_mes(err));
