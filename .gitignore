@@ -45,6 +45,7 @@ Win32/
 *.vspscc
 *.vssscc
 .builds
+.vscode
 *.pidb
 *.log
 *.scc
