@@ -49,11 +49,35 @@ jobs:
           - arch: x86
             platform: Win32
             configuration: Release
-            release_name: clfilters
+            release_name: clcufilters
+            release_ext: auf
+            cuda_download_url: empty
+            cuda_ver_major: 0
+            cuda_ver_minor: 0
           - arch: x86
             platform: Win32
             configuration: ReleaseEN
-            release_name: clfilters_en
+            release_name: clcufilters
+            release_ext: auf
+            cuda_download_url: empty
+            cuda_ver_major: 0
+            cuda_ver_minor: 0
+          - arch: x64
+            platform: x64
+            configuration: Release
+            release_name: clfilters
+            release_ext: exe
+            cuda_download_url: empty
+            cuda_ver_major: 0
+            cuda_ver_minor: 0
+          - arch: x64
+            platform: x64
+            configuration: ReleaseCU
+            release_name: cufilters
+            release_ext: exe
+            cuda_download_url: https://developer.download.nvidia.com/compute/cuda/11.7.0/network_installers/cuda_11.7.0_windows_network.exe
+            cuda_ver_major: 11
+            cuda_ver_minor: 7
     
     steps:
       - name: Checkout
@@ -70,6 +94,13 @@ jobs:
         uses: microsoft/setup-msbuild@v1.1
         with:
           msbuild-architecture: ${{ matrix.arch }}
+          
+      - name: Setup CUDA
+        if: ${{ matrix.release_name=='cufilters' }}
+        run: |
+          curl -s -o cuda_installer.exe -L ${{ matrix.cuda_download_url }}
+          cuda_installer.exe -s nvcc_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }} cudart_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }} curand_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }} curand_dev_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }} npp_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }} npp_dev_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }} nvml_dev_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }} nvrtc_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }} nvrtc_dev_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }} visual_studio_integration_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }}
+          set CUDA_PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }}
 
       - name: MSBuild
         run: |
@@ -79,15 +110,82 @@ jobs:
       - name: Create Archieve
         id: archieve
         run: |
-          mkdir clfilters_release
-          copy _build\${{ matrix.platform }}\${{ matrix.configuration }}\clfilters.auf clfilters_release
-          7z a -mx9 ${{ matrix.release_name }}_${{ needs.get_version_name.outputs.version_name }}.zip .\clfilters_release\*
+          mkdir clcufilters_release
+          copy _build\${{ matrix.platform }}\${{ matrix.configuration }}\${{ matrix.release_name }}.${{ matrix.release_ext }} clcufilters_release
+          if "${{ matrix.release_name }}" == "cufilters" copy "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }}\bin\nvrtc64_${{ matrix.cuda_ver_major }}${{ matrix.cuda_ver_minor }}_0.dll" clcufilters_release
+          if "${{ matrix.release_name }}" == "cufilters" copy "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }}\bin\nvrtc-builtins64_${{ matrix.cuda_ver_major }}${{ matrix.cuda_ver_minor }}.dll" clcufilters_release
+          7z a -mx9 ${{ matrix.release_name }}_${{ matrix.configuration }}_${{ needs.get_version_name.outputs.version_name }}.7z .\clcufilters_release\*
 
       - name: Check Version
         id: check_ver
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          powershell "$ver = (Get-ItemProperty .\clfilters_release\clfilters.auf).VersionInfo.FileVersion; if ($ver -eq '${{ needs.get_version_name.outputs.version_name }}') { exit 0; } exit 1;"
+          powershell "$ver = (Get-ItemProperty .\clcufilters_release\${{ matrix.release_name }}.${{ matrix.release_ext }}).VersionInfo.FileVersion; if ($ver -eq '${{ needs.get_version_name.outputs.version_name }}') { exit 0; } exit 1;"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.release_name }}_${{ matrix.configuration }}_${{ needs.get_version_name.outputs.version_name }}
+          path: ${{ matrix.release_name }}_${{ matrix.configuration }}_${{ needs.get_version_name.outputs.version_name }}.7z
+
+  upload_aviutl_release:
+    name: Upload Aviutl Release Asset
+    runs-on: windows-2022
+    needs: [ get_version_name, build ]
+
+    defaults:
+      run:
+        shell: cmd
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - configuration: Release
+            release_name: clcufilters
+          - configuration: ReleaseEN
+            release_name: clcufilters_en
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Download auf
+        uses: actions/download-artifact@v3
+        with:
+          name: clcufilters_${{ matrix.configuration }}_${{ needs.get_version_name.outputs.version_name }}
+          path: clcufilters_${{ matrix.configuration }}_${{ needs.get_version_name.outputs.version_name }}.7z
+
+      - name: Download clfilters
+        uses: actions/download-artifact@v3
+        with:
+          name: clfilters_Release_${{ needs.get_version_name.outputs.version_name }}
+          path: clfilters_Release_${{ needs.get_version_name.outputs.version_name }}.7z
+
+      - name: Download cufilters
+        uses: actions/download-artifact@v3
+        with:
+          name: cufilters_ReleaseCU_${{ needs.get_version_name.outputs.version_name }}
+          path: cufilters_ReleaseCU_${{ needs.get_version_name.outputs.version_name }}.7z
+          
+      - name: Create package
+        id: archieve
+        run: |
+          mkdir Aviutl_clcufilters_release
+          mkdir Aviutl_clcufilters_release\plugins
+          mkdir Aviutl_clcufilters_release\exe_files
+          mkdir Aviutl_clcufilters_release\exe_files\clfilters
+          mkdir Aviutl_clcufilters_release\exe_files\clfilters\x64
+          mkdir Aviutl_clcufilters_release\exe_files\cufilters
+          mkdir Aviutl_clcufilters_release\exe_files\cufilters\x64
+          7z x -oAviutl_clcufilters_release\plugins\                 clcufilters_${{ matrix.configuration }}_${{ needs.get_version_name.outputs.version_name }}.7z
+          7z x -oAviutl_clcufilters_release\exe_files\clfilters\x64\ clfilters_Release_${{ needs.get_version_name.outputs.version_name }}.7z
+          7z x -oAviutl_clcufilters_release\exe_files\cufilters\x64\ cufilters_ReleaseCU_${{ needs.get_version_name.outputs.version_name }}.7z
+          dir /b /s Aviutl_clcufilters_release\
+          7z a -mx9 ${{ matrix.release_name }}_${{ needs.get_version_name.outputs.version_name }}.zip .\Aviutl_clcufilters_release\*
 
       - name: Upload Release Asset
         id: upload-release-asset 
