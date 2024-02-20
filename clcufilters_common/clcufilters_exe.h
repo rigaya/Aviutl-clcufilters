@@ -73,7 +73,7 @@ public:
         auto lines = split(str, _T("\n"));
         for (const auto &line : lines) {
             if (line[0] != _T('\0')) {
-                m_log->write(log_level, RGY_LOGT_APP, (_T("clfilters[exe]: ") + line + _T("\n")).c_str());
+                m_log->write(log_level, RGY_LOGT_APP, (tstring(rgy_log_level_to_str(log_level)) + tstring(_T(":clfilters[exe]: ")) + line + _T("\n")).c_str());
             }
         }
     }

@@ -120,7 +120,7 @@ void clcuFilterChain::PrintMes(const RGYLogLevel logLevel, const TCHAR *format, 
     _vstprintf_s(buffer.data(), len, format, args);
     va_end(args);
 
-    m_log->write_log(logLevel, RGY_LOGT_APP, buffer.data());
+    m_log->write_log(logLevel, RGY_LOGT_APP, (tstring(rgy_log_level_to_str(logLevel)) + _T(":") + tstring(buffer.data())).c_str());
 }
 
 RGY_ERR clcuFilterChain::init(const clcuFilterDeviceParam *param, const RGYLogLevel log_level, const bool log_to_file) {

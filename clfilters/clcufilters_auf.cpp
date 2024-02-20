@@ -29,6 +29,24 @@
 #include "clcufilters_auf.h"
 #include "rgy_filesystem.h"
 
+static void print_exe_log(const std::string& str, RGYLog *log) {
+    auto strLines = split(str, "\n");
+    RGYLogLevel logLevel = RGY_LOG_INFO;
+    for (const auto& str : strLines) {
+        auto levelstrpos = str.find(_T(":"));
+        if (levelstrpos != std::string::npos) {
+            auto levelstr = str.substr(0, levelstrpos);
+            for (const auto& param : RGY_LOG_LEVEL_STR) {
+                if (_tcscmp(param.second, levelstr.c_str()) == 0) {
+                    logLevel = param.first;
+                    break;
+                }
+            }
+        }
+        log->write(logLevel, RGY_LOGT_APP, _T("%s"), char_to_tstring(str).c_str());
+    }
+}
+
 static std::string getClCUfiltersExePath(const tstring& exeName) {
     char aviutlPath[4096] = { 0 };
     GetModuleFileName(nullptr, aviutlPath, _countof(aviutlPath) - 1);
@@ -230,14 +248,14 @@ int clcuFiltersAuf::runProcess(const HINSTANCE aufHandle, const int maxw, const 
         while (m_process->stdOutRead(buffer) >= 0) {
             if (buffer.size() > 0) {
                 auto str = std::string(buffer.data(), buffer.data() + buffer.size());
-                m_log->write(RGY_LOG_INFO, RGY_LOGT_APP, _T("%s"), char_to_tstring(str).c_str());
+                print_exe_log(str, m_log.get());
                 buffer.clear();
             }
         }
         m_process->stdOutRead(buffer);
         if (buffer.size() > 0) {
             auto str = std::string(buffer.data(), buffer.data() + buffer.size());
-            m_log->write(RGY_LOG_INFO, RGY_LOGT_APP, _T("%s"), char_to_tstring(str).c_str());
+            print_exe_log(str, m_log.get());
             buffer.clear();
         }
         AddMessage(RGY_LOG_DEBUG, _T("Reached process stdout EOF.\n"));
@@ -249,14 +267,14 @@ int clcuFiltersAuf::runProcess(const HINSTANCE aufHandle, const int maxw, const 
         while (m_process->stdErrRead(buffer) >= 0) {
             if (buffer.size() > 0) {
                 auto str = std::string(buffer.data(), buffer.data() + buffer.size());
-                m_log->write(RGY_LOG_INFO, RGY_LOGT_APP, _T("%s"), char_to_tstring(str).c_str());
+                print_exe_log(str, m_log.get());
                 buffer.clear();
             }
         }
         m_process->stdErrRead(buffer);
         if (buffer.size() > 0) {
             auto str = std::string(buffer.data(), buffer.data() + buffer.size());
-            m_log->write(RGY_LOG_INFO, RGY_LOGT_APP, _T("%s"), char_to_tstring(str).c_str());
+            print_exe_log(str, m_log.get());
             buffer.clear();
         }
         AddMessage(RGY_LOG_DEBUG, _T("Reached process stderr EOF.\n"));

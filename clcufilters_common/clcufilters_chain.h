@@ -41,6 +41,8 @@
 
 static const TCHAR *LOG_FILE_NAME = "clcufilters.auf.log";
 
+const TCHAR *rgy_log_level_to_str(RGYLogLevel level);
+
 static void copyFramePropWithoutCsp(RGYFrameInfo *dst, const RGYFrameInfo *src) {
     dst->width = src->width;
     dst->height = src->height;
