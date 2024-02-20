@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.1.32414.318
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "clcufilters", "clfilters\clfilters.vcxproj", "{816576DF-8D75-48DE-B659-ECEF80AE271F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "clcufilters", "clcufilters\clcufilters.vcxproj", "{816576DF-8D75-48DE-B659-ECEF80AE271F}"
 	ProjectSection(ProjectDependencies) = postProject
 		{234EE082-07A4-42B6-A478-1049F872D136} = {234EE082-07A4-42B6-A478-1049F872D136}
 	EndProjectSection
@@ -79,7 +79,6 @@ Global
 		{391C0E63-2ABD-4F61-8F32-AC6CD8321D34}.Debug|x64.ActiveCfg = Debug|x64
 		{391C0E63-2ABD-4F61-8F32-AC6CD8321D34}.Debug|x64.Build.0 = Debug|x64
 		{391C0E63-2ABD-4F61-8F32-AC6CD8321D34}.Debug|x86.ActiveCfg = Debug|Win32
-		{391C0E63-2ABD-4F61-8F32-AC6CD8321D34}.Debug|x86.Build.0 = Debug|Win32
 		{391C0E63-2ABD-4F61-8F32-AC6CD8321D34}.DebugCU|x64.ActiveCfg = DebugCU|x64
 		{391C0E63-2ABD-4F61-8F32-AC6CD8321D34}.DebugCU|x86.ActiveCfg = DebugCU|Win32
 		{391C0E63-2ABD-4F61-8F32-AC6CD8321D34}.Release|x64.ActiveCfg = Release|x64

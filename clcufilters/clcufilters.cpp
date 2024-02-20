@@ -1739,7 +1739,7 @@ BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
     if (!g_clfiltersAuf || platformIsCUDA(cl_exdata.cl_dev_id.s.platform) != g_clfiltersAuf->isCUDA()) {
         init_clfilter_exe(fp);
     }
-    g_clfiltersAuf->setLogLevel(RGY_LOG_DEBUG);
+    g_clfiltersAuf->setLogLevel(cl_exdata.log_level);
     const BOOL ret = g_clfiltersAuf->funcProc(prm, fp, fpip);
     fpip->w = out_width;
     fpip->h = out_height;
