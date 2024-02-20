@@ -30,6 +30,7 @@
 #include "clcufilters_version.h"
 
 NNEDI_WEIGHTBIN            EXE_DATA DISCARDABLE "..\\resource\\nnedi3_weights.bin"
+NVENC_FILTER_COLRSPACE_FUNC_HEADER EXE_DATA DISCARDABLE "..\\cufilters_common\\NVEncFilterColorspaceFunc.h"
 
 
 //
