@@ -74,6 +74,7 @@ const char *get_encoder_version();
 #define ENABLE_DTL 0
 
 #define ENABLE_VPP_SMOOTH_QP_FRAME 0
+#define ENABLE_AVOID_IDLE_CLOCK 0
 
 #define ENABLE_DHDR10_INFO 0
 #define ENABLE_DOVI_METADATA_OPTIONS 0
