@@ -29,6 +29,29 @@
 #include "clcufilters_auf.h"
 #include "rgy_filesystem.h"
 
+static void print_exe_log(const std::string& mes, RGYLog *log) {
+    auto strLines = split(mes, "\r\n");
+    RGYLogLevel logLevel = RGY_LOG_INFO;
+    for (size_t i = 0; i < strLines.size(); i++) {
+        auto& str = strLines[i];
+        const bool lastLine = i == strLines.size() - 1;
+        if (lastLine && str.length() == 0) break;
+
+        auto levelstrpos = str.find(_T(":"));
+        if (levelstrpos != std::string::npos) {
+            auto levelstr = str.substr(0, levelstrpos);
+            for (const auto& param : RGY_LOG_LEVEL_STR) {
+                if (_tcscmp(param.second, levelstr.c_str()) == 0) {
+                    logLevel = param.first;
+                    str = str.substr(levelstrpos + 1);
+                    break;
+                }
+            }
+        }
+        log->write(logLevel, RGY_LOGT_APP, _T("%s%s"), char_to_tstring(str).c_str(), lastLine ? _T("") : _T("\n"));
+    }
+}
+
 static std::string getClCUfiltersExePath(const tstring& exeName) {
     char aviutlPath[4096] = { 0 };
     GetModuleFileName(nullptr, aviutlPath, _countof(aviutlPath) - 1);
@@ -216,7 +239,7 @@ int clcuFiltersAuf::runProcess(const HINSTANCE aufHandle, const int maxw, const 
         }
     }
     // プロセスの起動
-    AddMessage(RGY_LOG_DEBUG, _T("Run: %s.\n"), cmd_line.c_str());
+    AddMessage(RGY_LOG_INFO, _T("Run: %s.\n"), cmd_line.c_str());
     m_process->init(PIPE_MODE_DISABLE, PIPE_MODE_ENABLE, PIPE_MODE_ENABLE);
     int ret = m_process->run(args, nullptr, 0, true, true);
     if (ret != 0) {
@@ -230,14 +253,14 @@ int clcuFiltersAuf::runProcess(const HINSTANCE aufHandle, const int maxw, const 
         while (m_process->stdOutRead(buffer) >= 0) {
             if (buffer.size() > 0) {
                 auto str = std::string(buffer.data(), buffer.data() + buffer.size());
-                m_log->write(RGY_LOG_INFO, RGY_LOGT_APP, _T("%s"), char_to_tstring(str).c_str());
+                print_exe_log(str, m_log.get());
                 buffer.clear();
             }
         }
         m_process->stdOutRead(buffer);
         if (buffer.size() > 0) {
             auto str = std::string(buffer.data(), buffer.data() + buffer.size());
-            m_log->write(RGY_LOG_INFO, RGY_LOGT_APP, _T("%s"), char_to_tstring(str).c_str());
+            print_exe_log(str, m_log.get());
             buffer.clear();
         }
         AddMessage(RGY_LOG_DEBUG, _T("Reached process stdout EOF.\n"));
@@ -249,14 +272,14 @@ int clcuFiltersAuf::runProcess(const HINSTANCE aufHandle, const int maxw, const 
         while (m_process->stdErrRead(buffer) >= 0) {
             if (buffer.size() > 0) {
                 auto str = std::string(buffer.data(), buffer.data() + buffer.size());
-                m_log->write(RGY_LOG_INFO, RGY_LOGT_APP, _T("%s"), char_to_tstring(str).c_str());
+                print_exe_log(str, m_log.get());
                 buffer.clear();
             }
         }
         m_process->stdErrRead(buffer);
         if (buffer.size() > 0) {
             auto str = std::string(buffer.data(), buffer.data() + buffer.size());
-            m_log->write(RGY_LOG_INFO, RGY_LOGT_APP, _T("%s"), char_to_tstring(str).c_str());
+            print_exe_log(str, m_log.get());
             buffer.clear();
         }
         AddMessage(RGY_LOG_DEBUG, _T("Reached process stderr EOF.\n"));

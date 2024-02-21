@@ -29,6 +29,7 @@
 #include "clcufilters_version.h"
 #include "clcufilters_chain.h"
 #include "clcufilters_chain_prm.h"
+#include "clcufilters_shared.h"
 #include "rgy_cmd.h"
 
 clcuFilterFrameBuffer::clcuFilterFrameBuffer() :
@@ -120,11 +121,19 @@ void clcuFilterChain::PrintMes(const RGYLogLevel logLevel, const TCHAR *format, 
     _vstprintf_s(buffer.data(), len, format, args);
     va_end(args);
 
-    m_log->write_log(logLevel, RGY_LOGT_APP, (tstring(rgy_log_level_to_str(logLevel)) + _T(":") + tstring(buffer.data())).c_str());
+    if (logLevel >= RGY_LOG_ERROR && m_sharedMessage && m_sharedMessage->is_open()) {
+        auto mes = (clfitersSharedMesData *)m_sharedMessage->ptr();
+        strcat_s(mes->data, tchar_to_string(buffer.data()).c_str());
+    }
+
+    m_log->write_log(logLevel, RGY_LOGT_APP, (tstring(_T("clcuchain[exe]: ")) + tstring(buffer.data())).c_str());
 }
 
-RGY_ERR clcuFilterChain::init(const clcuFilterDeviceParam *param, const RGYLogLevel log_level, const bool log_to_file) {
-    m_log = std::make_shared<RGYLog>(log_to_file ? LOG_FILE_NAME : nullptr, log_level);
+RGY_ERR clcuFilterChain::init(const clcuFilterDeviceParam *param, const RGYLogLevel log_level, const bool log_to_file, std::shared_ptr<RGYLog> log, RGYSharedMemWin *sharedMessage) {
+    m_log = log;
+    m_log->setLogFile(log_to_file ? LOG_FILE_NAME : nullptr);
+    m_log->setLogLevelAll(log_level);
+    m_sharedMessage = sharedMessage;
 
     if (auto err = initDevice(param); err != RGY_ERR_NONE) {
         return err;
@@ -136,7 +145,7 @@ RGY_ERR clcuFilterChain::init(const clcuFilterDeviceParam *param, const RGYLogLe
                  RGY_CSP_NAMES[RGY_CSP_YC48], RGY_CSP_NAMES[RGY_CSP_YUV444_16]);
         return RGY_ERR_INVALID_COLOR_FORMAT;
     }
-    PrintMes(RGY_LOG_INFO, _T("color conversion %s -> %s [%s].\n"),
+    PrintMes(RGY_LOG_DEBUG, _T("color conversion %s -> %s [%s].\n"),
         RGY_CSP_NAMES[RGY_CSP_YC48], RGY_CSP_NAMES[RGY_CSP_YUV444_16], get_simd_str(m_convert_yc48_to_yuv444_16->getFunc()->simd));
 
     m_convert_yuv444_16_to_yc48 = std::make_unique<RGYConvertCSP>();
@@ -144,7 +153,7 @@ RGY_ERR clcuFilterChain::init(const clcuFilterDeviceParam *param, const RGYLogLe
         PrintMes(RGY_LOG_ERROR, _T("unsupported color format conversion, %s -> %s\n"), RGY_CSP_NAMES[RGY_CSP_YUV444_16], RGY_CSP_NAMES[RGY_CSP_YC48]);
         return RGY_ERR_INVALID_COLOR_FORMAT;
     }
-    PrintMes(RGY_LOG_INFO, _T("color conversion %s -> %s [%s].\n"),
+    PrintMes(RGY_LOG_DEBUG, _T("color conversion %s -> %s [%s].\n"),
         RGY_CSP_NAMES[RGY_CSP_YUV444_16], RGY_CSP_NAMES[RGY_CSP_YC48], get_simd_str(m_convert_yuv444_16_to_yc48->getFunc()->simd));
     return RGY_ERR_NONE;
 }

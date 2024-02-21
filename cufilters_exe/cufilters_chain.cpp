@@ -74,7 +74,7 @@ void cuDevice::close() {
 }
 
 void cuDevice::PrintMes(const RGYLogLevel logLevel, const TCHAR *format, ...) {
-    if (m_log == nullptr || logLevel < m_log->getLogLevel(RGY_LOGT_APP)) {
+    if (m_log == nullptr || logLevel < m_log->getLogLevel(RGY_LOGT_DEV)) {
         return;
     }
     va_list args;
@@ -85,7 +85,7 @@ void cuDevice::PrintMes(const RGYLogLevel logLevel, const TCHAR *format, ...) {
     _vstprintf_s(buffer.data(), len, format, args);
     va_end(args);
 
-    m_log->write_log(logLevel, RGY_LOGT_APP, buffer.data());
+    m_log->write_log(logLevel, RGY_LOGT_APP, (tstring(_T("cudevice[exe]: ")) + tstring(buffer.data())).c_str());
 }
 
 RGY_ERR cuDevice::init(const int deviceID, std::shared_ptr<RGYLog> log) {

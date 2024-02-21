@@ -97,7 +97,7 @@ RGY_ERR cuFiltersExe::initDevice(const clfitersSharedPrms *sharedPrms, clFilterC
     const auto dev_pd = sharedPrms->pd;
     clcuFilterDeviceParam dev_param;
     dev_param.deviceID = dev_pd.s.device;
-    return m_filter->init(&dev_param, prm.log_level.get(RGY_LOGT_APP), prm.log_to_file);
+    return m_filter->init(&dev_param, prm.log_level.get(RGY_LOGT_APP), prm.log_to_file, m_log, m_sharedMessage.get());
 }
 
 int _tmain(const int argc, const TCHAR **argv) {

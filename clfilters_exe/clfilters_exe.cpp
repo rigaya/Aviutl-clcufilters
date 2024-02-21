@@ -107,7 +107,7 @@ RGY_ERR clFiltersExe::initDevice(const clfitersSharedPrms *sharedPrms, clFilterC
     dev_param.deviceID = dev_pd.s.device;
     dev_param.deviceType = CL_DEVICE_TYPE_GPU;
     dev_param.noNVCL = m_noNVCL;
-    return m_filter->init(&dev_param, prm.log_level.get(RGY_LOGT_APP), prm.log_to_file);
+    return m_filter->init(&dev_param, prm.log_level.get(RGY_LOGT_APP), prm.log_to_file, m_log, m_sharedMessage.get());
 }
 
 int _tmain(const int argc, const TCHAR **argv) {

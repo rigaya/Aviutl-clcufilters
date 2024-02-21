@@ -70,12 +70,8 @@ public:
         if (log_level >= RGY_LOG_ERROR && m_sharedMessage && m_sharedMessage->is_open()) {
             strcat_s(getMessagePtr()->data, tchar_to_string(str).c_str());
         }
-        auto lines = split(str, _T("\n"));
-        for (const auto &line : lines) {
-            if (line[0] != _T('\0')) {
-                m_log->write(log_level, RGY_LOGT_APP, (tstring(rgy_log_level_to_str(log_level)) + tstring(_T(":clfilters[exe]: ")) + line + _T("\n")).c_str());
-            }
-        }
+
+        m_log->write_log(log_level, RGY_LOGT_APP, (tstring(_T("clfilters[exe]: ")) + str).c_str());
     }
     void AddMessage(RGYLogLevel log_level, const TCHAR *format, ...) {
         if (m_log == nullptr || log_level < m_log->getLogLevel(RGY_LOGT_CORE)) {

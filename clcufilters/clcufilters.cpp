@@ -1758,7 +1758,7 @@ BOOL clcuFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_
         || prev_pd.s.device != cl_exdata.cl_dev_id.s.device) {
         std::string mes = AUF_FULL_NAME;
         mes += ": ";
-        auto clplatform = g_clfiltersAufDevices->getPlatforms();
+        const auto& clplatform = g_clfiltersAufDevices->getPlatforms();
         auto dev = std::find_if(clplatform.begin(), clplatform.end(),
             [platform = cl_exdata.cl_dev_id.s.platform, device = cl_exdata.cl_dev_id.s.device](const std::pair<CL_PLATFORM_DEVICE, tstring>& data) {
             return data.first.s.platform == platform && data.first.s.device == device;
@@ -1861,6 +1861,17 @@ BOOL clcuFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_
     }
     // エラーの確認
     if (message->ret != TRUE) {
+        std::string mes = AUF_FULL_NAME;
+        mes += ": ";
+        const auto& clplatform = g_clfiltersAufDevices->getPlatforms();
+        auto dev = std::find_if(clplatform.begin(), clplatform.end(),
+            [platform = cl_exdata.cl_dev_id.s.platform, device = cl_exdata.cl_dev_id.s.device](const std::pair<CL_PLATFORM_DEVICE, tstring>& data) {
+                return data.first.s.platform == platform && data.first.s.device == device;
+            });
+        mes += (dev == clplatform.end()) ? LB_WND_OPENCL_AVAIL : tchar_to_string(dev->second);
+        mes += ": ";
+        mes += message->data;
+        SendMessage(fp->hwnd, WM_SETTEXT, 0, (LPARAM)mes.c_str());
         return FALSE;
     }
     // 共有メモリからコピー

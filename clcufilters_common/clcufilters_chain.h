@@ -35,13 +35,12 @@
 #include "rgy_prm.h"
 #include "rgy_frame.h"
 #include "rgy_filter.h"
+#include "rgy_shared_mem.h"
 #include "convert_csp.h"
 #include "convert_csp_func.h"
 #include "clcufilters_chain_prm.h"
 
 static const TCHAR *LOG_FILE_NAME = "clcufilters.auf.log";
-
-const TCHAR *rgy_log_level_to_str(RGYLogLevel level);
 
 static void copyFramePropWithoutCsp(RGYFrameInfo *dst, const RGYFrameInfo *src) {
     dst->width = src->width;
@@ -87,7 +86,7 @@ public:
     clcuFilterChain();
     virtual ~clcuFilterChain();
 
-    RGY_ERR init(const clcuFilterDeviceParam *param, const RGYLogLevel log_level, const bool log_to_file);
+    RGY_ERR init(const clcuFilterDeviceParam *param, const RGYLogLevel log_level, const bool log_to_file, std::shared_ptr<RGYLog> log, RGYSharedMemWin *sharedMessage);
 
     void resetPipeline();
     virtual RGY_ERR sendInFrame(const RGYFrameInfo *pInputFrame) = 0;
@@ -117,6 +116,7 @@ protected:
     std::vector<std::pair<VppType, std::unique_ptr<RGYFilterBase>>> m_filters;
     std::unique_ptr<RGYConvertCSP> m_convert_yc48_to_yuv444_16;
     std::unique_ptr<RGYConvertCSP> m_convert_yuv444_16_to_yc48;
+    RGYSharedMemWin *m_sharedMessage;
 };
 
 

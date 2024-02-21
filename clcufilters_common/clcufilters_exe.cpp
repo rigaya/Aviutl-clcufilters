@@ -46,13 +46,14 @@ clcuFiltersExe::~clcuFiltersExe() {
 }
 
 int clcuFiltersExe::init(AviutlAufExeParams& prms) {
-    m_log = std::make_shared<RGYLog>(prms.logfile.c_str(), prms.log_level);
     m_eventMesStart = prms.eventMesStart;
     m_eventMesEnd = prms.eventMesEnd;
     if (!m_eventMesStart || !m_eventMesEnd) {
         AddMessage(RGY_LOG_ERROR, _T("Invalid event handles."));
         return 1;
     }
+    WaitForSingleObject(m_eventMesStart, INFINITE);
+    m_log = std::make_shared<RGYLog>(prms.logfile.c_str(), prms.log_level, false, true);
 
     m_ppid = prms.ppid;
     m_aviutlHandle = std::unique_ptr<std::remove_pointer<HANDLE>::type, handle_deleter>(OpenProcess(SYNCHRONIZE | PROCESS_VM_READ, FALSE, prms.ppid), handle_deleter());
@@ -92,7 +93,6 @@ int clcuFiltersExe::init(AviutlAufExeParams& prms) {
     AddMessage(RGY_LOG_DEBUG, _T("Opened shared mem for frame(out).\n"));
 
     //デバッグ用
-    WaitForSingleObject(m_eventMesStart, INFINITE);
 
     initDevices();
     // プロセス初期化処理の終了を通知
