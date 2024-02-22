@@ -54,6 +54,7 @@ RGY_DISABLE_WARNING_STR("-Wswitch")
 RGY_DISABLE_WARNING_POP
 #pragma warning (pop)
 #include "convert_csp.h"
+#include "rgy_frame.h"
 #include "rgy_err.h"
 
 #define NVENCAPI_VERSION (NVENCAPI_MAJOR_VERSION | (NVENCAPI_MINOR_VERSION << 24))
@@ -423,7 +424,7 @@ public:
         info.csp = csp;
         info.timestamp = timestamp;
     }
-    void ptr(void *array[3], bool bRGB) {
+    void ptrArray(void *array[3], bool bRGB) {
         UNREFERENCED_PARAMETER(bRGB);
         array[0] = info.ptr;
         array[1] = info.ptr + info.pitch * info.height;
