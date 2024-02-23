@@ -941,6 +941,8 @@ static void update_cx(FILTER *fp) {
     select_combo_item(cx_unsharp_radius,              cl_exdata.unsharp_radius);
     select_combo_item(cx_warpsharp_blur,              cl_exdata.warpsharp_blur);
     select_combo_item(cx_deband_sample,               cl_exdata.deband_sample);
+
+    EnableWindow(bt_opencl_info, (cl_exdata.cl_dev_id.s.platform == CLCU_PLATFORM_CUDA) ? FALSE : TRUE);
 }
 
 BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, FILTER *fp) {
@@ -962,7 +964,6 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
             switch (HIWORD(wparam)) {
             case CBN_SELCHANGE: // 選択変更
                 change_cx_param(cx_opencl_device);
-                EnableWindow(bt_opencl_info, (cl_exdata.cl_dev_id.s.platform == CLCU_PLATFORM_CUDA) ? FALSE : TRUE);
                 return TRUE; //TRUEを返すと画像処理が更新される
             default:
                 break;
