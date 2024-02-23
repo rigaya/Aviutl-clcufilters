@@ -240,7 +240,7 @@ RGY_ERR RGYFilterSmooth::init(shared_ptr<RGYFilterParam> pParam, shared_ptr<RGYL
             AddMessage(RGY_LOG_ERROR, _T("failed to allocate memory for qp table.\n"));
             return RGY_ERR_MEMORY_ALLOC;
         }
-        AddMessage(RGY_LOG_DEBUG, _T("allocated qp table buffer: %dx%pixym1[3], pitch %pixym1[3], %s.\n"),
+        AddMessage(RGY_LOG_DEBUG, _T("allocated qp table buffer: %dx%d, pitch %d, %s.\n"),
                    m_qp->frame.width, m_qp->frame.height, m_qp->frame.pitch, RGY_CSP_NAMES[m_qp->frame.csp]);
     }
 
