@@ -4,7 +4,7 @@ clcufilters.auf は、Aviutl用のGPUフィルタです。複数のフィルタ�
 
 処理本体は別プロセスで行うつくりとなっており、NVIDIA GPUではcufilters.exeによりCUDAでフィルタ処理を、それ以外(Intel/AMD)のGPUではclfilters.exeによりOpenCLでフィルタ処理を行います。
 
-![概要図](./resource/clcufilters_image.webp)
+![概要図](./data/clcufilters_image.webp)
 
 これにより、
 
@@ -35,11 +35,11 @@ Intel / NVIDIA / AMD のGPUドライバのインストールされた環境
 
 右側の [clinfo] ボタンでOpenCLの認識するGPUデバイスの詳細情報をテキストファイルに出力できます。
 
-![デバイス選択](./data/clfilters_select_device.png)
+![デバイス選択](./data/clcufilters_select_device.png)
 
 その後、適用するフィルタにチェックを入れ、パラメータ調整を行ってください。標準値は下記のとおりです。
 
-![パラメータ調整](./data/clfilters_params.png)
+![パラメータ調整](./data/clcufilters_params.png)
 
 ## "OpenCLを使用できません。" と出てしまう
 
