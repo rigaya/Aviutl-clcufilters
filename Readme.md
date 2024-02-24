@@ -20,6 +20,8 @@ Windows 10/11 (x64)
 Aviutl 1.00 以降  
 Intel / NVIDIA / AMD のGPUドライバのインストールされた環境  
 
+NVIDIAドライバは452.39以降に対応
+
 32bit OSでは使用できません。
 
 ## clcufilters 使用にあたっての注意事項
