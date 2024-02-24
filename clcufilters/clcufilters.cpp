@@ -964,6 +964,7 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
             switch (HIWORD(wparam)) {
             case CBN_SELCHANGE: // 選択変更
                 change_cx_param(cx_opencl_device);
+                EnableWindow(bt_opencl_info, (cl_exdata.cl_dev_id.s.platform == CLCU_PLATFORM_CUDA) ? FALSE : TRUE);
                 return TRUE; //TRUEを返すと画像処理が更新される
             default:
                 break;

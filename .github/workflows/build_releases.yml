@@ -17,7 +17,7 @@ jobs:
       version_name: ${{ steps.rev.outputs.VERSION_NAME }}
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
     - name: Set version name
@@ -25,13 +25,13 @@ jobs:
       run: |
         cd ${{ github.workspace }}
         REVCOUNT=`git rev-list --count HEAD`
-        echo "::set-output name=REV_COUNT::${REVCOUNT}"
+        echo "rev_count=${REVCOUNT}" >> $GITHUB_OUTPUT
         if [[ "${{ github.ref }}" =~ "refs/tags/" ]]; then
           VERSION=$(echo ${{ github.ref }} | sed -e "s#refs/tags/##g")
         else
           VERSION=r${REVCOUNT}
         fi
-        echo "::set-output name=VERSION_NAME::${VERSION}"
+        echo "version_name=${VERSION}" >> $GITHUB_OUTPUT
 
   build:
     name: Upload Release Asset
@@ -75,13 +75,13 @@ jobs:
             configuration: ReleaseCU
             release_name: cufilters
             release_ext: exe
-            cuda_download_url: https://developer.download.nvidia.com/compute/cuda/11.7.0/network_installers/cuda_11.7.0_windows_network.exe
+            cuda_download_url: https://developer.download.nvidia.com/compute/cuda/11.8.0/network_installers/cuda_11.8.0_windows_network.exe
             cuda_ver_major: 11
-            cuda_ver_minor: 7
+            cuda_ver_minor: 8
     
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: true
           fetch-depth: 0
@@ -91,7 +91,7 @@ jobs:
           git clone https://github.com/KhronosGroup/OpenCL-Headers.git ..\openclheaders
 
       - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v1.1
+        uses: microsoft/setup-msbuild@v2
         with:
           msbuild-architecture: ${{ matrix.arch }}
           
@@ -100,11 +100,12 @@ jobs:
         run: |
           curl -s -o cuda_installer.exe -L ${{ matrix.cuda_download_url }}
           cuda_installer.exe -s nvcc_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }} cudart_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }} curand_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }} curand_dev_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }} npp_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }} npp_dev_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }} nvml_dev_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }} nvrtc_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }} nvrtc_dev_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }} visual_studio_integration_${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }}
-          set CUDA_PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }}
 
       - name: MSBuild
         run: |
           set OPENCL_HEADERS=${{ github.workspace }}\..\openclheaders
+          if "${{ matrix.release_name }}" == "cufilters" set CUDA_PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }}
+          if "${{ matrix.release_name }}" == "cufilters" set CUDA_PATH_V${{ matrix.cuda_ver_major }}_${{ matrix.cuda_ver_minor }}=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }}
           msbuild clcufilters.sln /t:build /p:configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.arch }} -maxcpucount
 
       - name: Create Archieve
@@ -112,8 +113,8 @@ jobs:
         run: |
           mkdir clcufilters_release
           copy _build\${{ matrix.platform }}\${{ matrix.configuration }}\${{ matrix.release_name }}.${{ matrix.release_ext }} clcufilters_release
-          if "${{ matrix.release_name }}" == "cufilters" copy "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }}\bin\nvrtc64_${{ matrix.cuda_ver_major }}${{ matrix.cuda_ver_minor }}_0.dll" clcufilters_release
-          if "${{ matrix.release_name }}" == "cufilters" copy "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }}\bin\nvrtc-builtins64_${{ matrix.cuda_ver_major }}${{ matrix.cuda_ver_minor }}.dll" clcufilters_release
+          if "${{ matrix.release_name }}" == "cufilters" copy "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }}\bin\nvrtc64_*_0.dll" clcufilters_release
+          if "${{ matrix.release_name }}" == "cufilters" copy "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }}\bin\nvrtc-builtins64_*.dll" clcufilters_release
           7z a -mx9 ${{ matrix.release_name }}_${{ matrix.configuration }}_${{ needs.get_version_name.outputs.version_name }}.7z .\clcufilters_release\*
 
       - name: Check Version
@@ -122,8 +123,13 @@ jobs:
         run: |
           powershell "$ver = (Get-ItemProperty .\clcufilters_release\${{ matrix.release_name }}.${{ matrix.release_ext }}).VersionInfo.FileVersion; if ($ver -eq '${{ needs.get_version_name.outputs.version_name }}') { exit 0; } exit 1;"
 
+      - name: Calc hash
+        id: calc_hash
+        run: |
+          7z h -scrc* ${{ matrix.release_name }}_${{ matrix.configuration }}_${{ needs.get_version_name.outputs.version_name }}.7z
+
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.release_name }}_${{ matrix.configuration }}_${{ needs.get_version_name.outputs.version_name }}
           path: ${{ matrix.release_name }}_${{ matrix.configuration }}_${{ needs.get_version_name.outputs.version_name }}.7z
@@ -148,25 +154,25 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: true
           fetch-depth: 0
 
       - name: Download auf
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: clcufilters_${{ matrix.configuration }}_${{ needs.get_version_name.outputs.version_name }}
           path: clcufilters_${{ matrix.configuration }}_${{ needs.get_version_name.outputs.version_name }}.7z
 
       - name: Download clfilters
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: clfilters_Release_${{ needs.get_version_name.outputs.version_name }}
           path: clfilters_Release_${{ needs.get_version_name.outputs.version_name }}.7z
 
       - name: Download cufilters
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: cufilters_ReleaseCU_${{ needs.get_version_name.outputs.version_name }}
           path: cufilters_ReleaseCU_${{ needs.get_version_name.outputs.version_name }}.7z
@@ -186,6 +192,17 @@ jobs:
           7z x -oAviutl_clcufilters_release\exe_files\cufilters\x64\ cufilters_ReleaseCU_${{ needs.get_version_name.outputs.version_name }}.7z
           dir /b /s Aviutl_clcufilters_release\
           7z a -mx9 ${{ matrix.release_name }}_${{ needs.get_version_name.outputs.version_name }}.zip .\Aviutl_clcufilters_release\*
+
+      - name: Calc hash
+        id: calc_hash
+        run: |
+          7z h -scrc* ${{ matrix.release_name }}_${{ needs.get_version_name.outputs.version_name }}.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.release_name }}_${{ needs.get_version_name.outputs.version_name }}
+          path: ${{ matrix.release_name }}_${{ needs.get_version_name.outputs.version_name }}.zip
 
       - name: Upload Release Asset
         id: upload-release-asset 
