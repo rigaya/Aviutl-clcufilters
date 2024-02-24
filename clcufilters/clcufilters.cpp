@@ -1787,8 +1787,11 @@ BOOL clcuFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_
         frameOut  = current_frame;
         is_saving = fp->exfunc->is_saving(fpip->editp);
     }
-    //これを指定するとメモリ使用量が増大するのでコメントアウト
-    //fp->exfunc->set_ycp_filtering_cache_size(fp, fpip->max_w, fpip->max_h, frameInOffset+1, NULL);
+    // メモリを使用してしまうが、やむを得ない
+    if (!fp->exfunc->set_ycp_filtering_cache_size(fp, fpip->max_w, fpip->max_h, frameInOffset, NULL)) {
+        // 失敗 ... メモリを確保できなかったので、逐次モードに切り替え
+        is_saving = FALSE;
+    }
 
     const int frameInFin = (is_saving) ? std::min(current_frame + frameInOffset, frame_n - 1) : current_frame;
 
