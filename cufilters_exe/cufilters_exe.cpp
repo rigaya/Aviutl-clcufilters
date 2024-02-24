@@ -42,6 +42,17 @@
 #include "rgy_cmd.h"
 #include "rgy_err.h"
 
+bool check_if_nvcuda_dll_available() {
+#if defined(_WIN32) || defined(_WIN64)
+    //check for nvcuda.dll
+    HMODULE hModule = LoadLibrary(_T("nvcuda.dll"));
+    if (hModule == NULL)
+        return false;
+    FreeLibrary(hModule);
+#endif //#if defined(_WIN32) || defined(_WIN64)
+    return true;
+}
+
 cuFiltersExe::cuFiltersExe() :
     clcuFiltersExe() { }
 cuFiltersExe::~cuFiltersExe() {
@@ -107,6 +118,10 @@ int _tmain(const int argc, const TCHAR **argv) {
     }
     if (prms.clinfo) {
         return 0;
+    }
+    if (!check_if_nvcuda_dll_available()) {
+        _ftprintf(stderr, _T("CUDA not available.\n"));
+        return 1;
     }
     if (prms.checkDevice) {
         cuFiltersExe cufilterexe;
