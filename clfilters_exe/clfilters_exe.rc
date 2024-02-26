@@ -35,6 +35,7 @@ RGY_FILTER_RESIZE_CL        EXE_DATA DISCARDABLE "..\\clfilters_common\\rgy_filt
 //RGY_FILTER_DELOGO_CL        EXE_DATA DISCARDABLE "..\\clfilters_common\\rgy_filter_delogo.cl"
 RGY_FILTER_DENOISE_KNN_CL   EXE_DATA DISCARDABLE "..\\clfilters_common\\rgy_filter_denoise_knn.cl"
 RGY_FILTER_DENOISE_PMD_CL   EXE_DATA DISCARDABLE "..\\clfilters_common\\rgy_filter_denoise_pmd.cl"
+RGY_FILTER_DENOISE_DCT_CL   EXE_DATA DISCARDABLE "..\\clfilters_common\\rgy_filter_denoise_dct.cl"
 //RGY_FILTER_DECIMATE_CL      EXE_DATA DISCARDABLE "..\\clfilters_common\\rgy_filter_decimate.cl"
 //RGY_FILTER_MPDECIMATE_CL    EXE_DATA DISCARDABLE "..\\clfilters_common\\rgy_filter_mpdecimate.cl"
 RGY_FILTER_SMOOTH_CL        EXE_DATA DISCARDABLE "..\\clfilters_common\\rgy_filter_smooth.cl"

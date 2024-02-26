@@ -47,6 +47,7 @@
     <None Include="rgy_filter_convolution3d.cl" />
     <None Include="rgy_filter_deband.cl" />
     <None Include="rgy_filter_deband_gen_rand.cl" />
+    <None Include="rgy_filter_denoise_dct.cl" />
     <None Include="rgy_filter_denoise_knn.cl" />
     <None Include="rgy_filter_denoise_pmd.cl" />
     <None Include="rgy_filter_edgelevel.cl" />
@@ -67,6 +68,7 @@
     <ClCompile Include="rgy_filter_convolution3d.cpp" />
     <ClCompile Include="rgy_filter_crop.cpp" />
     <ClCompile Include="rgy_filter_deband.cpp" />
+    <ClCompile Include="rgy_filter_denoise_dct.cpp" />
     <ClCompile Include="rgy_filter_denoise_knn.cpp" />
     <ClCompile Include="rgy_filter_denoise_pmd.cpp" />
     <ClCompile Include="rgy_filter_edgelevel.cpp" />
@@ -86,6 +88,7 @@
     <ClInclude Include="rgy_filter_colorspace_func.h" />
     <ClInclude Include="rgy_filter_convolution3d.h" />
     <ClInclude Include="rgy_filter_deband.h" />
+    <ClInclude Include="rgy_filter_denoise_dct.h" />
     <ClInclude Include="rgy_filter_denoise_knn.h" />
     <ClInclude Include="rgy_filter_denoise_pmd.h" />
     <ClInclude Include="rgy_filter_edgelevel.h" />

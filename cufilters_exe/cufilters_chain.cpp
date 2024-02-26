@@ -33,6 +33,7 @@
 #include "NVEncFilterNnedi.h"
 #include "NVEncFilterDenoiseKnn.h"
 #include "NVEncFilterDenoisePmd.h"
+#include "NVEncFilterDenoiseDct.h"
 #include "NVEncFilterSmooth.h"
 #include "NVEncFilterUnsharp.h"
 #include "NVEncFilterEdgelevel.h"
@@ -320,6 +321,25 @@ RGY_ERR cuFilterChain::configureOneFilter(std::unique_ptr<RGYFilterBase>& filter
         auto sts = filter->init(param, m_log);
         if (sts != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("failed to init pmd.\n"));
+            return sts;
+        }
+        //入力フレーム情報を更新
+        inputFrame = param->frameOut;
+    }
+    //ノイズ除去 (denoise-dct)
+    if (filterType == VppType::CL_DENOISE_DCT) {
+        if (!filter) {
+            //フィルタチェーンに追加
+            filter.reset(new NVEncFilterDenoiseDct());
+        }
+        std::shared_ptr<NVEncFilterParamDenoiseDct> param(new NVEncFilterParamDenoiseDct());
+        param->dct = m_prm.vpp.dct;
+        param->frameIn = inputFrame;
+        param->frameOut = inputFrame;
+        param->bOutOverwrite = false;
+        auto sts = filter->init(param, m_log);
+        if (sts != RGY_ERR_NONE) {
+            PrintMes(RGY_LOG_ERROR, _T("failed to init denoise-dct.\n"));
             return sts;
         }
         //入力フレーム情報を更新

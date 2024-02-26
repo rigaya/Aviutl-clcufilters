@@ -34,6 +34,7 @@
 #include "rgy_filter_nnedi.h"
 #include "rgy_filter_denoise_knn.h"
 #include "rgy_filter_denoise_pmd.h"
+#include "rgy_filter_denoise_dct.h"
 #include "rgy_filter_smooth.h"
 #include "rgy_filter_unsharp.h"
 #include "rgy_filter_edgelevel.h"
@@ -232,6 +233,25 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilterBase>& filter
         inputFrame = param->frameOut;
     }
     //ノイズ除去 (smooth)
+    if (filterType == VppType::CL_DENOISE_DCT) {
+        if (!filter) {
+            //フィルタチェーンに追加
+            filter.reset(new RGYFilterDenoiseDct(m_cl));
+        }
+        std::shared_ptr<RGYFilterParamDenoiseDct> param(new RGYFilterParamDenoiseDct());
+        param->dct = m_prm.vpp.dct;
+        param->frameIn = inputFrame;
+        param->frameOut = inputFrame;
+        param->bOutOverwrite = false;
+        auto sts = filter->init(param, m_log);
+        if (sts != RGY_ERR_NONE) {
+            PrintMes(RGY_LOG_ERROR, _T("failed to init smooth.\n"));
+            return sts;
+        }
+        //入力フレーム情報を更新
+        inputFrame = param->frameOut;
+    }
+    //ノイズ除去 (smooth)
     if (filterType == VppType::CL_DENOISE_SMOOTH) {
         if (!filter) {
             //フィルタチェーンに追加
@@ -396,7 +416,7 @@ RGY_ERR clFilterChain::sendInFrame(const RGYFrameInfo *pInputFrame) {
         m_convert_yc48_to_yuv444_16->run(false,
             frameHostIn->ptr().data(), (const void **)&pInputFrame->ptr[0],
             pInputFrame->width, pInputFrame->pitch[0], pInputFrame->pitch[0],
-            frameHostIn->pitch(0), pInputFrame->height, frameHostIn->height(), crop);
+            frameHostIn->pitch(RGY_PLANE_Y), pInputFrame->height, frameHostIn->height(), crop);
     }
 
     if ((err = frameDevIn->unmapBuffer()) != RGY_ERR_NONE) {
@@ -427,7 +447,7 @@ RGY_ERR clFilterChain::getOutFrame(RGYFrameInfo *pOutputFrame) {
         int crop[4] = { 0 };
         m_convert_yuv444_16_to_yc48->run(false,
             (void **)&pOutputFrame->ptr[0], (const void **)frameHostOut->ptr().data(),
-            frameHostOut->width(), frameHostOut->pitch(0), frameHostOut->pitch(0),
+            frameHostOut->width(), frameHostOut->pitch(RGY_PLANE_Y), frameHostOut->pitch(RGY_PLANE_Y),
             pOutputFrame->pitch[0], frameHostOut->height(), pOutputFrame->height, crop);
     }
     auto err = frameDevOut->unmapBuffer();

@@ -96,6 +96,11 @@ enum {
     ID_LB_NNEDI_ERRORTYPE,
     ID_CX_NNEDI_ERRORTYPE,
 
+    ID_LB_DENOISE_DCT_STEP,
+    ID_CX_DENOISE_DCT_STEP,
+    ID_LB_DENOISE_DCT_BLOCK_SIZE,
+    ID_CX_DENOISE_DCT_BLOCK_SIZE,
+
     ID_LB_SMOOTH_QUALITY,
     ID_CX_SMOOTH_QUALITY,
 
@@ -140,7 +145,10 @@ struct CLFILTER_EXDATA {
 
     VppType filterOrder[64];
 
-    char reserved[644];
+    int denoise_dct_step;
+    int denoise_dct_block_size;
+
+    char reserved[636];
 };
 # pragma pack()
 static const size_t exdatasize = sizeof(CLFILTER_EXDATA);
@@ -169,6 +177,10 @@ static void cl_exdata_set_default() {
     cl_exdata.nnedi_quality = nnedi.quality;
     cl_exdata.nnedi_prescreen = nnedi.pre_screen;
     cl_exdata.nnedi_errortype = nnedi.errortype;
+
+    VppDenoiseDct dct;
+    cl_exdata.denoise_dct_step = dct.step;
+    cl_exdata.denoise_dct_block_size = dct.block_size;
 
     VppSmooth smooth;
     cl_exdata.smooth_quality = smooth.quality;
@@ -211,6 +223,8 @@ static const char *LB_CX_NNEDI_NSIZE = "nsize";
 static const char *LB_CX_NNEDI_QUALITY = "品質";
 static const char *LB_CX_NNEDI_PRESCREEN = "前処理";
 static const char *LB_CX_NNEDI_ERRORTYPE = "errortype";
+static const char *LB_CX_DENOISE_DCT_STEP = "品質";
+static const char *LB_CX_DENOISE_DCT_BLOCK_SIZE = "ブロックサイズ";
 static const char *LB_CX_SMOOTH_QUALITY = "品質";
 static const char *LB_CX_KNN_RADIUS = "適用半径";
 static const char *LB_CX_UNSHARP_RADIUS = "範囲";
@@ -231,6 +245,8 @@ static const char *LB_CX_NNEDI_NSIZE = "nsize";
 static const char *LB_CX_NNEDI_QUALITY = "quality";
 static const char *LB_CX_NNEDI_PRESCREEN = "prescreen";
 static const char *LB_CX_NNEDI_ERRORTYPE = "errortype";
+static const char *LB_CX_DENOISE_DCT_STEP = "step";
+static const char *LB_CX_DENOISE_DCT_BLOCK_SIZE = "blocksize";
 static const char *LB_CX_SMOOTH_QUALITY = "quality";
 static const char *LB_CX_KNN_RADIUS = "radius";
 static const char *LB_CX_UNSHARP_RADIUS = "radius";
@@ -248,6 +264,7 @@ const TCHAR *track_name_ja[] = {
 #if ENABLE_HDR2SDR_DESAT
     "脱飽和ｵﾌｾｯﾄ", "脱飽和強度", "脱飽和指数", //colorspace
 #endif //#if ENABLE_HDR2SDR_DESAT
+    "sigma", //denoise-dct
     "QP", // smooth
     "強さ", "ブレンド度合い", "ブレンド閾値", //knn
     "適用回数", "強さ", "閾値", //pmd
@@ -263,6 +280,7 @@ const TCHAR *track_name_en[] = {
 #if ENABLE_HDR2SDR_DESAT
     "desat_base", "desat_strength", "desat_exp", //colorspace
 #endif //#if ENABLE_HDR2SDR_DESAT
+    "sigma", //denoise-dct
     "QP", // smooth
     "strength", "lerp", "th_lerp", //knn
     "apply cnt", "strength", "threshold", //pmd
@@ -291,7 +309,11 @@ enum {
 #endif //#if ENABLE_HDR2SDR_DESAT
     CLFILTER_TRACK_COLORSPACE_MAX,
 
-    CLFILTER_TRACK_SMOOTH_FIRST = CLFILTER_TRACK_COLORSPACE_MAX,
+    CLFILTER_TRACK_DENOISE_DCT_FIRST = CLFILTER_TRACK_COLORSPACE_MAX,
+    CLFILTER_TRACK_DENOISE_DCT_SIGMA = CLFILTER_TRACK_DENOISE_DCT_FIRST,
+    CLFILTER_TRACK_DENOISE_DCT_MAX,
+
+    CLFILTER_TRACK_SMOOTH_FIRST = CLFILTER_TRACK_DENOISE_DCT_MAX,
     CLFILTER_TRACK_SMOOTH_QP = CLFILTER_TRACK_SMOOTH_FIRST,
     CLFILTER_TRACK_SMOOTH_MAX,
 
@@ -352,6 +374,7 @@ int track_default[] = {
 #if ENABLE_HDR2SDR_DESAT
     18, 75, 15, //colorspace
 #endif //#if ENABLE_HDR2SDR_DESAT
+    40, //denoise-dct
     12, //smooth
     8, 20, 80, //knn
     2, 100, 100, //pmd
@@ -367,6 +390,7 @@ int track_s[] = {
 #if ENABLE_HDR2SDR_DESAT
     0, 0, 1, //colorspace
 #endif //#if ENABLE_HDR2SDR_DESAT
+    0, //denoise-dct
     1, //smooth
     0,0,0, //knn
     1,0,0, //pmd
@@ -382,6 +406,7 @@ int track_e[] = {
 #if ENABLE_HDR2SDR_DESAT
     100, 100, 30, //colorspace
 #endif //#if ENABLE_HDR2SDR_DESAT
+    500, //denoise-dct
     63, //smooth
     100, 100, 100, //knn
     10, 100, 255, //pmd
@@ -408,6 +433,7 @@ const TCHAR *check_name_ja[] = {
     "ファイルに出力", // log to file
     "リサイズ",
     "色空間変換", "matrix", "colorprim", "transfer", "range",
+    "ノイズ除去 (denoise-dct)",
     "ノイズ除去 (smooth)",
     "ノイズ除去 (knn)",
     "ノイズ除去 (pmd)",
@@ -425,6 +451,7 @@ const TCHAR *check_name_en[] = {
     "log to file", // log to file
     "resize",
     "colorspace", "matrix", "colorprim", "transfer", "range",
+    "denoise-dct",
     "smooth",
     "knn",
     "pmd",
@@ -460,7 +487,10 @@ enum {
     CLFILTER_CHECK_COLORSPACE_RANGE_ENABLE,
     CLFILTER_CHECK_COLORSPACE_MAX,
 
-    CLFILTER_CHECK_SMOOTH_ENABLE = CLFILTER_CHECK_COLORSPACE_MAX,
+    CLFILTER_CHECK_DENOISE_DCT_ENABLE = CLFILTER_CHECK_COLORSPACE_MAX,
+    CLFILTER_CHECK_DENOISE_DCT_MAX,
+
+    CLFILTER_CHECK_SMOOTH_ENABLE = CLFILTER_CHECK_DENOISE_DCT_MAX,
     CLFILTER_CHECK_SMOOTH_MAX,
 
     CLFILTER_CHECK_KNN_ENABLE = CLFILTER_CHECK_SMOOTH_MAX,
@@ -502,6 +532,7 @@ int check_default[] = {
     0, // log to file
     0, // resize
     0, 0, 0, 0, 0, // colorspace
+    0, // denoise-dct
     0, // smooth
     0, // knn
     0, // pmd
@@ -637,6 +668,10 @@ static HWND cx_nnedi_errortype;
 
 static HWND lb_knn_radius;
 static HWND cx_knn_radius;
+static HWND lb_denoise_dct_step;
+static HWND cx_denoise_dct_step;
+static HWND lb_denoise_dct_block_size;
+static HWND cx_denoise_dct_block_size;
 static HWND lb_smooth_quality;
 static HWND cx_smooth_quality;
 static HWND lb_unsharp_radius;
@@ -689,6 +724,10 @@ static void set_cl_exdata(const HWND hwnd, const int value) {
         cl_exdata.nnedi_errortype = (VppNnediErrorType)value;
     } else if (hwnd == cx_knn_radius) {
         cl_exdata.knn_radius = value;
+    } else if (hwnd == cx_denoise_dct_step) {
+        cl_exdata.denoise_dct_step = value;
+    } else if (hwnd == cx_denoise_dct_block_size) {
+        cl_exdata.denoise_dct_block_size = value;
     } else if (hwnd == cx_smooth_quality) {
         cl_exdata.smooth_quality = value;
     } else if (hwnd == cx_unsharp_radius) {
@@ -939,6 +978,8 @@ static void update_cx(FILTER *fp) {
     select_combo_item(cx_nnedi_prescreen,             cl_exdata.nnedi_prescreen);
     select_combo_item(cx_nnedi_errortype,             cl_exdata.nnedi_errortype);
     select_combo_item(cx_knn_radius,                  cl_exdata.knn_radius);
+    select_combo_item(cx_denoise_dct_step,            cl_exdata.denoise_dct_step);
+    select_combo_item(cx_denoise_dct_block_size,      cl_exdata.denoise_dct_block_size);
     select_combo_item(cx_smooth_quality,              cl_exdata.smooth_quality);
     select_combo_item(cx_unsharp_radius,              cl_exdata.unsharp_radius);
     select_combo_item(cx_warpsharp_blur,              cl_exdata.warpsharp_blur);
@@ -1351,7 +1392,7 @@ static void init_clfilter_exe(const FILTER *fp) {
     g_clfiltersAuf->runProcess(fp->dll_hinst, sys_info.max_w, sys_info.max_h, platformIsCUDA(cl_exdata.cl_dev_id.s.platform));
 }
 
-static void init_device_list() {
+void init_device_list() {
     if (!g_clfiltersAufDevices) {
         g_clfiltersAufDevices = std::make_unique<clcuFiltersAufDevices>();
         g_clfiltersAufDevices->createList();
@@ -1470,6 +1511,11 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     add_combobox(cx_nnedi_prescreen, ID_CX_NNEDI_PRESCREEN, lb_nnedi_prescreen, ID_LB_NNEDI_PRESCREEN, LB_CX_NNEDI_PRESCREEN, col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_pre_screen);
     add_combobox(cx_nnedi_errortype, ID_CX_NNEDI_ERRORTYPE, lb_nnedi_errortype, ID_LB_NNEDI_ERRORTYPE, LB_CX_NNEDI_ERRORTYPE, col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_error_type);
     y_pos += track_bar_delta_y / 2;
+
+    //denoise-dct
+    move_group(y_pos, col, col_width, CLFILTER_CHECK_DENOISE_DCT_ENABLE, CLFILTER_CHECK_DENOISE_DCT_MAX, CLFILTER_TRACK_DENOISE_DCT_FIRST, CLFILTER_TRACK_DENOISE_DCT_MAX, track_bar_delta_y, ADD_CX_FIRST, 2, cx_y_pos, checkbox_idx, dialog_rc);
+    add_combobox(cx_denoise_dct_step,       ID_CX_DENOISE_DCT_STEP,       lb_denoise_dct_step,       ID_LB_DENOISE_DCT_STEP,       LB_CX_DENOISE_DCT_STEP,       col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_denoise_dct_step);
+    add_combobox(cx_denoise_dct_block_size, ID_CX_DENOISE_DCT_BLOCK_SIZE, lb_denoise_dct_block_size, ID_LB_DENOISE_DCT_BLOCK_SIZE, LB_CX_DENOISE_DCT_BLOCK_SIZE, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_denoise_dct_block_size);
 
     //smooth
     move_group(y_pos, col, col_width, CLFILTER_CHECK_SMOOTH_ENABLE, CLFILTER_CHECK_SMOOTH_MAX, CLFILTER_TRACK_SMOOTH_FIRST, CLFILTER_TRACK_SMOOTH_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
@@ -1638,6 +1684,12 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp, const FILTER_PRO
     prm.colorspace.hdr2sdr.desat_strength = (float)fp->track[CLFILTER_TRACK_COLORSPACE_DESAT_STRENGTH] * 0.01f;
     prm.colorspace.hdr2sdr.desat_exp      = (float)fp->track[CLFILTER_TRACK_COLORSPACE_DESAT_EXP] * 0.1f;
 #endif //#if ENABLE_HDR2SDR_DESAT
+
+    //denoise-dct
+    prm.vpp.dct.enable        = fp->check[CLFILTER_CHECK_DENOISE_DCT_ENABLE] != 0;
+    prm.vpp.dct.step          = cl_exdata.denoise_dct_step;
+    prm.vpp.dct.sigma         = (float)fp->track[CLFILTER_TRACK_DENOISE_DCT_SIGMA] * 0.1f;
+    prm.vpp.dct.block_size    = cl_exdata.denoise_dct_block_size;
 
     //smooth
     prm.vpp.smooth.enable     = fp->check[CLFILTER_CHECK_SMOOTH_ENABLE] != 0;
