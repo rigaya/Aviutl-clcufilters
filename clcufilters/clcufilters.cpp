@@ -40,6 +40,7 @@
 #include "clcufilters_auf.h"
 #include "clcufilters.h"
 
+void init_device_list();
 void init_dialog(HWND hwnd, FILTER *fp);
 void update_cx(FILTER *fp);
 
@@ -566,6 +567,7 @@ FILTER_DLL filter = {
 //---------------------------------------------------------------------
 EXTERN_C FILTER_DLL __declspec(dllexport) * __stdcall GetFilterTable( void )
 {
+    init_device_list();
     return &filter;
 }
 

@@ -31,6 +31,7 @@
 
 #include "rgy_osdep.h"
 #include <thread>
+#include <future>
 #include "rgy_shared_mem.h"
 #include "rgy_pipe.h"
 #include "rgy_event.h"
@@ -48,10 +49,11 @@ public:
     clcuFiltersAufDevices();
     ~clcuFiltersAufDevices();
     int createList();
-    const std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>> getPlatforms() const { return m_platforms; }
+    const std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>>& getPlatforms();
 protected:
-    int createList(const tstring& exePath);
+    static std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>> createDeviceList(const tstring& exePath);
     std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>> m_platforms;
+    std::vector<std::future<std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>>>> m_platformAsync;
 };
 
 class clcuFiltersAuf {

@@ -52,6 +52,34 @@ static void print_exe_log(const std::string& mes, RGYLog *log) {
     }
 }
 
+std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>> clcuFiltersAufDevices::createDeviceList(const tstring& exePath) {
+    std::string deviceListStr;
+    auto proc = createRGYPipeProcess();
+    proc->init(PIPE_MODE_DISABLE, PIPE_MODE_ENABLE, PIPE_MODE_DISABLE);
+    const std::vector<tstring> args = { exePath, _T("--check-device") };
+    if (proc->run(args, nullptr, 0, true, true) != 0) {
+        return {};
+    }
+    deviceListStr = proc->getOutput();
+    proc->close();
+    proc.reset();
+
+    // platformとdeviceの情報を取得
+    std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>> platform_dev_list;
+    const auto platforms = split(deviceListStr, _T("\n"));
+    for (const auto& pstr : platforms) {
+        const auto pdstr = pstr.find(_T("/"));
+        CL_PLATFORM_DEVICE pd;
+        if (pdstr != std::string::npos) {
+            if (sscanf_s(pstr.substr(0, pdstr).c_str(), "%x", &pd.i) != 1) {
+                continue;
+            }
+            platform_dev_list.push_back({ pd, pstr.substr(pdstr + 1) });
+        }
+    }
+    return platform_dev_list;
+}
+
 static std::string getClCUfiltersExePath(const tstring& exeName) {
     char aviutlPath[4096] = { 0 };
     GetModuleFileName(nullptr, aviutlPath, _countof(aviutlPath) - 1);
@@ -75,39 +103,25 @@ clcuFiltersAufDevices::~clcuFiltersAufDevices() {};
 
 int clcuFiltersAufDevices::createList() {
     m_platforms.clear();
+    m_platformAsync.clear();
     for (auto& exe : { getClfiltersExePath(), getCUfiltersExePath() }) {
-        if (createList(exe) != 0) {
-            return 1;
-        }
+        m_platformAsync.push_back(std::async(std::launch::async, [exe]() { return clcuFiltersAufDevices::createDeviceList(exe); }));
     }
     return 0;
 }
 
-int clcuFiltersAufDevices::createList(const tstring& exePath) {
-    std::string deviceListStr;
-    auto proc = createRGYPipeProcess();
-    proc->init(PIPE_MODE_DISABLE, PIPE_MODE_ENABLE, PIPE_MODE_DISABLE);
-    const std::vector<tstring> args = { exePath, _T("--check-device") };
-    if (proc->run(args, nullptr, 0, true, true) != 0) {
-        return 1;
-    }
-    deviceListStr = proc->getOutput();
-    proc->close();
-    proc.reset();
-
-    // platformとdeviceの情報を取得
-    const auto platforms = split(deviceListStr, _T("\n"));
-    for (const auto& pstr : platforms) {
-        const auto pdstr = pstr.find(_T("/"));
-        CL_PLATFORM_DEVICE pd;
-        if (pdstr != std::string::npos) {
-            if (sscanf_s(pstr.substr(0, pdstr).c_str(), "%x", &pd.i) != 1) {
-                continue;
+const std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>>& clcuFiltersAufDevices::getPlatforms() {
+    if (m_platformAsync.size() > 0) {
+        m_platforms.clear();
+        for (auto& async : m_platformAsync) {
+            if (async.valid()) {
+                auto platform_dev_list = async.get();
+                m_platforms.insert(m_platforms.end(), platform_dev_list.begin(), platform_dev_list.end());
             }
-            m_platforms.push_back({ pd, pstr.substr(pdstr + 1) });
         }
+        m_platformAsync.clear();
     }
-    return 0;
+    return m_platforms;
 }
 
 clcuFiltersAuf::clcuFiltersAuf() :
