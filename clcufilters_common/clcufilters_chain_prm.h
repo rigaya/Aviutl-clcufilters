@@ -45,6 +45,7 @@ static const char *FILTER_NAME_COLORSPACE     = _T("色空間変換");
 static const char *FILTER_NAME_NNEDI          = _T("nnedi");
 static const char *FILTER_NAME_DENOISE_KNN    = _T("ノイズ除去 (knn)");
 static const char *FILTER_NAME_DENOISE_PMD    = _T("ノイズ除去 (pmd)");
+static const char *FILTER_NAME_DENOISE_DCT    = _T("ノイズ除去 (denoise-dct)");
 static const char *FILTER_NAME_DENOISE_SMOOTH = _T("ノイズ除去 (smooth)");
 static const char *FILTER_NAME_RESIZE         = _T("リサイズ");
 static const char *FILTER_NAME_UNSHARP        = _T("unsharp");
@@ -57,6 +58,7 @@ static const char *FILTER_NAME_COLORSPACE     = _T("colorspace");
 static const char *FILTER_NAME_NNEDI          = _T("nnedi");
 static const char *FILTER_NAME_DENOISE_KNN    = _T("knn");
 static const char *FILTER_NAME_DENOISE_PMD    = _T("pmd");
+static const char *FILTER_NAME_DENOISE_DCT    = _T("denoise-dct");
 static const char *FILTER_NAME_DENOISE_SMOOTH = _T("smooth");
 static const char *FILTER_NAME_RESIZE         = _T("resize");
 static const char *FILTER_NAME_UNSHARP        = _T("unsharp");
@@ -73,6 +75,7 @@ static const auto filterList = make_array<std::pair<const TCHAR*, VppType>>(
     FILTER_NAME(NNEDI),
     FILTER_NAME(DENOISE_KNN),
     FILTER_NAME(DENOISE_PMD),
+    FILTER_NAME(DENOISE_DCT),
     FILTER_NAME(DENOISE_SMOOTH),
     FILTER_NAME(RESIZE),
     FILTER_NAME(UNSHARP),

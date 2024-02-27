@@ -1195,6 +1195,24 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
                 break;
             }
             break;
+        case ID_CX_DENOISE_DCT_STEP: // コンボボックス
+            switch (HIWORD(wparam)) {
+            case CBN_SELCHANGE: // 選択変更
+                change_cx_param(cx_denoise_dct_step);
+                return TRUE; //TRUEを返すと画像処理が更新される
+            default:
+                break;
+            }
+            break;
+        case ID_CX_DENOISE_DCT_BLOCK_SIZE: // コンボボックス
+            switch (HIWORD(wparam)) {
+            case CBN_SELCHANGE: // 選択変更
+                change_cx_param(cx_denoise_dct_block_size);
+                return TRUE; //TRUEを返すと画像処理が更新される
+            default:
+                break;
+            }
+            break;
         case ID_CX_SMOOTH_QUALITY: // コンボボックス
             switch (HIWORD(wparam)) {
             case CBN_SELCHANGE: // 選択変更
@@ -1861,8 +1879,8 @@ BOOL clcuFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_
     sharedPrms->frameOut = frameOut;
     sharedPrms->resetPipeLine = resetPipeline;
     strcpy_s(sharedPrms->prms, tchar_to_string(prm.genCmd()).c_str());
-    m_log->write(RGY_LOG_TRACE, RGY_LOGT_CORE, "currentFrameId: %d, frameIn: %d, frameInFin: %d, frameProc %d, frameOut %d, reset %d\n",
-        sharedPrms->currentFrameId, sharedPrms->frameIn, sharedPrms->frameInFin, sharedPrms->frameProc, sharedPrms->frameOut, sharedPrms->resetPipeLine);
+    m_log->write(RGY_LOG_TRACE, RGY_LOGT_CORE, "currentFrameId: %d, frameIn: %d, frameInFin: %d, frameProc %d, frameOut %d, reset %d, %s\n",
+        sharedPrms->currentFrameId, sharedPrms->frameIn, sharedPrms->frameInFin, sharedPrms->frameProc, sharedPrms->frameOut, sharedPrms->resetPipeLine, prm.genCmd().c_str());
 
     // -- フレームの転送 -----------------------------------------------------------------
     // 初期化

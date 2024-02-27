@@ -513,7 +513,7 @@ RGY_ERR cuFilterChain::sendInFrame(const RGYFrameInfo *pInputFrame) {
         m_convert_yc48_to_yuv444_16->run(false,
             m_frameHostIn->ptr().data(), (const void **)&pInputFrame->ptr[0],
             pInputFrame->width, pInputFrame->pitch[0], pInputFrame->pitch[0],
-            m_frameHostIn->pitch(0), pInputFrame->height, m_frameHostIn->height(), crop);
+            m_frameHostIn->pitch(RGY_PLANE_Y), pInputFrame->height, m_frameHostIn->height(), crop);
     }
     auto err = copyFrameAsync(&frameDevIn->frame, &m_frameHostIn->frame, *m_streamIn.get());
     if (err != RGY_ERR_NONE) {
@@ -553,7 +553,7 @@ RGY_ERR cuFilterChain::getOutFrame(RGYFrameInfo *pOutputFrame) {
         int crop[4] = { 0 };
         m_convert_yuv444_16_to_yc48->run(false,
             (void **)&pOutputFrame->ptr[0], (const void **)m_frameHostOut->ptr().data(),
-            m_frameHostOut->width(), m_frameHostOut->pitch(0), m_frameHostOut->pitch(0),
+            m_frameHostOut->width(), m_frameHostOut->pitch(RGY_PLANE_Y), m_frameHostOut->pitch(RGY_PLANE_Y),
             pOutputFrame->pitch[0], m_frameHostOut->height(), pOutputFrame->height, crop);
     }
     return RGY_ERR_NONE;
