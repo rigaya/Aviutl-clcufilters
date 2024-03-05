@@ -69,12 +69,12 @@ bool NVEncFilterNvvfxEffect::compareModelDir(const tstring& modelDir) const {
 }
 
 RGY_ERR NVEncFilterNvvfxEffect::initEffect(const tstring& modelDir) {
+#if !ENABLE_NVVFX
+    AddMessage(RGY_LOG_ERROR, _T("nvvfx filters are not supported on x86 exec file, please use x64 exec file.\n"));
+    return RGY_ERR_UNSUPPORTED;
+#else
     if (!m_effect) {
         AddMessage(RGY_LOG_DEBUG, _T("initEffect %s.\n"), m_effectName.c_str());
-#if !ENABLE_NVVFX
-        AddMessage(RGY_LOG_ERROR, _T("nvvfx filters are not supported on x86 exec file, please use x64 exec file.\n"));
-        return RGY_ERR_UNSUPPORTED;
-#else
         NvVFX_Handle effHandle = nullptr;
         auto err = err_to_rgy(NvVFX_CreateEffect(m_effectName.c_str(), &effHandle));
         if (err != RGY_ERR_NONE) {
@@ -306,19 +306,20 @@ RGY_ERR NVEncFilterNvvfxEffect::init(shared_ptr<NVEncFilterParam> pParam, shared
             return RGY_ERR_INVALID_PARAM;
         }
         if (m_stateSizeInBytes != stateSizeInBytes) {
-            m_state = std::make_unique<CUMemBuf>(m_stateSizeInBytes);
+            m_state = std::make_unique<CUMemBuf>(stateSizeInBytes);
             err = m_state->alloc();
             if (err != RGY_ERR_NONE) {
                 AddMessage(RGY_LOG_ERROR, _T("Failed to allocate buffer for state: %s.\n"), get_err_mes(err));
                 return RGY_ERR_INVALID_PARAM;
             }
-            cudaMemset(m_state->ptr, 0, m_stateSizeInBytes);
+            cudaMemset(m_state->ptr, 0, stateSizeInBytes);
             m_stateArray[0] = m_state->ptr;
             err = err_to_rgy(NvVFX_SetObject(m_effect.get(), NVVFX_STATE, (void*)m_stateArray.data()));
             if (err != RGY_ERR_NONE) {
                 AddMessage(RGY_LOG_ERROR, _T("Failed to set state array: %s.\n"), get_err_mes(err));
                 return RGY_ERR_INVALID_PARAM;
             }
+            m_stateSizeInBytes = stateSizeInBytes;
         }
     }
     if (compareModelDir(prm->modelDir) || compareParam(pParam.get())) {
