@@ -38,9 +38,7 @@
     <ClCompile Include="NVEncFilter.cpp" />
     <ClCompile Include="NVEncFilterColorspace.cpp" />
     <ClCompile Include="NVEncFilterCustom.cpp" />
-    <ClCompile Include="NVEncFilterDenoiseGauss.cpp" />
     <ClCompile Include="NVEncFilterNvvfx.cpp" />
-    <ClCompile Include="NVEncFilterParam.cpp" />
     <ClCompile Include="rgy_nvrtc.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -56,7 +54,6 @@
     <ClInclude Include="NVEncFilterEdgelevel.h" />
     <ClInclude Include="NVEncFilterNnedi.h" />
     <ClInclude Include="NVEncFilterNvvfx.h" />
-    <ClInclude Include="NVEncFilterParam.h" />
     <ClInclude Include="NVEncFilterSmooth.h" />
     <ClInclude Include="NVEncFilterTweak.h" />
     <ClInclude Include="NVEncFilterUnsharp.h" />

@@ -96,6 +96,15 @@ enum {
     ID_LB_NNEDI_ERRORTYPE,
     ID_CX_NNEDI_ERRORTYPE,
 
+    ID_LB_NVVFX_DENOISE_STRENGTH,
+    ID_CX_NVVFX_DENOISE_STRENGTH,
+
+    ID_LB_NVVFX_ARTIFACT_REDUCTION_MODE,
+    ID_CX_NVVFX_ARTIFACT_REDUCTION_MODE,
+
+    ID_LB_NVVFX_SUPRERES_MODE,
+    ID_CX_NVVFX_SUPRERES_MODE,
+
     ID_LB_DENOISE_DCT_STEP,
     ID_CX_DENOISE_DCT_STEP,
     ID_LB_DENOISE_DCT_BLOCK_SIZE,
@@ -148,7 +157,12 @@ struct CLFILTER_EXDATA {
     int denoise_dct_step;
     int denoise_dct_block_size;
 
-    char reserved[636];
+    int nvvfx_denoise_strength;
+    int nvvfx_artifact_reduction_mode;
+    int nvvfx_superres_mode;
+    int nvvfx_superres_strength;
+
+    char reserved[620];
 };
 # pragma pack()
 static const size_t exdatasize = sizeof(CLFILTER_EXDATA);
@@ -158,6 +172,7 @@ static CLFILTER_EXDATA cl_exdata;
 
 static std::unique_ptr<clcuFiltersAufDevices> g_clfiltersAufDevices;
 static std::unique_ptr<clcuFiltersAuf> g_clfiltersAuf;
+static int g_is_cuda_device = -1;
 
 static void cl_exdata_set_default() {
     cl_exdata.cl_dev_id.i = 0;
@@ -177,6 +192,16 @@ static void cl_exdata_set_default() {
     cl_exdata.nnedi_quality = nnedi.quality;
     cl_exdata.nnedi_prescreen = nnedi.pre_screen;
     cl_exdata.nnedi_errortype = nnedi.errortype;
+
+    VppNvvfxDenoise nvvfxdenoise;
+    cl_exdata.nvvfx_denoise_strength = nvvfxdenoise.strength;
+
+    VppNvvfxArtifactReduction nvvfxArtifactReduction;
+    cl_exdata.nvvfx_artifact_reduction_mode = nvvfxArtifactReduction.mode;
+
+    VppNvvfxSuperRes nvvfxSuperRes;
+    cl_exdata.nvvfx_superres_mode = nvvfxSuperRes.mode;
+    cl_exdata.nvvfx_superres_strength = (int)(nvvfxSuperRes.strength * 100.0f + 0.5f);
 
     VppDenoiseDct dct;
     cl_exdata.denoise_dct_step = dct.step;
@@ -223,6 +248,9 @@ static const char *LB_CX_NNEDI_NSIZE = "nsize";
 static const char *LB_CX_NNEDI_QUALITY = "品質";
 static const char *LB_CX_NNEDI_PRESCREEN = "前処理";
 static const char *LB_CX_NNEDI_ERRORTYPE = "errortype";
+static const char *LB_CX_NVVFX_DENOISE_STRENGTH = "強度";
+static const char *LB_CX_NVVFX_ARTIFACT_REDUCTION_MODE = "モード";
+static const char *LB_CX_NVVFX_SUPRERES_MODE = "モード";
 static const char *LB_CX_DENOISE_DCT_STEP = "品質";
 static const char *LB_CX_DENOISE_DCT_BLOCK_SIZE = "ブロックサイズ";
 static const char *LB_CX_SMOOTH_QUALITY = "品質";
@@ -245,6 +273,9 @@ static const char *LB_CX_NNEDI_NSIZE = "nsize";
 static const char *LB_CX_NNEDI_QUALITY = "quality";
 static const char *LB_CX_NNEDI_PRESCREEN = "prescreen";
 static const char *LB_CX_NNEDI_ERRORTYPE = "errortype";
+static const char *LB_CX_NVVFX_DENOISE_STRENGTH = "strength";
+static const char *LB_CX_NVVFX_ARTIFACT_REDUCTION_MODE = "mode";
+static const char *LB_CX_NVVFX_SUPRERES_MODE = "mode";
 static const char *LB_CX_DENOISE_DCT_STEP = "step";
 static const char *LB_CX_DENOISE_DCT_BLOCK_SIZE = "blocksize";
 static const char *LB_CX_SMOOTH_QUALITY = "quality";
@@ -259,7 +290,7 @@ static const char *LB_CX_DEBAND_SAMPLE = "sample";
 //---------------------------------------------------------------------
 //  トラックバーの名前
 const TCHAR *track_name_ja[] = {
-    //リサイズ
+    "強度", //リサイズ(nvvfx-superres)
     "入力ピーク輝度", "目標輝度", //colorspace
 #if ENABLE_HDR2SDR_DESAT
     "脱飽和ｵﾌｾｯﾄ", "脱飽和強度", "脱飽和指数", //colorspace
@@ -275,7 +306,7 @@ const TCHAR *track_name_ja[] = {
     "range", "Y", "C", "ditherY", "ditherC" //バンディング低減
 };
 const TCHAR *track_name_en[] = {
-    //リサイズ
+    "strength", //リサイズ(nvvfx-superres)
     "srcpeak", "ldr_nits", //colorspace
 #if ENABLE_HDR2SDR_DESAT
     "desat_base", "desat_strength", "desat_exp", //colorspace
@@ -299,7 +330,11 @@ const TCHAR **track_name = track_name_ja;
 #endif
 
 enum {
-    CLFILTER_TRACK_COLORSPACE_FIRST = 0,
+    CLFILTER_TRACK_RESIZE_FIRST = 0,
+    CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH = CLFILTER_TRACK_RESIZE_FIRST,
+    CLFILTER_TRACK_RESIZE_MAX,
+
+    CLFILTER_TRACK_COLORSPACE_FIRST = CLFILTER_TRACK_RESIZE_MAX,
     CLFILTER_TRACK_COLORSPACE_SOURCE_PEAK = CLFILTER_TRACK_COLORSPACE_FIRST,
     CLFILTER_TRACK_COLORSPACE_LDR_NITS,
 #if ENABLE_HDR2SDR_DESAT
@@ -309,7 +344,13 @@ enum {
 #endif //#if ENABLE_HDR2SDR_DESAT
     CLFILTER_TRACK_COLORSPACE_MAX,
 
-    CLFILTER_TRACK_DENOISE_DCT_FIRST = CLFILTER_TRACK_COLORSPACE_MAX,
+    CLFILTER_TRACK_NVVFX_DENOISE_FIRST = CLFILTER_TRACK_COLORSPACE_MAX,
+    CLFILTER_TRACK_NVVFX_DENOISE_MAX = CLFILTER_TRACK_NVVFX_DENOISE_FIRST,
+
+    CLFILTER_TRACK_NVVFX_ARTIFACT_REDUCTION_FIRST = CLFILTER_TRACK_NVVFX_DENOISE_MAX,
+    CLFILTER_TRACK_NVVFX_ARTIFACT_REDUCTION_MAX = CLFILTER_TRACK_NVVFX_ARTIFACT_REDUCTION_FIRST,
+
+    CLFILTER_TRACK_DENOISE_DCT_FIRST = CLFILTER_TRACK_NVVFX_ARTIFACT_REDUCTION_MAX,
     CLFILTER_TRACK_DENOISE_DCT_SIGMA = CLFILTER_TRACK_DENOISE_DCT_FIRST,
     CLFILTER_TRACK_DENOISE_DCT_MAX,
 
@@ -370,6 +411,7 @@ enum {
 
 //  トラックバーの初期値
 int track_default[] = {
+    50, //リサイズ(nvvfx-superres)
     1000, 100, //colorspace
 #if ENABLE_HDR2SDR_DESAT
     18, 75, 15, //colorspace
@@ -386,6 +428,7 @@ int track_default[] = {
 };
 //  トラックバーの下限値
 int track_s[] = {
+    0, //リサイズ(nvvfx-superres)
     1, 1, //colorspace
 #if ENABLE_HDR2SDR_DESAT
     0, 0, 1, //colorspace
@@ -402,6 +445,7 @@ int track_s[] = {
 };
 //  トラックバーの上限値
 int track_e[] = {
+    100, //リサイズ(nvvfx-superres)
     5000, 1000, //colorspace
 #if ENABLE_HDR2SDR_DESAT
     100, 100, 30, //colorspace
@@ -433,6 +477,8 @@ const TCHAR *check_name_ja[] = {
     "ファイルに出力", // log to file
     "リサイズ",
     "色空間変換", "matrix", "colorprim", "transfer", "range",
+    "ノイズ除去 (nvvfx-denoise)",
+    "ノイズ除去 (nvvfx-artifact-reduction)",
     "ノイズ除去 (denoise-dct)",
     "ノイズ除去 (smooth)",
     "ノイズ除去 (knn)",
@@ -451,6 +497,8 @@ const TCHAR *check_name_en[] = {
     "log to file", // log to file
     "resize",
     "colorspace", "matrix", "colorprim", "transfer", "range",
+    "nvvfx-denoise",
+    "nvvfx-artifact-reduction",
     "denoise-dct",
     "smooth",
     "knn",
@@ -487,7 +535,13 @@ enum {
     CLFILTER_CHECK_COLORSPACE_RANGE_ENABLE,
     CLFILTER_CHECK_COLORSPACE_MAX,
 
-    CLFILTER_CHECK_DENOISE_DCT_ENABLE = CLFILTER_CHECK_COLORSPACE_MAX,
+    CLFILTER_CHECK_NVVFX_DENOISE_ENABLE = CLFILTER_CHECK_COLORSPACE_MAX,
+    CLFILTER_CHECK_NVVFX_DENOISE_MAX,
+
+    CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE = CLFILTER_CHECK_NVVFX_DENOISE_MAX,
+    CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_MAX,
+
+    CLFILTER_CHECK_DENOISE_DCT_ENABLE = CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_MAX,
     CLFILTER_CHECK_DENOISE_DCT_MAX,
 
     CLFILTER_CHECK_SMOOTH_ENABLE = CLFILTER_CHECK_DENOISE_DCT_MAX,
@@ -532,6 +586,8 @@ int check_default[] = {
     0, // log to file
     0, // resize
     0, 0, 0, 0, 0, // colorspace
+    0, // nvvfx-denoise
+    0, // nvvfx-artifact-reduction
     0, // denoise-dct
     0, // smooth
     0, // knn
@@ -666,6 +722,13 @@ static HWND cx_nnedi_prescreen;
 static HWND lb_nnedi_errortype;
 static HWND cx_nnedi_errortype;
 
+static HWND lb_nvvfx_denoise_strength;
+static HWND cx_nvvfx_denoise_strength;
+static HWND lb_nvvfx_artifact_reduction_mode;
+static HWND cx_nvvfx_artifact_reduction_mode;
+static HWND lb_nvvfx_superres_mode;
+static HWND cx_nvvfx_superres_mode;
+
 static HWND lb_knn_radius;
 static HWND cx_knn_radius;
 static HWND lb_denoise_dct_step;
@@ -722,6 +785,12 @@ static void set_cl_exdata(const HWND hwnd, const int value) {
         cl_exdata.nnedi_prescreen = (VppNnediPreScreen)value;
     } else if (hwnd == cx_nnedi_errortype) {
         cl_exdata.nnedi_errortype = (VppNnediErrorType)value;
+    } else if (hwnd == cx_nvvfx_denoise_strength) {
+        cl_exdata.nvvfx_denoise_strength = value;
+    } else if (hwnd == cx_nvvfx_artifact_reduction_mode) {
+        cl_exdata.nvvfx_artifact_reduction_mode = value;
+    } else if (hwnd == cx_nvvfx_superres_mode) {
+        cl_exdata.nvvfx_superres_mode = value;
     } else if (hwnd == cx_knn_radius) {
         cl_exdata.knn_radius = value;
     } else if (hwnd == cx_denoise_dct_step) {
@@ -954,6 +1023,39 @@ void add_cx_resize_res_items(FILTER *fp) {
     EnableWindow(bt_resize_res_del, TRUE); // 削除ボタン有効化
 }
 
+static void set_resize_algo_items(const bool isCUDADevice) {
+    int ret = 0;
+    // 選択番号取得
+    ret = SendMessage(cx_resize_algo, CB_GETCURSEL, 0, 0);
+    ret = SendMessage(cx_resize_algo, CB_GETITEMDATA, ret, 0);
+
+    SendMessage(cx_resize_algo, CB_RESETCONTENT, 0, 0);
+    set_combo_item(cx_resize_algo, "spline16", RGY_VPP_RESIZE_SPLINE16);
+    set_combo_item(cx_resize_algo, "spline36", RGY_VPP_RESIZE_SPLINE36);
+    set_combo_item(cx_resize_algo, "spline64", RGY_VPP_RESIZE_SPLINE64);
+    set_combo_item(cx_resize_algo, "lanczos2", RGY_VPP_RESIZE_LANCZOS2);
+    set_combo_item(cx_resize_algo, "lanczos3", RGY_VPP_RESIZE_LANCZOS3);
+    set_combo_item(cx_resize_algo, "lanczos4", RGY_VPP_RESIZE_LANCZOS4);
+    set_combo_item(cx_resize_algo, "bilinear", RGY_VPP_RESIZE_BILINEAR);
+    set_combo_item(cx_resize_algo, "bicubic",  RGY_VPP_RESIZE_BICUBIC);
+    if (isCUDADevice) {
+        set_combo_item(cx_resize_algo, "nvvfx-superres", RGY_VPP_RESIZE_NVVFX_SUPER_RES);
+    }
+    if (ret != CB_ERR) {
+        select_combo_item(cx_resize_algo, ret);
+    }
+}
+
+void set_track_bar_enable(int track_bar, bool enable) {
+    for (int j = 0; j < 5; j++) {
+        EnableWindow(child_hwnd[track_bar * 5 + j + 1], enable);
+    }
+}
+void set_check_box_enable(int check_box, bool enable) {
+    const int checkbox_idx = 1 + 5 * CLFILTER_TRACK_MAX;
+    EnableWindow(child_hwnd[checkbox_idx + check_box], enable);
+}
+
 static void update_cx(FILTER *fp) {
     if (cl_exdata.nnedi_nns == 0) {
         cl_exdata_set_default();
@@ -977,6 +1079,9 @@ static void update_cx(FILTER *fp) {
     select_combo_item(cx_nnedi_quality,               cl_exdata.nnedi_quality);
     select_combo_item(cx_nnedi_prescreen,             cl_exdata.nnedi_prescreen);
     select_combo_item(cx_nnedi_errortype,             cl_exdata.nnedi_errortype);
+    select_combo_item(cx_nvvfx_denoise_strength,      cl_exdata.nvvfx_denoise_strength);
+    select_combo_item(cx_nvvfx_artifact_reduction_mode, cl_exdata.nvvfx_artifact_reduction_mode);
+    select_combo_item(cx_nvvfx_superres_mode,         cl_exdata.nvvfx_superres_mode);
     select_combo_item(cx_knn_radius,                  cl_exdata.knn_radius);
     select_combo_item(cx_denoise_dct_step,            cl_exdata.denoise_dct_step);
     select_combo_item(cx_denoise_dct_block_size,      cl_exdata.denoise_dct_block_size);
@@ -984,8 +1089,83 @@ static void update_cx(FILTER *fp) {
     select_combo_item(cx_unsharp_radius,              cl_exdata.unsharp_radius);
     select_combo_item(cx_warpsharp_blur,              cl_exdata.warpsharp_blur);
     select_combo_item(cx_deband_sample,               cl_exdata.deband_sample);
+}
 
-    EnableWindow(bt_opencl_info, (cl_exdata.cl_dev_id.s.platform == CLCU_PLATFORM_CUDA) ? FALSE : TRUE);
+static void init_filter_order_list(FILTER *fp) {
+    const int n = SendMessage(ls_filter_order, LB_GETCOUNT, 0, 0);
+    if (n > 0) return; // もう初期化済みなら初期化しない
+
+    SendMessage(ls_filter_order, LB_RESETCONTENT, 0, 0);
+
+    // フィルタリストが何件あるかを確認
+    int current_count = 0;
+    for (int i = 0; i < std::min<int>(filterList.size(), _countof(cl_exdata.filterOrder)); i++, current_count++) {
+        if (cl_exdata.filterOrder[i] == VppType::VPP_NONE) {
+            current_count = i;
+            break;
+        }
+    }
+    bool setOK = false;
+    if (current_count == filterList.size()) {
+        // cl_exdata.filterOrder の中に登録されているものが適切な値かチェック
+        setOK = true;
+        for (size_t ifilter = 0; ifilter < filterList.size(); ifilter++) {
+            const auto filterFound = std::find_if(filterList.begin(), filterList.end(), [filter_type = cl_exdata.filterOrder[ifilter]](const std::pair<const TCHAR*, VppType>& obj) {
+                return obj.second == filter_type;
+                });
+            if (filterFound == filterList.end()) {
+                setOK = false;
+                break;
+            }
+        }
+    }
+    if (setOK) {
+        // 適切な値の場合はそのまま
+        for (size_t ifilter = 0; ifilter < filterList.size(); ifilter++) {
+            const auto filterFound = std::find_if(filterList.begin(), filterList.end(), [filter_type = cl_exdata.filterOrder[ifilter]](const std::pair<const TCHAR*, VppType>& obj) {
+                return obj.second == filter_type;
+                });
+            SendMessage(ls_filter_order, LB_INSERTSTRING, ifilter, (LPARAM)filterFound->first);
+            SendMessage(ls_filter_order, LB_SETITEMDATA, ifilter, (LPARAM)filterFound->second);
+        }
+    } else {
+        // 完全初期化
+        for (size_t ifilter = 0; ifilter < filterList.size(); ifilter++) {
+            SendMessage(ls_filter_order, LB_INSERTSTRING, ifilter, (LPARAM)filterList[ifilter].first);
+            SendMessage(ls_filter_order, LB_SETITEMDATA, ifilter, (LPARAM)filterList[ifilter].second);
+            cl_exdata.filterOrder[ifilter] = filterList[ifilter].second;
+        }
+    }
+
+}
+
+static void update_cuda_enable(FILTER *fp) {
+    const bool isCUDADevice = (cl_exdata.cl_dev_id.s.platform == CLCU_PLATFORM_CUDA);
+    const int isCUDADevInt = isCUDADevice ? 1 : 0;
+    if (g_is_cuda_device != isCUDADevInt) {
+        // CUDAデバイスかどうかが変更された
+        EnableWindow(bt_opencl_info, isCUDADevice ? FALSE : TRUE);
+        EnableWindow(cx_nvvfx_denoise_strength, isCUDADevice);
+        EnableWindow(lb_nvvfx_denoise_strength, isCUDADevice);
+        EnableWindow(cx_nvvfx_artifact_reduction_mode, isCUDADevice);
+        EnableWindow(lb_nvvfx_artifact_reduction_mode, isCUDADevice);
+        EnableWindow(cx_nvvfx_superres_mode, isCUDADevice);
+        EnableWindow(lb_nvvfx_superres_mode, isCUDADevice);
+        set_track_bar_enable(CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH, isCUDADevice);
+        set_check_box_enable(CLFILTER_CHECK_NVVFX_DENOISE_ENABLE, isCUDADevice);
+        set_check_box_enable(CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE, isCUDADevice);
+        set_resize_algo_items(isCUDADevice);
+        if (!isCUDADevice) {
+            const int checkbox_idx = 1 + 5 * CLFILTER_TRACK_MAX;
+
+            fp->check[CLFILTER_CHECK_NVVFX_DENOISE_ENABLE] = FALSE;
+            SendMessage(child_hwnd[checkbox_idx + CLFILTER_CHECK_NVVFX_DENOISE_ENABLE], BM_SETCHECK, BST_UNCHECKED, 0);
+
+            fp->check[CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE] = FALSE;
+            SendMessage(child_hwnd[checkbox_idx + CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE], BM_SETCHECK, BST_UNCHECKED, 0);
+        }
+    }
+    g_is_cuda_device = isCUDADevInt;
 }
 
 BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, FILTER *fp) {
@@ -1000,6 +1180,8 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
     case WM_FILTER_UPDATE: // フィルタ更新
     case WM_FILTER_SAVE_END: // セーブ終了
         update_cx(fp);
+        init_filter_order_list(fp);
+        update_cuda_enable(fp);
         break;
     case WM_COMMAND:
         switch (LOWORD(wparam)) {
@@ -1195,6 +1377,33 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
                 break;
             }
             break;
+        case ID_CX_NVVFX_DENOISE_STRENGTH: // コンボボックス
+            switch (HIWORD(wparam)) {
+            case CBN_SELCHANGE: // 選択変更
+                change_cx_param(cx_nvvfx_denoise_strength);
+                return TRUE; //TRUEを返すと画像処理が更新される
+            default:
+                break;
+            }
+            break;
+        case ID_CX_NVVFX_ARTIFACT_REDUCTION_MODE: // コンボボックス
+            switch (HIWORD(wparam)) {
+            case CBN_SELCHANGE: // 選択変更
+                change_cx_param(cx_nvvfx_artifact_reduction_mode);
+                return TRUE; //TRUEを返すと画像処理が更新される
+            default:
+                break;
+            }
+            break;
+        case ID_CX_NVVFX_SUPRERES_MODE: // コンボボックス
+            switch (HIWORD(wparam)) {
+            case CBN_SELCHANGE: // 選択変更
+                change_cx_param(cx_nvvfx_superres_mode);
+                return TRUE; //TRUEを返すと画像処理が更新される
+            default:
+                break;
+            }
+            break;
         case ID_CX_DENOISE_DCT_STEP: // コンボボックス
             switch (HIWORD(wparam)) {
             case CBN_SELCHANGE: // 選択変更
@@ -1291,6 +1500,16 @@ enum AddCXMode {
 static const int CX_HEIGHT = 24;
 static const int AVIUTL_1_10_OFFSET = 5;
 
+void move_track_bar(int& y_pos, int col, int col_width, int track_min, int track_max, int track_bar_delta_y, const RECT& dialog_rc) {
+    for (int i = track_min; i < track_max; i++, y_pos += track_bar_delta_y) {
+        for (int j = 0; j < 5; j++) {
+            RECT rc;
+            GetWindowRect(child_hwnd[i * 5 + j + 1], &rc);
+            SetWindowPos(child_hwnd[i * 5 + j + 1], HWND_TOP, rc.left - dialog_rc.left + col * col_width, y_pos, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
+        }
+    }
+}
+
 void move_group(int& y_pos, int col, int col_width, int check_min, int check_max, int track_min, int track_max, const int track_bar_delta_y,
                 const AddCXMode add_cx_mode, const int add_cx_num, int& cx_y_pos, const int checkbox_idx, const RECT& dialog_rc) {
     RECT rc;
@@ -1305,12 +1524,7 @@ void move_group(int& y_pos, int col, int col_width, int check_min, int check_max
     }
 
     // trackbar
-    for (int i = track_min; i < track_max; i++, y_pos += track_bar_delta_y) {
-        for (int j = 0; j < 5; j++) {
-            GetWindowRect(child_hwnd[i*5+j+1], &rc);
-            SetWindowPos(child_hwnd[i*5+j+1], HWND_TOP, rc.left - dialog_rc.left + col * col_width, y_pos, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
-        }
-    }
+    move_track_bar(y_pos, col, col_width, track_min, track_max, track_bar_delta_y, dialog_rc);
 
     if (add_cx_num > 0 && add_cx_mode == ADD_CX_AFTER_TRACK) {
         cx_y_pos = y_pos + 2;                // すこし窮屈なので +2pix
@@ -1425,7 +1639,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     RECT rc, dialog_rc;
     GetWindowRect(hwnd, &dialog_rc);
 
-    const int columns = 3;
+    const int columns = 4;
     const int col_width = dialog_rc.right - dialog_rc.left;
 
     //clfilterのチェックボックス
@@ -1499,23 +1713,28 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     bt_resize_res_del = CreateWindow("BUTTON", LB_BT_RESIZE_DELETE, WS_CHILD|WS_VISIBLE|WS_GROUP|WS_TABSTOP|BS_PUSHBUTTON|BS_VCENTER, col * col_width + 246, cb_resize_y+24, 32, 22, hwnd, (HMENU)ID_BT_RESIZE_RES_DEL, hinst, NULL);
     SendMessage(bt_resize_res_del, WM_SETFONT, (WPARAM)b_font, 0);
 
-    cx_resize_algo = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, col * col_width + 68, cb_resize_y+48, 145, 100, hwnd, (HMENU)ID_CX_RESIZE_ALGO, hinst, NULL);
+    cx_resize_algo = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, col * col_width + 68, cb_resize_y+48, 145, 160, hwnd, (HMENU)ID_CX_RESIZE_ALGO, hinst, NULL);
     SendMessage(cx_resize_algo, WM_SETFONT, (WPARAM)b_font, 0);
 
     update_cx_resize_res_items(fp);
-    set_combo_item(cx_resize_algo, "spline16", RGY_VPP_RESIZE_SPLINE16);
-    set_combo_item(cx_resize_algo, "spline36", RGY_VPP_RESIZE_SPLINE36);
-    set_combo_item(cx_resize_algo, "spline64", RGY_VPP_RESIZE_SPLINE64);
-    set_combo_item(cx_resize_algo, "lanczos2", RGY_VPP_RESIZE_LANCZOS2);
-    set_combo_item(cx_resize_algo, "lanczos3", RGY_VPP_RESIZE_LANCZOS3);
-    set_combo_item(cx_resize_algo, "lanczos4", RGY_VPP_RESIZE_LANCZOS4);
-    set_combo_item(cx_resize_algo, "bilinear", RGY_VPP_RESIZE_BILINEAR);
-    set_combo_item(cx_resize_algo, "bicubic",  RGY_VPP_RESIZE_BICUBIC);
+    set_resize_algo_items(cl_exdata.cl_dev_id.s.platform == CLCU_PLATFORM_CUDA);
 
     int y_pos_max = 0;
     // --- 最初の列 -----------------------------------------
-    int y_pos = cb_resize_y + track_bar_delta_y * 3 + 8;
+    lb_nvvfx_superres_mode = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, col * col_width + 8 + AVIUTL_1_10_OFFSET, cb_resize_y + 72, 60, 24, hwnd, (HMENU)ID_LB_NVVFX_SUPRERES_MODE, hinst, NULL);
+    SendMessage(lb_nvvfx_superres_mode, WM_SETFONT, (WPARAM)b_font, 0);
+    SendMessage(lb_nvvfx_superres_mode, WM_SETTEXT, 0, (LPARAM)LB_CX_NVVFX_SUPRERES_MODE);
+
+    cx_nvvfx_superres_mode = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, col * col_width + 68, cb_resize_y + 72, 145, 100, hwnd, (HMENU)ID_CX_NVVFX_SUPRERES_MODE, hinst, NULL);
+    SendMessage(cx_nvvfx_superres_mode, WM_SETFONT, (WPARAM)b_font, 0);
+    set_combo_item(cx_nvvfx_superres_mode, "0 - light", 0);
+    set_combo_item(cx_nvvfx_superres_mode, "1 - strong", 1);
+
+    int y_pos = cb_resize_y + track_bar_delta_y * 4 + 8;
     int cx_y_pos = 0;
+
+    move_track_bar(y_pos, col, col_width, CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH, CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH+1, track_bar_delta_y, dialog_rc);
+
     //colorspace
     move_colorspace(y_pos, col, col_width, CLFILTER_CHECK_COLORSPACE_ENABLE, CLFILTER_CHECK_COLORSPACE_MAX, CLFILTER_TRACK_COLORSPACE_FIRST, CLFILTER_TRACK_COLORSPACE_MAX, track_bar_delta_y, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
 
@@ -1529,6 +1748,29 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     add_combobox(cx_nnedi_prescreen, ID_CX_NNEDI_PRESCREEN, lb_nnedi_prescreen, ID_LB_NNEDI_PRESCREEN, LB_CX_NNEDI_PRESCREEN, col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_pre_screen);
     add_combobox(cx_nnedi_errortype, ID_CX_NNEDI_ERRORTYPE, lb_nnedi_errortype, ID_LB_NNEDI_ERRORTYPE, LB_CX_NNEDI_ERRORTYPE, col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_error_type);
     y_pos += track_bar_delta_y / 2;
+
+    y_pos_max = std::max(y_pos_max, y_pos);
+    // --- 次の列 -----------------------------------------
+    col = 1;
+    y_pos = cb_row_start_y_pos;
+
+    //nvvfx-denoise
+    const CX_DESC list_vpp_nvvfx_denoise_strength[] = {
+        { _T("0 - light"),  0 },
+        { _T("1 - strong"), 1 },
+        { NULL, 0 }
+    };
+    move_group(y_pos, col, col_width, CLFILTER_CHECK_NVVFX_DENOISE_ENABLE, CLFILTER_CHECK_NVVFX_DENOISE_MAX, CLFILTER_TRACK_NVVFX_DENOISE_FIRST, CLFILTER_TRACK_NVVFX_DENOISE_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
+    add_combobox(cx_nvvfx_denoise_strength, ID_CX_NVVFX_DENOISE_STRENGTH, lb_nvvfx_denoise_strength, ID_LB_NVVFX_DENOISE_STRENGTH, LB_CX_NVVFX_DENOISE_STRENGTH, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_nvvfx_denoise_strength);
+
+    //nvvfx-artifact-reduction
+    const CX_DESC list_vpp_nvvfx_artifact_reduction_mode[] = {
+        { _T("0 - light"),  0 },
+        { _T("1 - strong"), 1 },
+        { NULL, 0 }
+    };
+    move_group(y_pos, col, col_width, CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE, CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_MAX, CLFILTER_TRACK_NVVFX_ARTIFACT_REDUCTION_FIRST, CLFILTER_TRACK_NVVFX_ARTIFACT_REDUCTION_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
+    add_combobox(cx_nvvfx_artifact_reduction_mode, ID_CX_NVVFX_ARTIFACT_REDUCTION_MODE, lb_nvvfx_artifact_reduction_mode, ID_LB_NVVFX_ARTIFACT_REDUCTION_MODE, LB_CX_NVVFX_ARTIFACT_REDUCTION_MODE, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_nvvfx_artifact_reduction_mode);
 
     //denoise-dct
     move_group(y_pos, col, col_width, CLFILTER_CHECK_DENOISE_DCT_ENABLE, CLFILTER_CHECK_DENOISE_DCT_MAX, CLFILTER_TRACK_DENOISE_DCT_FIRST, CLFILTER_TRACK_DENOISE_DCT_MAX, track_bar_delta_y, ADD_CX_FIRST, 2, cx_y_pos, checkbox_idx, dialog_rc);
@@ -1548,8 +1790,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
 
     y_pos_max = std::max(y_pos_max, y_pos);
     // --- 次の列 -----------------------------------------
-
-    col = 1;
+    col = 2;
     y_pos = cb_row_start_y_pos;
     //unsharp
     move_group(y_pos, col, col_width, CLFILTER_CHECK_UNSHARP_ENABLE, CLFILTER_CHECK_UNSHARP_MAX, CLFILTER_TRACK_UNSHARP_FIRST, CLFILTER_TRACK_UNSHARP_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
@@ -1572,7 +1813,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     y_pos_max = std::max(y_pos_max, y_pos);
 
     // --- 次の列 -----------------------------------------
-    col = 2;
+    col = 3;
     y_pos = cb_row_start_y_pos;
 
     //log_level
@@ -1608,17 +1849,13 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     y_pos = list_filter_order_y + list_filter_oder_height;
     ls_filter_order = CreateWindow("LISTBOX", "clinfo", WS_CHILD | WS_VISIBLE | WS_GROUP | WS_BORDER | WS_BORDER | WS_VSCROLL | LBS_NOTIFY, list_filter_oder_x, list_filter_order_y + 24, list_filter_oder_width, list_filter_oder_height, hwnd, (HMENU)ID_LS_FILTER_ORDER, hinst, NULL);
     SendMessage(ls_filter_order, WM_SETFONT, (WPARAM)b_font, 0);
+    //ls_filter_orderの中身はexdataが転送されてから、init_filter_order_listで初期化する
 
     bt_filter_order_up = CreateWindow("BUTTON", "↑", WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, list_filter_oder_x + list_filter_oder_width + 8, list_filter_order_y + list_filter_oder_height / 2 - 24, bt_filter_order_width, 22, hwnd, (HMENU)ID_BT_FILTER_ORDER_UP, hinst, NULL);
     SendMessage(bt_filter_order_up, WM_SETFONT, (WPARAM)b_font, 0);
 
     bt_filter_order_down = CreateWindow("BUTTON", "↓", WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, list_filter_oder_x + list_filter_oder_width + 8, list_filter_order_y + list_filter_oder_height / 2, bt_filter_order_width, 22, hwnd, (HMENU)ID_BT_FILTER_ORDER_DOWN, hinst, NULL);
     SendMessage(bt_filter_order_down, WM_SETFONT, (WPARAM)b_font, 0);
-
-    for (size_t ifilter = 0; ifilter < filterList.size(); ifilter++) {
-        SendMessage(ls_filter_order, LB_INSERTSTRING, ifilter, (LPARAM)filterList[ifilter].first);
-        SendMessage(ls_filter_order, LB_SETITEMDATA, ifilter, (LPARAM)filterList[ifilter].second);
-    }
 
     y_pos_max = std::max(y_pos_max, y_pos);
     //---- 列追加終わり ------------------------------------------
@@ -1673,6 +1910,8 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp, const FILTER_PRO
     prm.outWidth    = (fp->check[CLFILTER_CHECK_RESIZE_ENABLE]) ? resize_res[cl_exdata.resize_idx].first  : fpip->w;
     prm.outHeight   = (fp->check[CLFILTER_CHECK_RESIZE_ENABLE]) ? resize_res[cl_exdata.resize_idx].second : fpip->h;
 
+    const bool isCUDADevice = (cl_exdata.cl_dev_id.s.platform == CLCU_PLATFORM_CUDA);
+
     //フィルタ順序
     for (int i = 0; i < _countof(cl_exdata.filterOrder); i++) {
         if (cl_exdata.filterOrder[i] == VppType::VPP_NONE) break;
@@ -1702,6 +1941,18 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp, const FILTER_PRO
     prm.colorspace.hdr2sdr.desat_strength = (float)fp->track[CLFILTER_TRACK_COLORSPACE_DESAT_STRENGTH] * 0.01f;
     prm.colorspace.hdr2sdr.desat_exp      = (float)fp->track[CLFILTER_TRACK_COLORSPACE_DESAT_EXP] * 0.1f;
 #endif //#if ENABLE_HDR2SDR_DESAT
+
+    //nvvfx-superres
+    prm.vppnv.nvvfxSuperRes.mode     = cl_exdata.nvvfx_superres_mode;
+    prm.vppnv.nvvfxSuperRes.strength = fp->track[CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH] * 0.01f;
+
+    //nvvfx-denoise
+    prm.vppnv.nvvfxDenoise.enable   = isCUDADevice && fp->check[CLFILTER_CHECK_NVVFX_DENOISE_ENABLE] != 0;
+    prm.vppnv.nvvfxDenoise.strength = cl_exdata.nvvfx_denoise_strength;
+
+    //nvvfx-artifact-reduction
+    prm.vppnv.nvvfxArtifactReduction.enable = isCUDADevice && fp->check[CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE] != 0;
+    prm.vppnv.nvvfxArtifactReduction.mode   = cl_exdata.nvvfx_artifact_reduction_mode;
 
     //denoise-dct
     prm.vpp.dct.enable        = fp->check[CLFILTER_CHECK_DENOISE_DCT_ENABLE] != 0;

@@ -32,20 +32,20 @@
 #include <limits.h>
 #include <vector>
 #include "rgy_osdep.h"
+#if ENCODER_NVENC
 #pragma warning (push)
 #pragma warning (disable: 4819)
 #pragma warning (disable: 4201)
 #include <npp.h>
 #pragma warning (pop)
+#include "cuda.h"
+#include "dynlink_cuviddec.h"
+#endif //#if ENCODER_NVENC
 #include "rgy_tchar.h"
 #include "rgy_util.h"
 #include "rgy_simd.h"
 #include "rgy_prm.h"
 #include "convert_csp.h"
-#include "cuda.h"
-#if ENCODER_NVENC
-#include "dynlink_cuviddec.h"
-#endif //#if ENCODER_NVENC
 
 static const TCHAR *FILTER_DEFAULT_CUSTOM_KERNEL_NAME = _T("kernel_filter");
 static const int FILTER_DEFAULT_CUSTOM_THREAD_PER_BLOCK_X = 32;
@@ -59,6 +59,7 @@ static const float FILTER_DEFAULT_NVVFX_SUPER_RES_STRENGTH = 0.4f;
 static const int FILTER_DEFAULT_NVVFX_SUPER_RES_MODE = 1;
 static const float FILTER_DEFAULT_NVVFX_UPSCALER_STRENGTH = 0.4f;
 
+#if ENCODER_NVENC
 static const int DEFAULT_CUDA_SCHEDULE = CU_CTX_SCHED_AUTO;
 
 const CX_DESC list_nppi_gauss[] = {
@@ -76,6 +77,7 @@ const CX_DESC list_cuda_schedule[] = {
     { _T("sync"),  CU_CTX_SCHED_BLOCKING_SYNC },
     { NULL, 0 }
 };
+#endif
 
 enum VppCustomInterface {
     VPP_CUSTOM_INTERFACE_PER_PLANE,
@@ -179,8 +181,8 @@ struct VppNvvfxUpScaler {
 struct VppParam {
 #if ENCODER_NVENC
     cudaVideoDeinterlaceMode  deinterlace;
-#endif //#if ENCODER_NVENC
     NppiMaskSize              gaussMaskSize;
+#endif //#if ENCODER_NVENC
     VppNvvfxDenoise           nvvfxDenoise;
     VppNvvfxArtifactReduction nvvfxArtifactReduction;
     VppNvvfxSuperRes          nvvfxSuperRes;
@@ -188,6 +190,12 @@ struct VppParam {
     tstring                   nvvfxModelDir;
 
     VppParam();
+    bool operator==(const VppParam &x) const;
+    bool operator!=(const VppParam &x) const;
 };
+
+struct sArgsData;
+int parse_one_vppnv_option(const TCHAR* option_name, const TCHAR* strInput[], int& i, [[maybe_unused]] int nArgNum, VppParam* vppnv, [[maybe_unused]] sArgsData* argData, RGY_VPP_RESIZE_ALGO& resize_algo);
+tstring gen_cmd(const VppParam *param, const VppParam *defaultPrm, RGY_VPP_RESIZE_ALGO resize_algo, bool save_disabled_prm);
 
 #endif //_NVENC_FILTER_PARAM_H_

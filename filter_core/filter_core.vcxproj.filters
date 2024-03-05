@@ -34,6 +34,7 @@
     <ClCompile Include="rgy_language.cpp" />
     <ClCompile Include="rgy_frame_info.cpp" />
     <ClCompile Include="rgy_filter.cpp" />
+    <ClCompile Include="NVEncFilterParam.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="rgy_prm.h" />
@@ -73,5 +74,6 @@
     <ClInclude Include="convert_csp.h" />
     <ClInclude Include="rgy_frame_info.h" />
     <ClInclude Include="rgy_filter.h" />
+    <ClInclude Include="NVEncFilterParam.h" />
   </ItemGroup>
 </Project>

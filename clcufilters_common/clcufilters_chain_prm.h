@@ -35,6 +35,7 @@
 #include "rgy_tchar.h"
 #include "rgy_log.h"
 #include "rgy_prm.h"
+#include "NVEncFilterParam.h"
 
 static const int SIZE_PIXEL_YC = 6;
 
@@ -43,6 +44,8 @@ static const int FILTER_NAME_MAX_LENGTH = 1024;
 #if !CLFILTERS_EN
 static const char *FILTER_NAME_COLORSPACE     = _T("色空間変換");
 static const char *FILTER_NAME_NNEDI          = _T("nnedi");
+static const char *FILTER_NAME_NVVFX_DENOISE  = _T("ノイズ除去 (nvvfx-denoise)");
+static const char *FILTER_NAME_NVVFX_ARTIFACT_REDUCTION = _T("ノイズ除去 (nvvfx-artifact-reduction)");
 static const char *FILTER_NAME_DENOISE_KNN    = _T("ノイズ除去 (knn)");
 static const char *FILTER_NAME_DENOISE_PMD    = _T("ノイズ除去 (pmd)");
 static const char *FILTER_NAME_DENOISE_DCT    = _T("ノイズ除去 (denoise-dct)");
@@ -56,6 +59,8 @@ static const char *FILTER_NAME_DEBAND         = _T("バンディング低減");
 #else
 static const char *FILTER_NAME_COLORSPACE     = _T("colorspace");
 static const char *FILTER_NAME_NNEDI          = _T("nnedi");
+static const char *FILTER_NAME_NVVFX_DENOISE  = _T("nvvfx-denoise");
+static const char *FILTER_NAME_NVVFX_ARTIFACT_REDUCTION = _T("nvvfx-artifact-reduction");
 static const char *FILTER_NAME_DENOISE_KNN    = _T("knn");
 static const char *FILTER_NAME_DENOISE_PMD    = _T("pmd");
 static const char *FILTER_NAME_DENOISE_DCT    = _T("denoise-dct");
@@ -69,10 +74,13 @@ static const char *FILTER_NAME_DEBAND         = _T("deband");
 #endif
 
 #define FILTER_NAME(x) std::make_pair(FILTER_NAME_ ## x, VppType::CL_ ## x)
+#define FILTER_NAME_NVVFX(x) std::make_pair(FILTER_NAME_NVVFX_ ## x, VppType::NVVFX_ ## x)
 
 static const auto filterList = make_array<std::pair<const TCHAR*, VppType>>(
     FILTER_NAME(COLORSPACE),
     FILTER_NAME(NNEDI),
+    FILTER_NAME_NVVFX(DENOISE),
+    FILTER_NAME_NVVFX(ARTIFACT_REDUCTION),
     FILTER_NAME(DENOISE_KNN),
     FILTER_NAME(DENOISE_PMD),
     FILTER_NAME(DENOISE_DCT),
@@ -128,6 +136,7 @@ static const int frameOutOffset = 0;
 struct clFilterChainParam {
     HMODULE hModule;
     RGYParamVpp vpp;
+    VppParam vppnv;
     RGYParamLogLevel log_level;
     bool log_to_file;
     int outWidth;

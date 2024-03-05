@@ -36,6 +36,7 @@
 #include "rgy_pipe.h"
 #include "rgy_event.h"
 #include "rgy_prm.h"
+#include "NVEncFilterParam.h"
 #include "rgy_log.h"
 #include "clcufilters_shared.h"
 #include "clcufilters_chain_prm.h"

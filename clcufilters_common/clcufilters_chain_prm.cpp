@@ -57,6 +57,7 @@ AviutlAufExeParams::~AviutlAufExeParams() {}
 clFilterChainParam::clFilterChainParam() :
     hModule(NULL),
     vpp(),
+    vppnv(),
     log_level(RGY_LOG_QUIET),
     log_to_file(false),
     outWidth(),
@@ -67,6 +68,7 @@ clFilterChainParam::clFilterChainParam() :
 bool clFilterChainParam::operator==(const clFilterChainParam &x) const {
     return hModule == x.hModule
         && vpp == x.vpp
+        && vppnv == x.vppnv
         && log_level == x.log_level
         && log_to_file == x.log_to_file
         && outWidth == x.outWidth
@@ -78,7 +80,9 @@ bool clFilterChainParam::operator!=(const clFilterChainParam &x) const {
 
 tstring clFilterChainParam::genCmd() const {
     RGYParamVpp defaultPrm;
+    VppParam vppnvDefault;
     tstring str = gen_cmd(&vpp, &defaultPrm, false);
+    str += gen_cmd(&vppnv, &vppnvDefault, vpp.resize_algo, false);
     str += _T(" --log-level ") + log_level.to_string();
     if (log_to_file) {
         str += _T(" --log-to-file");
@@ -123,7 +127,11 @@ int ParseOneOption(const TCHAR *option_name, const TCHAR* strInput[], int& i, in
         pParams->outHeight = value;
         return 0;
     }
-    int ret = parse_one_vpp_option(option_name, strInput, i, nArgNum, &pParams->vpp, argData);
+
+    int ret = parse_one_vppnv_option(option_name, strInput, i, nArgNum, &pParams->vppnv, argData, pParams->vpp.resize_algo);
+    if (ret >= 0) return ret;
+
+    ret = parse_one_vpp_option(option_name, strInput, i, nArgNum, &pParams->vpp, argData);
     if (ret >= 0) return ret;
 
     print_cmd_error_unknown_opt(strInput[i]);
@@ -207,6 +215,8 @@ std::vector<VppType> clFilterChainParam::getFilterChain(const bool resizeRequire
     for (const auto filterType : allFilterOrder) {
         if (  (vpp.colorspace.enable && filterType == VppType::CL_COLORSPACE)
            || (vpp.nnedi.enable      && filterType == VppType::CL_NNEDI)
+           || (vppnv.nvvfxDenoise.enable           && filterType == VppType::NVVFX_DENOISE)
+           || (vppnv.nvvfxArtifactReduction.enable && filterType == VppType::NVVFX_ARTIFACT_REDUCTION)
            || (vpp.smooth.enable     && filterType == VppType::CL_DENOISE_SMOOTH)
            || (vpp.dct.enable        && filterType == VppType::CL_DENOISE_DCT)
            || (vpp.knn.enable        && filterType == VppType::CL_DENOISE_KNN)

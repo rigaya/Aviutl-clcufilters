@@ -34,6 +34,7 @@
 #include "NVEncFilterDenoiseKnn.h"
 #include "NVEncFilterDenoisePmd.h"
 #include "NVEncFilterDenoiseDct.h"
+#include "NVEncFilterNvvfx.h"
 #include "NVEncFilterSmooth.h"
 #include "NVEncFilterUnsharp.h"
 #include "NVEncFilterEdgelevel.h"
@@ -288,6 +289,46 @@ RGY_ERR cuFilterChain::configureOneFilter(std::unique_ptr<RGYFilterBase>& filter
         //入力フレーム情報を更新
         inputFrame = param->frameOut;
     }
+    //ノイズ除去 (nvvfx-denoise)
+    if (filterType == VppType::NVVFX_DENOISE) {
+        if (!filter) {
+            //フィルタチェーンに追加
+            filter.reset(new NVEncFilterNvvfxDenoise());
+        }
+        std::shared_ptr<NVEncFilterParamNvvfxDenoise> param(new NVEncFilterParamNvvfxDenoise());
+        param->nvvfxDenoise = m_prm.vppnv.nvvfxDenoise;
+        param->compute_capability = m_cuDevice->getCUDAVer();
+        param->frameIn = inputFrame;
+        param->frameOut = inputFrame;
+        param->bOutOverwrite = false;
+        auto sts = filter->init(param, m_log);
+        if (sts != RGY_ERR_NONE) {
+            PrintMes(RGY_LOG_ERROR, _T("failed to init nvvfx-denoise.\n"));
+            return sts;
+        }
+        //入力フレーム情報を更新
+        inputFrame = param->frameOut;
+    }
+    //ノイズ除去 (nvvfx-denoise)
+    if (filterType == VppType::NVVFX_ARTIFACT_REDUCTION) {
+        if (!filter) {
+            //フィルタチェーンに追加
+            filter.reset(new NVEncFilterNvvfxArtifactReduction());
+        }
+        std::shared_ptr<NVEncFilterParamNvvfxArtifactReduction> param(new NVEncFilterParamNvvfxArtifactReduction());
+        param->nvvfxArtifactReduction = m_prm.vppnv.nvvfxArtifactReduction;
+        param->compute_capability = m_cuDevice->getCUDAVer();
+        param->frameIn = inputFrame;
+        param->frameOut = inputFrame;
+        param->bOutOverwrite = false;
+        auto sts = filter->init(param, m_log);
+        if (sts != RGY_ERR_NONE) {
+            PrintMes(RGY_LOG_ERROR, _T("failed to init nvvfx-denoise.\n"));
+            return sts;
+        }
+        //入力フレーム情報を更新
+        inputFrame = param->frameOut;
+    }
     //ノイズ除去 (knn)
     if (filterType == VppType::CL_DENOISE_KNN) {
         if (!filter) {
@@ -374,6 +415,13 @@ RGY_ERR cuFilterChain::configureOneFilter(std::unique_ptr<RGYFilterBase>& filter
         }
         std::shared_ptr<NVEncFilterParamResize> param(new NVEncFilterParamResize());
         param->interp = m_prm.vpp.resize_algo;
+        if (isNvvfxResizeFiter(m_prm.vpp.resize_algo)) {
+            param->nvvfxSuperRes = std::make_shared<NVEncFilterParamNvvfxSuperRes>();
+            param->nvvfxSuperRes->nvvfxSuperRes = m_prm.vppnv.nvvfxSuperRes;
+            param->nvvfxSuperRes->compute_capability = m_cuDevice->getCUDAVer();
+            //param->nvvfxSuperRes->modelDir = inputParam->vppnv.nvvfxModelDir;
+            //param->nvvfxSuperRes->vuiInfo = VuiFiltered;
+        }
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;
         param->frameOut.width = resizeWidth;
