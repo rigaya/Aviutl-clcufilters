@@ -52,7 +52,7 @@ static void print_exe_log(const std::string& mes, RGYLog *log) {
     }
 }
 
-std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>> clcuFiltersAufDevices::createDeviceList(const tstring& exePath) {
+std::vector<clcuFiltersAufDevInfo> clcuFiltersAufDevices::createDeviceList(const tstring& exePath) {
     std::string deviceListStr;
     auto proc = createRGYPipeProcess();
     proc->init(PIPE_MODE_DISABLE, PIPE_MODE_ENABLE, PIPE_MODE_DISABLE);
@@ -65,7 +65,7 @@ std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>> clcuFiltersAufDevices::creat
     proc.reset();
 
     // platformとdeviceの情報を取得
-    std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>> platform_dev_list;
+    std::vector<clcuFiltersAufDevInfo> platform_dev_list;
     const auto platforms = split(deviceListStr, _T("\n"));
     for (const auto& pstr : platforms) {
         const auto pdstr = pstr.find(_T("/"));
@@ -74,7 +74,15 @@ std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>> clcuFiltersAufDevices::creat
             if (sscanf_s(pstr.substr(0, pdstr).c_str(), "%x", &pd.i) != 1) {
                 continue;
             }
-            platform_dev_list.push_back({ pd, pstr.substr(pdstr + 1) });
+            auto devstr = pstr.substr(pdstr + 1);
+            const auto ccstr = devstr.find(_T("/"));
+            if (ccstr != std::string::npos) {
+                std::pair<int, int> cudaver;
+                if (sscanf_s(devstr.substr(0, ccstr).c_str(), "%d.%d", &cudaver.first, &cudaver.second) != 2) {
+                    continue;
+                }
+                platform_dev_list.push_back(clcuFiltersAufDevInfo(pd, cudaver, devstr.substr(ccstr + 1)));
+            }
         }
     }
     return platform_dev_list;
@@ -110,7 +118,7 @@ int clcuFiltersAufDevices::createList() {
     return 0;
 }
 
-const std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>>& clcuFiltersAufDevices::getPlatforms() {
+const std::vector<clcuFiltersAufDevInfo>& clcuFiltersAufDevices::getPlatforms() {
     if (m_platformAsync.size() > 0) {
         m_platforms.clear();
         for (auto& async : m_platformAsync) {
@@ -122,6 +130,16 @@ const std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>>& clcuFiltersAufDevices
         m_platformAsync.clear();
     }
     return m_platforms;
+}
+
+const clcuFiltersAufDevInfo *clcuFiltersAufDevices::findDevice(const int platform, const int device) {
+    const auto& devices = getPlatforms();
+    for (const auto& dev : devices) {
+        if (dev.pd.s.platform == platform && dev.pd.s.device == device) {
+            return &dev;
+        }
+    }
+    return nullptr;
 }
 
 clcuFiltersAuf::clcuFiltersAuf() :

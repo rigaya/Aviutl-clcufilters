@@ -172,7 +172,8 @@ static CLFILTER_EXDATA cl_exdata;
 
 static std::unique_ptr<clcuFiltersAufDevices> g_clfiltersAufDevices;
 static std::unique_ptr<clcuFiltersAuf> g_clfiltersAuf;
-static int g_is_cuda_device = -1;
+static int g_cuda_device_nvvfx_support = -1;
+static int g_resize_nvvfx_superres = -1;
 
 static void cl_exdata_set_default() {
     cl_exdata.cl_dev_id.i = 0;
@@ -1140,22 +1141,19 @@ static void init_filter_order_list(FILTER *fp) {
 }
 
 static void update_cuda_enable(FILTER *fp) {
-    const bool isCUDADevice = (cl_exdata.cl_dev_id.s.platform == CLCU_PLATFORM_CUDA);
-    const int isCUDADevInt = isCUDADevice ? 1 : 0;
-    if (g_is_cuda_device != isCUDADevInt) {
+    const auto dev = g_clfiltersAufDevices->findDevice(cl_exdata.cl_dev_id.s.platform, cl_exdata.cl_dev_id.s.device);
+    const int cudaNvvfxSupport = dev && dev->pd.s.platform == CLCU_PLATFORM_CUDA && dev->cudaVer.first >= 7 ? 1 : 0; // nvvfxはCC7.0(Turing)以上が必要
+    if (g_cuda_device_nvvfx_support != cudaNvvfxSupport) {
         // CUDAデバイスかどうかが変更された
-        EnableWindow(bt_opencl_info, isCUDADevice ? FALSE : TRUE);
-        EnableWindow(cx_nvvfx_denoise_strength, isCUDADevice);
-        EnableWindow(lb_nvvfx_denoise_strength, isCUDADevice);
-        EnableWindow(cx_nvvfx_artifact_reduction_mode, isCUDADevice);
-        EnableWindow(lb_nvvfx_artifact_reduction_mode, isCUDADevice);
-        EnableWindow(cx_nvvfx_superres_mode, isCUDADevice);
-        EnableWindow(lb_nvvfx_superres_mode, isCUDADevice);
-        set_track_bar_enable(CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH, isCUDADevice);
-        set_check_box_enable(CLFILTER_CHECK_NVVFX_DENOISE_ENABLE, isCUDADevice);
-        set_check_box_enable(CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE, isCUDADevice);
-        set_resize_algo_items(isCUDADevice);
-        if (!isCUDADevice) {
+        EnableWindow(bt_opencl_info, cudaNvvfxSupport ? FALSE : TRUE);
+        EnableWindow(cx_nvvfx_denoise_strength, cudaNvvfxSupport);
+        EnableWindow(lb_nvvfx_denoise_strength, cudaNvvfxSupport);
+        EnableWindow(cx_nvvfx_artifact_reduction_mode, cudaNvvfxSupport);
+        EnableWindow(lb_nvvfx_artifact_reduction_mode, cudaNvvfxSupport);
+        set_check_box_enable(CLFILTER_CHECK_NVVFX_DENOISE_ENABLE, cudaNvvfxSupport);
+        set_check_box_enable(CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE, cudaNvvfxSupport);
+        set_resize_algo_items(cudaNvvfxSupport);
+        if (!cudaNvvfxSupport) {
             const int checkbox_idx = 1 + 5 * CLFILTER_TRACK_MAX;
 
             fp->check[CLFILTER_CHECK_NVVFX_DENOISE_ENABLE] = FALSE;
@@ -1164,8 +1162,18 @@ static void update_cuda_enable(FILTER *fp) {
             fp->check[CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE] = FALSE;
             SendMessage(child_hwnd[checkbox_idx + CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE], BM_SETCHECK, BST_UNCHECKED, 0);
         }
+        g_cuda_device_nvvfx_support = cudaNvvfxSupport;
     }
-    g_is_cuda_device = isCUDADevInt;
+}
+
+static void update_nvvfx_superres(FILTER *fp) {
+    const int resize_nvvfx_superres = (RGY_VPP_RESIZE_ALGO)cl_exdata.resize_algo == RGY_VPP_RESIZE_NVVFX_SUPER_RES ? 1 : 0;
+    if (g_resize_nvvfx_superres != resize_nvvfx_superres) {
+        set_track_bar_enable(CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH, resize_nvvfx_superres);
+        EnableWindow(lb_nvvfx_superres_mode, resize_nvvfx_superres);
+        EnableWindow(cx_nvvfx_superres_mode, resize_nvvfx_superres);
+        g_resize_nvvfx_superres = resize_nvvfx_superres;
+    }
 }
 
 BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, FILTER *fp) {
@@ -1182,6 +1190,7 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
         update_cx(fp);
         init_filter_order_list(fp);
         update_cuda_enable(fp);
+        update_nvvfx_superres(fp);
         break;
     case WM_COMMAND:
         switch (LOWORD(wparam)) {
@@ -1671,9 +1680,9 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     init_device_list();
     if (g_clfiltersAufDevices) {
         for (const auto& pd : g_clfiltersAufDevices->getPlatforms()) {
-            std::string devFullName = pd.first.s.platform == CLCU_PLATFORM_CUDA ? "CUDA: " : "OpenCL: ";
-            devFullName += pd.second;
-            set_combo_item(cx_opencl_device, devFullName.c_str(), pd.first.i);
+            std::string devFullName = pd.pd.s.platform == CLCU_PLATFORM_CUDA ? "CUDA: " : "OpenCL: ";
+            devFullName += pd.devName;
+            set_combo_item(cx_opencl_device, devFullName.c_str(), pd.pd.i);
         }
     }
 
@@ -2055,12 +2064,8 @@ BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
         return TRUE; // 何もしない
     }
     // 選択対象がGPUリストにあるかを確認
-    auto clplatform = g_clfiltersAufDevices->getPlatforms();
-    auto dev = std::find_if(clplatform.begin(), clplatform.end(),
-        [platform = cl_exdata.cl_dev_id.s.platform, device = cl_exdata.cl_dev_id.s.device](const std::pair<CL_PLATFORM_DEVICE, tstring>& data) {
-            return data.first.s.platform == platform && data.first.s.device == device;
-        });
-    if (dev == clplatform.end()) {
+    auto dev = g_clfiltersAufDevices->findDevice(cl_exdata.cl_dev_id.s.platform, cl_exdata.cl_dev_id.s.device);
+    if (!dev) {
         return TRUE; // 何もしない
     }
     // フィルタ処理の実行
@@ -2086,12 +2091,8 @@ BOOL clcuFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_
         || prev_pd.s.device != cl_exdata.cl_dev_id.s.device) {
         std::string mes = AUF_FULL_NAME;
         mes += ": ";
-        const auto& clplatform = g_clfiltersAufDevices->getPlatforms();
-        auto dev = std::find_if(clplatform.begin(), clplatform.end(),
-            [platform = cl_exdata.cl_dev_id.s.platform, device = cl_exdata.cl_dev_id.s.device](const std::pair<CL_PLATFORM_DEVICE, tstring>& data) {
-            return data.first.s.platform == platform && data.first.s.device == device;
-        });
-        mes += (dev == clplatform.end()) ? LB_WND_OPENCL_AVAIL : tchar_to_string(dev->second);
+        const auto dev = g_clfiltersAufDevices->findDevice(cl_exdata.cl_dev_id.s.platform, cl_exdata.cl_dev_id.s.device);
+        mes += (dev) ? tchar_to_string(dev->devName) : LB_WND_OPENCL_AVAIL;
         SendMessage(fp->hwnd, WM_SETTEXT, 0, (LPARAM)mes.c_str());
         is_saving = FALSE;
         resetPipeline = TRUE;
@@ -2194,12 +2195,8 @@ BOOL clcuFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_
     if (message->ret != TRUE) {
         std::string mes = AUF_FULL_NAME;
         mes += ": ";
-        const auto& clplatform = g_clfiltersAufDevices->getPlatforms();
-        auto dev = std::find_if(clplatform.begin(), clplatform.end(),
-            [platform = cl_exdata.cl_dev_id.s.platform, device = cl_exdata.cl_dev_id.s.device](const std::pair<CL_PLATFORM_DEVICE, tstring>& data) {
-                return data.first.s.platform == platform && data.first.s.device == device;
-            });
-        mes += (dev == clplatform.end()) ? LB_WND_OPENCL_AVAIL : tchar_to_string(dev->second);
+        const auto dev = g_clfiltersAufDevices->findDevice(cl_exdata.cl_dev_id.s.platform, cl_exdata.cl_dev_id.s.device);
+        mes += (dev) ? tchar_to_string(dev->devName) : LB_WND_OPENCL_AVAIL;
         mes += ": ";
         mes += message->data;
         SendMessage(fp->hwnd, WM_SETTEXT, 0, (LPARAM)mes.c_str());

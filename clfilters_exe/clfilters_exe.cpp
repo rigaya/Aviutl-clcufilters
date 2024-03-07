@@ -92,7 +92,8 @@ std::string clFiltersExe::checkClPlatforms() {
             devName = str_replace(devName, "(TM)", "");
             devName = str_replace(devName, "(R)", "");
             devName = str_replace(devName, "  ", " ");
-            devices += strsprintf("%x/%s\n", pd.i, devName.c_str());
+            int cudaDummyVer = 0;
+            devices += strsprintf("%x/%d.%d/%s\n", pd.i, cudaDummyVer, cudaDummyVer, devName.c_str());
             AddMessage(RGY_LOG_DEBUG, _T("Found platform %d, device %d: %s.\n"), pd.s.platform, pd.s.device, char_to_tstring(devName).c_str());
         }
     }

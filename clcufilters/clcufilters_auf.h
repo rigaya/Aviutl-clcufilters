@@ -45,16 +45,26 @@
 std::string getClfiltersExePath();
 std::string getCUfiltersExePath();
 
+struct clcuFiltersAufDevInfo {
+    CL_PLATFORM_DEVICE pd;
+    std::pair<int, int> cudaVer;
+    tstring devName;
+
+    clcuFiltersAufDevInfo() : pd(), cudaVer({ 0, 0}), devName() {};
+    clcuFiltersAufDevInfo(const CL_PLATFORM_DEVICE& cl_pd, const std::pair<int, int>& cc, const tstring& name) : pd(cl_pd), cudaVer(cc), devName(name) {};
+};
+
 class clcuFiltersAufDevices {
 public:
     clcuFiltersAufDevices();
     ~clcuFiltersAufDevices();
     int createList();
-    const std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>>& getPlatforms();
+    const std::vector<clcuFiltersAufDevInfo>& getPlatforms();
+    const clcuFiltersAufDevInfo *findDevice(const int platform, const int device);
 protected:
-    static std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>> createDeviceList(const tstring& exePath);
-    std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>> m_platforms;
-    std::vector<std::future<std::vector<std::pair<CL_PLATFORM_DEVICE, tstring>>>> m_platformAsync;
+    static std::vector<clcuFiltersAufDevInfo> createDeviceList(const tstring& exePath);
+    std::vector<clcuFiltersAufDevInfo> m_platforms;
+    std::vector<std::future<std::vector<clcuFiltersAufDevInfo>>> m_platformAsync;
 };
 
 class clcuFiltersAuf {
