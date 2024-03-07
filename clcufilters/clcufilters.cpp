@@ -1733,7 +1733,9 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     int y_pos = cb_resize_y + track_bar_delta_y * 4 + 8;
     int cx_y_pos = 0;
 
+    y_pos -= track_bar_delta_y / 4;
     move_track_bar(y_pos, col, col_width, CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH, CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH+1, track_bar_delta_y, dialog_rc);
+    y_pos += track_bar_delta_y / 4;
 
     //colorspace
     move_colorspace(y_pos, col, col_width, CLFILTER_CHECK_COLORSPACE_ENABLE, CLFILTER_CHECK_COLORSPACE_MAX, CLFILTER_TRACK_COLORSPACE_FIRST, CLFILTER_TRACK_COLORSPACE_MAX, track_bar_delta_y, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
