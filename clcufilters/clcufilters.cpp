@@ -1056,6 +1056,15 @@ void set_check_box_enable(int check_box, bool enable) {
     const int checkbox_idx = 1 + 5 * CLFILTER_TRACK_MAX;
     EnableWindow(child_hwnd[checkbox_idx + check_box], enable);
 }
+void set_track_bar_show_hide(int track_bar, bool show) {
+    for (int j = 0; j < 5; j++) {
+        ShowWindow(child_hwnd[track_bar * 5 + j + 1], show ? SW_SHOW : SW_HIDE);
+    }
+}
+void set_check_box_show_hide(int check_box, bool show) {
+    const int checkbox_idx = 1 + 5 * CLFILTER_TRACK_MAX;
+    ShowWindow(child_hwnd[checkbox_idx + check_box], show ? SW_SHOW : SW_HIDE);
+}
 
 static void update_cx(FILTER *fp) {
     if (cl_exdata.nnedi_nns == 0) {
@@ -1140,6 +1149,7 @@ static void init_filter_order_list(FILTER *fp) {
 
 }
 
+// CUDA関連のオプションの有効/無効の切り替え
 static void update_cuda_enable(FILTER *fp) {
     const auto dev = g_clfiltersAufDevices->findDevice(cl_exdata.cl_dev_id.s.platform, cl_exdata.cl_dev_id.s.device);
     const int cudaNvvfxSupport = dev && dev->pd.s.platform == CLCU_PLATFORM_CUDA && dev->cudaVer.first >= 7 ? 1 : 0; // nvvfxはCC7.0(Turing)以上が必要
@@ -1166,12 +1176,13 @@ static void update_cuda_enable(FILTER *fp) {
     }
 }
 
+// nvvfx supreres関連の表示/非表示切り替え
 static void update_nvvfx_superres(FILTER *fp) {
     const int resize_nvvfx_superres = (RGY_VPP_RESIZE_ALGO)cl_exdata.resize_algo == RGY_VPP_RESIZE_NVVFX_SUPER_RES ? 1 : 0;
     if (g_resize_nvvfx_superres != resize_nvvfx_superres) {
-        set_track_bar_enable(CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH, resize_nvvfx_superres);
-        EnableWindow(lb_nvvfx_superres_mode, resize_nvvfx_superres);
-        EnableWindow(cx_nvvfx_superres_mode, resize_nvvfx_superres);
+        set_track_bar_show_hide(CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH, resize_nvvfx_superres);
+        ShowWindow(lb_nvvfx_superres_mode, resize_nvvfx_superres ? SW_SHOW : SW_HIDE);
+        ShowWindow(cx_nvvfx_superres_mode, resize_nvvfx_superres ? SW_SHOW : SW_HIDE);
         g_resize_nvvfx_superres = resize_nvvfx_superres;
     }
 }
