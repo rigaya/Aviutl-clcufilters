@@ -171,6 +171,37 @@ nnediによるインタレ解除を行う。基本的には片方フィールド
       二乗誤差を最小にするよう学習された重みを用いる。
 
 
+### ノイズ除去 (nvvfx-denoise)
+[NVIDIA MAXINE VideoEffects SDK](https://github.com/NVIDIA/MAXINE-VFX-SDK)による、元映像の詳細の保持しながらノイズの除去を行う。
+主にウェブカメラによるノイズの除去を主眼とする。
+
+80p - 1080p までの入力解像度に対応しており、実行にはNVIDIAのTuring世代(RTX20xx)以降のGPUが必要。
+また、あわせて[MAXINE VideoEffects 用のモデルと実行モジュール](https://www.nvidia.com/broadcast-sdk-resources)をダウンロード・インストールしてからお使いください。
+
+- **パラメータ**
+  - 強度=&lt;int&gt;
+    - 0 - light 
+      弱めの効果で元映像の詳細の保持を重視する.
+
+    - 1 - strong
+      強めの効果でノイズ除去を重視する。
+
+### ノイズ除去 (nvvfx-artifact-reduction)
+[NVIDIA MAXINE VideoEffects SDK](https://github.com/NVIDIA/MAXINE-VFX-SDK)による映像の圧縮劣化を低減するフィルタ。
+オリジナルの動画の情報を保存しながら、入力ファイルのエンコード時の圧縮劣化を低減する。
+
+90p - 1080p までの入力解像度に対応しており、実行にはNVIDIAのTuring世代(RTX20xx)以降のGPUが必要。
+また、あわせて[MAXINE VideoEffects 用のモデルと実行モジュール](https://www.nvidia.com/broadcast-sdk-resources)をダウンロード・インストールしてからお使いください。
+
+- **parameters**
+  - モード=&lt;int&gt;
+    - 0 - light (default)  
+      弱めの効果で副作用を抑える。もとのファイルが比較的高ビットレートの場合に適している。
+
+    - 1 - strong
+      より効果を強くし、圧縮劣化の低減する。もとのファイルが低ビットレートで劣化が激しい場合に適している。
+
+
 ### ノイズ除去 (smooth)  
 
 - **パラメータ**
@@ -402,6 +433,11 @@ clcufilters には下記の課題があります。
 
 - トラックバーを32個より多く設置すると一部が反応しなくなる  
   なるべくトラックバーを使用しないよう、パラメータ数を抑制しました。Aviutlの制限なのかもしれません。  
+
+## お知らせ
+
+- nvvfx フィルタは、NVIDIA BROADCASTを使用しています。
+  <img src="./data/powered-by-nvidia-broadcast-lockup-rgb-blk-for-screen.png" width="480">
 
 ## コンパイル環境
 
