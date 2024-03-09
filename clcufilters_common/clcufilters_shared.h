@@ -36,7 +36,7 @@
 
 static const char *CLFILTER_SHARED_MEM_MESSAGE  = "clfilter_shared_mem_message_%08x";
 static const char *CLFILTER_SHARED_MEM_PRMS     = "clfilter_shared_mem_prms_%08x";
-static const char *CLFILTER_SHARED_MEM_FRAMES_IN = "clfilter_shared_mem_frames_%08x";
+static const char *CLFILTER_SHARED_MEM_FRAMES  = "clfilter_shared_mem_frames_in_%08x_%d";
 //static const char *CLFILTER_SHARED_MEM_FRAMES_OUT = "clfilter_shared_mem_frames_out_%08x";
 
 enum class clfitersMes : int32_t {

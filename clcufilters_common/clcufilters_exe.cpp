@@ -35,14 +35,16 @@ clcuFiltersExe::clcuFiltersExe() :
     m_eventMesEnd(nullptr),
     m_sharedMessage(),
     m_sharedPrms(),
-    m_sharedFramesIn(),
+    m_sharedFrames(),
     m_ppid(0),
     m_maxWidth(0),
     m_maxHeight(0),
     m_pitchBytes(0),
     m_log() { }
 clcuFiltersExe::~clcuFiltersExe() {
-    m_sharedFramesIn.reset();
+    for (auto& f : m_sharedFrames) {
+        f.reset();
+    }
 }
 
 int clcuFiltersExe::init(AviutlAufExeParams& prms) {
@@ -85,12 +87,14 @@ int clcuFiltersExe::init(AviutlAufExeParams& prms) {
     const int frameSize = m_pitchBytes * m_maxHeight;
     AddMessage(RGY_LOG_DEBUG, _T("Frame max %dx%d, pitch %d, size %d.\n"), m_maxWidth, m_maxHeight, m_pitchBytes, frameSize);
 
-    m_sharedFramesIn = std::make_unique<RGYSharedMemWin>(strsprintf(CLFILTER_SHARED_MEM_FRAMES_IN, m_ppid).c_str(), frameSize);
-    if (!m_sharedFramesIn || !m_sharedFramesIn->is_open()) {
-        AddMessage(RGY_LOG_ERROR, _T("Failed to open shared mem for frame(out).\n"));
-        return 1;
+    for (size_t i = 0; i < m_sharedFrames.size(); i++) {
+        m_sharedFrames[i] = std::make_unique<RGYSharedMemWin>(strsprintf(CLFILTER_SHARED_MEM_FRAMES, m_ppid, i).c_str(), frameSize);
+        if (!m_sharedFrames[i] || !m_sharedFrames[i]->is_open()) {
+            AddMessage(RGY_LOG_ERROR, _T("Failed to open shared mem for frame(%d).\n"), i);
+            return 1;
+        }
+        AddMessage(RGY_LOG_DEBUG, _T("Opened shared mem for frame(%d).\n"), i);
     }
-    AddMessage(RGY_LOG_DEBUG, _T("Opened shared mem for frame(out).\n"));
 
     //デバッグ用
 
@@ -170,7 +174,7 @@ int clcuFiltersExe::funcProc() {
             }
         }
         const auto& srcFrame = sharedPrms->srcFrame[i];
-        const RGYFrameInfo in = setFrameInfo(frameIn, srcFrame.width, srcFrame.height, m_sharedFramesIn->ptr());
+        const RGYFrameInfo in = setFrameInfo(frameIn, srcFrame.width, srcFrame.height, m_sharedFrames[current_frame % m_sharedFrames.size()]->ptr());
         // 受け取り中のエラーは保持するが、まずは最後まで受け取ることを優先する
         if (sts == RGY_ERR_NONE) {
             // 成功していた場合のみGPUに転送する
@@ -200,7 +204,7 @@ int clcuFiltersExe::funcProc() {
         }
     }
     // -- フレームの取得 -----------------------------------------------------------------
-    RGYFrameInfo out = setFrameInfo(current_frame, prm.outWidth, prm.outHeight, m_sharedFramesIn->ptr());
+    RGYFrameInfo out = setFrameInfo(current_frame, prm.outWidth, prm.outHeight, m_sharedFrames[(current_frame + 1) % m_sharedFrames.size()]->ptr());
     if (m_filter->getOutFrame(&out) != RGY_ERR_NONE) {
         return FALSE;
     }

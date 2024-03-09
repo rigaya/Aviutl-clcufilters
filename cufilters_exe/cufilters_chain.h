@@ -45,7 +45,11 @@ public:
     virtual ~cuFilterFrameBuffer();
 
     virtual std::unique_ptr<RGYFrame> allocateFrame(const int width, const int height) override;
+    std::unique_ptr<RGYFrame> allocateFrameHost(const int width, const int height);
+    RGYFrame *get_in_host(const int width, const int height);
+    RGYFrame *get_out_host(const int frameID);
 protected:
+    std::array<std::unique_ptr<RGYFrame>, bufSize> m_frameHost;
 };
 
 class cuDevice {
@@ -85,8 +89,6 @@ private:
 
     std::unique_ptr<cuDevice> m_cuDevice;
     std::unique_ptr<std::remove_pointer<CUcontext>::type, decltype(&cuCtxDestroy)> m_cuCtx;
-    std::unique_ptr<CUFrameBuf> m_frameHostIn;
-    std::unique_ptr<CUFrameBuf> m_frameHostOut;
     std::unique_ptr<cudaEvent_t, cudaevent_deleter> m_eventIn;
     std::unique_ptr<cudaEvent_t, cudaevent_deleter> m_eventOut;
     std::unique_ptr<cudaStream_t, cudastream_deleter> m_streamIn;

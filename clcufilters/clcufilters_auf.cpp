@@ -148,7 +148,7 @@ clcuFiltersAuf::clcuFiltersAuf() :
     m_eventMesEnd(unique_event(nullptr, CloseEvent)),
     m_sharedMessage(),
     m_sharedPrms(),
-    m_sharedFramesIn(),
+    m_sharedFrames(),
     m_sharedFramesPitchBytes(0),
     m_threadProcOut(),
     m_threadProcErr(),
@@ -180,7 +180,9 @@ clcuFiltersAuf::~clcuFiltersAuf() {
         m_threadProcErr.join();
     }
 
-    m_sharedFramesIn.reset();
+    for (auto& f : m_sharedFrames) {
+        f.reset();
+    }
     m_sharedFramesPitchBytes = 0;
     m_sharedPrms.reset();
     m_sharedMessage.reset();
@@ -235,12 +237,14 @@ int clcuFiltersAuf::runProcess(const HINSTANCE aufHandle, const int maxw, const 
     const int frameSize = m_sharedFramesPitchBytes * maxh;
     AddMessage(RGY_LOG_DEBUG, _T("Frame max %dx%d, pitch %d, size %d.\n"), maxw, maxh, m_sharedFramesPitchBytes, frameSize);
 
-    m_sharedFramesIn = std::make_unique<RGYSharedMemWin>(strsprintf(CLFILTER_SHARED_MEM_FRAMES_IN, aviutlPid).c_str(), frameSize);
-    if (!m_sharedFramesIn || !m_sharedFramesIn->is_open()) {
-        AddMessage(RGY_LOG_ERROR, _T("Failed to open shared mem for frame(out).\n"));
-        return 1;
+    for (size_t i = 0; i < m_sharedFrames.size(); i++) {
+        m_sharedFrames[i] = std::make_unique<RGYSharedMemWin>(strsprintf(CLFILTER_SHARED_MEM_FRAMES, aviutlPid, i).c_str(), frameSize);
+        if (!m_sharedFrames[i] || !m_sharedFrames[i]->is_open()) {
+            AddMessage(RGY_LOG_ERROR, _T("Failed to open shared mem for frame(in).\n"));
+            return 1;
+        }
+        AddMessage(RGY_LOG_DEBUG, _T("Opened shared mem for frame(%d).\n"), i);
     }
-    AddMessage(RGY_LOG_DEBUG, _T("Opened shared mem for frame.\n"));
 
     //初期化
     initShared();

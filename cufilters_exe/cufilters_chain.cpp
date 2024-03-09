@@ -48,6 +48,12 @@ cuFilterFrameBuffer::cuFilterFrameBuffer() :
 }
 
 cuFilterFrameBuffer::~cuFilterFrameBuffer() {
+    for (auto& f : m_frameHost) {
+        if (f) {
+            resetMappedFrame(f.get());
+        }
+        f.reset();
+    }
 }
 
 std::unique_ptr<RGYFrame> cuFilterFrameBuffer::allocateFrame(const int width, const int height) {
@@ -56,6 +62,30 @@ std::unique_ptr<RGYFrame> cuFilterFrameBuffer::allocateFrame(const int width, co
         uptr.reset();
     }
     return uptr;
+}
+
+std::unique_ptr<RGYFrame> cuFilterFrameBuffer::allocateFrameHost(const int width, const int height) {
+    auto uptr = std::make_unique<CUFrameBuf>(width, height, RGY_CSP_YUV444_16);
+    if (uptr->allocHost() != RGY_ERR_NONE) {
+        uptr.reset();
+    }
+    return uptr;
+}
+
+RGYFrame *cuFilterFrameBuffer::get_in_host(const int width, const int height) {
+    if (!m_frameHost[m_in] || m_frameHost[m_in]->width() != width || m_frameHost[m_in]->height() != height) {
+        m_frameHost[m_in] = allocateFrameHost(width, height);
+    }
+    return m_frameHost[m_in].get();
+}
+
+RGYFrame *cuFilterFrameBuffer::get_out_host(const int frameID) {
+    for (int iframe = 0; iframe < m_frame.size(); iframe++) {
+        if (m_frame[iframe] && m_frame[iframe]->inputFrameId() == frameID) {
+            return m_frameHost[iframe].get();
+        }
+    }
+    return nullptr;
 }
 
 cuDevice::cuDevice() :
@@ -169,8 +199,6 @@ cuFilterChain::cuFilterChain() :
     clcuFilterChain(),
     m_cuDevice(),
     m_cuCtx(std::unique_ptr<std::remove_pointer<CUcontext>::type, decltype(&cuCtxDestroy)>(nullptr, cuCtxDestroy)),
-    m_frameHostIn(),
-    m_frameHostOut(),
     m_eventIn(),
     m_eventOut(),
     m_streamIn(),
@@ -542,28 +570,25 @@ RGY_ERR cuFilterChain::sendInFrame(const RGYFrameInfo *pInputFrame) {
     if (!frameDevIn) {
         return RGY_ERR_NULL_PTR;
     }
+
+    auto frameHostIn = dynamic_cast<CUFrameBuf*>(dynamic_cast<cuFilterFrameBuffer*>(m_frameIn.get())->get_in_host(pInputFrame->width, pInputFrame->height));
+    if (!frameHostIn) {
+        return RGY_ERR_NULL_PTR;
+    }
     m_frameIn->in_to_next();
 
-    if (!m_frameHostIn || m_frameHostIn->width() != pInputFrame->width || m_frameHostIn->height() != pInputFrame->height) {
-        m_frameHostIn = std::make_unique<CUFrameBuf>(pInputFrame->width, pInputFrame->height, RGY_CSP_YUV444_16);
-        auto sts = m_frameHostIn->allocHost();
-        if (sts != RGY_ERR_NONE) {
-            PrintMes(RGY_LOG_ERROR, _T("failed to allocate frame for input buffer: %s.\n"), get_err_mes(sts));
-            return RGY_ERR_MEMORY_ALLOC;
-        }
-    }
-
     copyFramePropWithoutCsp(&frameDevIn->frame, pInputFrame);
+    copyFramePropWithoutCsp(&frameHostIn->frame, pInputFrame);
 
     {
         //YC48->YUV444(16bit)
         int crop[4] = { 0 };
         m_convert_yc48_to_yuv444_16->run(false,
-            m_frameHostIn->ptr().data(), (const void **)&pInputFrame->ptr[0],
+            frameHostIn->ptr().data(), (const void **)&pInputFrame->ptr[0],
             pInputFrame->width, pInputFrame->pitch[0], pInputFrame->pitch[0],
-            m_frameHostIn->pitch(RGY_PLANE_Y), pInputFrame->height, m_frameHostIn->height(), crop);
+            frameHostIn->pitch(RGY_PLANE_Y), pInputFrame->height, frameHostIn->height(), crop);
     }
-    auto err = copyFrameAsync(&frameDevIn->frame, &m_frameHostIn->frame, *m_streamIn.get());
+    auto err = copyFrameAsync(&frameDevIn->frame, &frameHostIn->frame, *m_streamIn.get());
     if (err != RGY_ERR_NONE) {
         PrintMes(RGY_LOG_ERROR, _T("failed to queue map input buffer: %s.\n"), get_err_mes(err));
         return err;
@@ -585,6 +610,11 @@ RGY_ERR cuFilterChain::getOutFrame(RGYFrameInfo *pOutputFrame) {
     if (!frameDevOut) {
         return RGY_ERR_NULL_PTR;
     }
+
+    auto frameHostOut = dynamic_cast<CUFrameBuf*>(dynamic_cast<cuFilterFrameBuffer*>(m_frameOut.get())->get_out_host(pOutputFrame->inputFrameId));
+    if (!frameHostOut) {
+        return RGY_ERR_NULL_PTR;
+    }
     m_frameOut->out_to_next();
 
     if (!frameDevOut) {
@@ -600,9 +630,9 @@ RGY_ERR cuFilterChain::getOutFrame(RGYFrameInfo *pOutputFrame) {
         //YUV444(16bit)->YC48
         int crop[4] = { 0 };
         m_convert_yuv444_16_to_yc48->run(false,
-            (void **)&pOutputFrame->ptr[0], (const void **)m_frameHostOut->ptr().data(),
-            m_frameHostOut->width(), m_frameHostOut->pitch(RGY_PLANE_Y), m_frameHostOut->pitch(RGY_PLANE_Y),
-            pOutputFrame->pitch[0], m_frameHostOut->height(), pOutputFrame->height, crop);
+            (void **)&pOutputFrame->ptr[0], (const void **)frameHostOut->ptr().data(),
+            frameHostOut->width(), frameHostOut->pitch(RGY_PLANE_Y), frameHostOut->pitch(RGY_PLANE_Y),
+            pOutputFrame->pitch[0], frameHostOut->height(), pOutputFrame->height, crop);
     }
     return RGY_ERR_NONE;
 }
@@ -623,6 +653,7 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
     m_prm = prm;
 
     auto frameDevOut = dynamic_cast<CUFrameBuf*>(m_frameOut->get_in(prm.outWidth, prm.outHeight));
+    auto frameHostOut = dynamic_cast<CUFrameBuf*>(dynamic_cast<cuFilterFrameBuffer*>(m_frameOut.get())->get_in_host(prm.outWidth, prm.outHeight));
     m_frameOut->in_to_next();
     CUDA_DEBUG_SYNC;
 
@@ -671,6 +702,7 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
         }
         CUDA_DEBUG_SYNC;
         copyFramePropWithoutCsp(&frameDevOut->frame, &frameInfo);
+        copyFramePropWithoutCsp(&frameHostOut->frame, &frameInfo);
     } else {
         auto& lastFilter = m_filters[m_filters.size() - 1];
         int nOutFrames = 0;
@@ -685,16 +717,6 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
         CUDA_DEBUG_SYNC;
     }
 
-    if (!m_frameHostOut || m_frameHostOut->width() != frameDevOut->frame.width || m_frameHostOut->height() != frameDevOut->frame.height) {
-        m_frameHostOut = std::make_unique<CUFrameBuf>(frameDevOut->frame.width, frameDevOut->frame.height, RGY_CSP_YUV444_16);
-        auto sts = m_frameHostOut->allocHost();
-        if (sts != RGY_ERR_NONE) {
-            PrintMes(RGY_LOG_ERROR, _T("failed to allocate frame for output buffer: %s.\n"), get_err_mes(sts));
-            return sts;
-        }
-        CUDA_DEBUG_SYNC;
-    }
-
     err = err_to_rgy(cudaEventRecord(*m_eventOut.get(), streamFiltering));
     if (err != RGY_ERR_NONE) {
         PrintMes(RGY_LOG_ERROR, _T("proc: cudaEventRecord: %s.\n"), get_err_mes(err));
@@ -705,7 +727,7 @@ RGY_ERR cuFilterChain::proc(const int frameID, const clFilterChainParam& prm) {
         PrintMes(RGY_LOG_ERROR, _T("proc: cudaStreamWaitEvent: %s.\n"), get_err_mes(err));
         return err;
     }
-    err = copyFrameAsync(&m_frameHostOut->frame, &frameDevOut->frame, *m_streamOut.get());
+    err = copyFrameAsync(&frameHostOut->frame, &frameDevOut->frame, *m_streamOut.get());
     if (err != RGY_ERR_NONE) {
         PrintMes(RGY_LOG_ERROR, _T("failed to copy output frame: %s.\n"), get_err_mes(err));
         return err;
