@@ -33,6 +33,7 @@
 #include "rgy_filter_colorspace.h"
 #include "rgy_filter_nnedi.h"
 #include "rgy_filter_denoise_knn.h"
+#include "rgy_filter_denoise_nlmeans.h"
 #include "rgy_filter_denoise_pmd.h"
 #include "rgy_filter_denoise_dct.h"
 #include "rgy_filter_smooth.h"
@@ -208,6 +209,25 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilterBase>& filter
         auto sts = filter->init(param, m_log);
         if (sts != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("failed to init knn.\n"));
+            return sts;
+        }
+        //入力フレーム情報を更新
+        inputFrame = param->frameOut;
+    }
+    //ノイズ除去 (nlmeans)
+    if (filterType == VppType::CL_DENOISE_NLMEANS) {
+        if (!filter) {
+            //フィルタチェーンに追加
+            filter.reset(new RGYFilterDenoiseNLMeans(m_cl));
+        }
+        std::shared_ptr<RGYFilterParamDenoiseNLMeans> param(new RGYFilterParamDenoiseNLMeans());
+        param->nlmeans = m_prm.vpp.nlmeans;
+        param->frameIn = inputFrame;
+        param->frameOut = inputFrame;
+        param->bOutOverwrite = false;
+        auto sts = filter->init(param, m_log);
+        if (sts != RGY_ERR_NONE) {
+            PrintMes(RGY_LOG_ERROR, _T("failed to init nlmeans.\n"));
             return sts;
         }
         //入力フレーム情報を更新

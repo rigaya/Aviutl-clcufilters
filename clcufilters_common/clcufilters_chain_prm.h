@@ -47,6 +47,7 @@ static const char *FILTER_NAME_NNEDI          = _T("nnedi");
 static const char *FILTER_NAME_NVVFX_DENOISE  = _T("ノイズ除去 (nvvfx-denoise)");
 static const char *FILTER_NAME_NVVFX_ARTIFACT_REDUCTION = _T("ノイズ除去 (nvvfx-artifact-reduction)");
 static const char *FILTER_NAME_DENOISE_KNN    = _T("ノイズ除去 (knn)");
+static const char *FILTER_NAME_DENOISE_NLMEANS = _T("ノイズ除去 (nlmeans)");
 static const char *FILTER_NAME_DENOISE_PMD    = _T("ノイズ除去 (pmd)");
 static const char *FILTER_NAME_DENOISE_DCT    = _T("ノイズ除去 (denoise-dct)");
 static const char *FILTER_NAME_DENOISE_SMOOTH = _T("ノイズ除去 (smooth)");
@@ -62,6 +63,7 @@ static const char *FILTER_NAME_NNEDI          = _T("nnedi");
 static const char *FILTER_NAME_NVVFX_DENOISE  = _T("nvvfx-denoise");
 static const char *FILTER_NAME_NVVFX_ARTIFACT_REDUCTION = _T("nvvfx-artifact-reduction");
 static const char *FILTER_NAME_DENOISE_KNN    = _T("knn");
+static const char *FILTER_NAME_DENOISE_NLMEANS = _T("nlmeans");
 static const char *FILTER_NAME_DENOISE_PMD    = _T("pmd");
 static const char *FILTER_NAME_DENOISE_DCT    = _T("denoise-dct");
 static const char *FILTER_NAME_DENOISE_SMOOTH = _T("smooth");
@@ -82,6 +84,7 @@ static const auto filterList = make_array<std::pair<const TCHAR*, VppType>>(
     FILTER_NAME_NVVFX(DENOISE),
     FILTER_NAME_NVVFX(ARTIFACT_REDUCTION),
     FILTER_NAME(DENOISE_KNN),
+    FILTER_NAME(DENOISE_NLMEANS),
     FILTER_NAME(DENOISE_PMD),
     FILTER_NAME(DENOISE_DCT),
     FILTER_NAME(DENOISE_SMOOTH),

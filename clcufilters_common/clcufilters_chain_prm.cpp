@@ -220,6 +220,7 @@ std::vector<VppType> clFilterChainParam::getFilterChain(const bool resizeRequire
            || (vpp.smooth.enable     && filterType == VppType::CL_DENOISE_SMOOTH)
            || (vpp.dct.enable        && filterType == VppType::CL_DENOISE_DCT)
            || (vpp.knn.enable        && filterType == VppType::CL_DENOISE_KNN)
+           || (vpp.nlmeans.enable    && filterType == VppType::CL_DENOISE_NLMEANS)
            || (vpp.pmd.enable        && filterType == VppType::CL_DENOISE_PMD)
            || (resizeRequired        && filterType == VppType::CL_RESIZE)
            || (vpp.unsharp.enable    && filterType == VppType::CL_UNSHARP)

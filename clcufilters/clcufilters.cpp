@@ -110,6 +110,13 @@ enum {
     ID_LB_DENOISE_DCT_BLOCK_SIZE,
     ID_CX_DENOISE_DCT_BLOCK_SIZE,
 
+    ID_LB_DENOISE_NLMEANS_PATCH,
+    ID_CX_DENOISE_NLMEANS_PATCH,
+    ID_LB_DENOISE_NLMEANS_SEARCH,
+    ID_CX_DENOISE_NLMEANS_SEARCH,
+    ID_LB_DENOISE_NLMEANS_FP16,
+    ID_CX_DENOISE_NLMEANS_FP16,
+
     ID_LB_SMOOTH_QUALITY,
     ID_CX_SMOOTH_QUALITY,
 
@@ -162,7 +169,11 @@ struct CLFILTER_EXDATA {
     int nvvfx_superres_mode;
     int nvvfx_superres_strength;
 
-    char reserved[620];
+    int nlmeans_patch;
+    int nlmeans_search;
+    VppNLMeansFP16Opt nlmeans_fp16;
+
+    char reserved[608];
 };
 # pragma pack()
 static const size_t exdatasize = sizeof(CLFILTER_EXDATA);
@@ -214,6 +225,11 @@ static void cl_exdata_set_default() {
     VppKnn knn;
     cl_exdata.knn_radius = knn.radius;
 
+    VppNLMeans nlmeans;
+    cl_exdata.nlmeans_patch = nlmeans.patchSize;
+    cl_exdata.nlmeans_search = nlmeans.searchSize;
+    cl_exdata.nlmeans_fp16 = nlmeans.fp16;
+
     VppPmd pmd;
     cl_exdata.pmd_apply_count = pmd.applyCount;
 
@@ -254,6 +270,9 @@ static const char *LB_CX_NVVFX_ARTIFACT_REDUCTION_MODE = "モード";
 static const char *LB_CX_NVVFX_SUPRERES_MODE = "モード";
 static const char *LB_CX_DENOISE_DCT_STEP = "品質";
 static const char *LB_CX_DENOISE_DCT_BLOCK_SIZE = "ブロックサイズ";
+static const char *LB_CX_DENOISE_NLMEANS_PATCH = "パッチサイズ";
+static const char *LB_CX_DENOISE_NLMEANS_SEARCH = "探索範囲";
+static const char *LB_CX_DENOISE_NLMEANS_FP16 = "fp16";
 static const char *LB_CX_SMOOTH_QUALITY = "品質";
 static const char *LB_CX_KNN_RADIUS = "適用半径";
 static const char *LB_CX_UNSHARP_RADIUS = "範囲";
@@ -279,6 +298,9 @@ static const char *LB_CX_NVVFX_ARTIFACT_REDUCTION_MODE = "mode";
 static const char *LB_CX_NVVFX_SUPRERES_MODE = "mode";
 static const char *LB_CX_DENOISE_DCT_STEP = "step";
 static const char *LB_CX_DENOISE_DCT_BLOCK_SIZE = "blocksize";
+static const char *LB_CX_DENOISE_NLMEANS_PATCH = "patch size";
+static const char *LB_CX_DENOISE_NLMEANS_SEARCH = "search size";
+static const char *LB_CX_DENOISE_NLMEANS_FP16 = "fp16";
 static const char *LB_CX_SMOOTH_QUALITY = "quality";
 static const char *LB_CX_KNN_RADIUS = "radius";
 static const char *LB_CX_UNSHARP_RADIUS = "radius";
@@ -299,6 +321,7 @@ const TCHAR *track_name_ja[] = {
     "sigma", //denoise-dct
     "QP", // smooth
     "強さ", "ブレンド度合い", "ブレンド閾値", //knn
+    "分散", "強度", //nlmeans
     "適用回数", "強さ", "閾値", //pmd
     "強さ", "閾値", //unsharp
     "特性", "閾値", "黒", "白", //エッジレベル調整
@@ -315,6 +338,7 @@ const TCHAR *track_name_en[] = {
     "sigma", //denoise-dct
     "QP", // smooth
     "strength", "lerp", "th_lerp", //knn
+    "sigma", "h", //nlmeans
     "apply cnt", "strength", "threshold", //pmd
     "weight", "threshold", //unsharp
     "strength", "threshold", "black", "white", //エッジレベル調整
@@ -365,7 +389,12 @@ enum {
     CLFILTER_TRACK_KNN_TH_LERP,
     CLFILTER_TRACK_KNN_MAX,
 
-    CLFILTER_TRACK_PMD_FIRST = CLFILTER_TRACK_KNN_MAX,
+    CLFILTER_TRACK_NLMEANS_FIRST = CLFILTER_TRACK_KNN_MAX,
+    CLFILTER_TRACK_NLMEANS_SIGMA = CLFILTER_TRACK_NLMEANS_FIRST,
+    CLFILTER_TRACK_NLMEANS_H,
+    CLFILTER_TRACK_NLMEANS_MAX,
+
+    CLFILTER_TRACK_PMD_FIRST = CLFILTER_TRACK_NLMEANS_MAX,
     CLFILTER_TRACK_PMD_APPLY_COUNT = CLFILTER_TRACK_PMD_FIRST,
     CLFILTER_TRACK_PMD_STRENGTH,
     CLFILTER_TRACK_PMD_THRESHOLD,
@@ -420,6 +449,7 @@ int track_default[] = {
     40, //denoise-dct
     12, //smooth
     8, 20, 80, //knn
+    5, 50, //nlmeans
     2, 100, 100, //pmd
     5, 10, //unsharp
     5, 20, 0, 0, //エッジレベル調整
@@ -437,6 +467,7 @@ int track_s[] = {
     0, //denoise-dct
     1, //smooth
     0,0,0, //knn
+    1,1,//nlmeans
     1,0,0, //pmd
     0,0, //unsharp
     -31,0,0,0, //エッジレベル調整
@@ -454,6 +485,7 @@ int track_e[] = {
     500, //denoise-dct
     63, //smooth
     100, 100, 100, //knn
+    1000,1000, //nlmeans
     10, 100, 255, //pmd
     100, 255, //unsharp
     31, 255, 31, 31, //エッジレベル調整
@@ -483,6 +515,7 @@ const TCHAR *check_name_ja[] = {
     "ノイズ除去 (denoise-dct)",
     "ノイズ除去 (smooth)",
     "ノイズ除去 (knn)",
+    "ノイズ除去 (nlmeans)",
     "ノイズ除去 (pmd)",
     "unsharp",
     "エッジレベル調整",
@@ -503,6 +536,7 @@ const TCHAR *check_name_en[] = {
     "denoise-dct",
     "smooth",
     "knn",
+    "nlmeans",
     "pmd",
     "unsharp",
     "edgelevel",
@@ -551,7 +585,10 @@ enum {
     CLFILTER_CHECK_KNN_ENABLE = CLFILTER_CHECK_SMOOTH_MAX,
     CLFILTER_CHECK_KNN_MAX,
 
-    CLFILTER_CHECK_PMD_ENABLE = CLFILTER_CHECK_KNN_MAX,
+    CLFILTER_CHECK_NLMEANS_ENABLE = CLFILTER_CHECK_KNN_MAX,
+    CLFILTER_CHECK_NLMEANS_MAX,
+
+    CLFILTER_CHECK_PMD_ENABLE = CLFILTER_CHECK_NLMEANS_MAX,
     CLFILTER_CHECK_PMD_MAX,
 
     CLFILTER_CHECK_UNSHARP_ENABLE = CLFILTER_CHECK_PMD_MAX,
@@ -592,6 +629,7 @@ int check_default[] = {
     0, // denoise-dct
     0, // smooth
     0, // knn
+    0, // nlmeans
     0, // pmd
     0, // unsharp
     0, // edgelevel
@@ -732,6 +770,12 @@ static HWND cx_nvvfx_superres_mode;
 
 static HWND lb_knn_radius;
 static HWND cx_knn_radius;
+static HWND lb_nlmeans_patch;
+static HWND cx_nlmeans_patch;
+static HWND lb_nlmeans_search;
+static HWND cx_nlmeans_search;
+static HWND lb_nlmeans_fp16;
+static HWND cx_nlmeans_fp16;
 static HWND lb_denoise_dct_step;
 static HWND cx_denoise_dct_step;
 static HWND lb_denoise_dct_block_size;
@@ -794,6 +838,12 @@ static void set_cl_exdata(const HWND hwnd, const int value) {
         cl_exdata.nvvfx_superres_mode = value;
     } else if (hwnd == cx_knn_radius) {
         cl_exdata.knn_radius = value;
+    } else if (hwnd == cx_nlmeans_patch) {
+        cl_exdata.nlmeans_patch = value;
+    } else if (hwnd == cx_nlmeans_search) {
+        cl_exdata.nlmeans_search = value;
+    } else if (hwnd == cx_nlmeans_fp16) {
+        cl_exdata.nlmeans_fp16 = (VppNLMeansFP16Opt)value;
     } else if (hwnd == cx_denoise_dct_step) {
         cl_exdata.denoise_dct_step = value;
     } else if (hwnd == cx_denoise_dct_block_size) {
@@ -1093,6 +1143,9 @@ static void update_cx(FILTER *fp) {
     select_combo_item(cx_nvvfx_artifact_reduction_mode, cl_exdata.nvvfx_artifact_reduction_mode);
     select_combo_item(cx_nvvfx_superres_mode,         cl_exdata.nvvfx_superres_mode);
     select_combo_item(cx_knn_radius,                  cl_exdata.knn_radius);
+    select_combo_item(cx_nlmeans_patch,               cl_exdata.nlmeans_patch);
+    select_combo_item(cx_nlmeans_search,              cl_exdata.nlmeans_search);
+    select_combo_item(cx_nlmeans_fp16,                cl_exdata.nlmeans_fp16);
     select_combo_item(cx_denoise_dct_step,            cl_exdata.denoise_dct_step);
     select_combo_item(cx_denoise_dct_block_size,      cl_exdata.denoise_dct_block_size);
     select_combo_item(cx_smooth_quality,              cl_exdata.smooth_quality);
@@ -1460,6 +1513,33 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
                 break;
             }
             break;
+        case ID_CX_DENOISE_NLMEANS_PATCH: // コンボボックス
+            switch (HIWORD(wparam)) {
+            case CBN_SELCHANGE: // 選択変更
+                change_cx_param(cx_nlmeans_patch);
+                return TRUE; //TRUEを返すと画像処理が更新される
+            default:
+                break;
+            }
+            break;
+        case ID_CX_DENOISE_NLMEANS_SEARCH: // コンボボックス
+            switch (HIWORD(wparam)) {
+            case CBN_SELCHANGE: // 選択変更
+                change_cx_param(cx_nlmeans_search);
+                return TRUE; //TRUEを返すと画像処理が更新される
+            default:
+                break;
+            }
+            break;
+        case ID_CX_DENOISE_NLMEANS_FP16: // コンボボックス
+            switch (HIWORD(wparam)) {
+            case CBN_SELCHANGE: // 選択変更
+                change_cx_param(cx_nlmeans_fp16);
+                return TRUE; //TRUEを返すと画像処理が更新される
+            default:
+                break;
+            }
+            break;
         case ID_CX_UNSHARP_RADIUS: // コンボボックス
             switch (HIWORD(wparam)) {
             case CBN_SELCHANGE: // 選択変更
@@ -1807,6 +1887,12 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     move_group(y_pos, col, col_width, CLFILTER_CHECK_KNN_ENABLE, CLFILTER_CHECK_KNN_MAX, CLFILTER_TRACK_KNN_FIRST, CLFILTER_TRACK_KNN_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
     add_combobox(cx_knn_radius, ID_CX_KNN_RADIUS, lb_knn_radius, ID_LB_KNN_RADIUS, LB_CX_KNN_RADIUS, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_raduis);
 
+    //nlmeans
+    move_group(y_pos, col, col_width, CLFILTER_CHECK_NLMEANS_ENABLE, CLFILTER_CHECK_NLMEANS_MAX, CLFILTER_TRACK_NLMEANS_FIRST, CLFILTER_TRACK_NLMEANS_MAX, track_bar_delta_y, ADD_CX_FIRST, 3, cx_y_pos, checkbox_idx, dialog_rc);
+    add_combobox(cx_nlmeans_patch,  ID_CX_DENOISE_NLMEANS_PATCH,  lb_nlmeans_patch,  ID_LB_DENOISE_NLMEANS_PATCH,  LB_CX_DENOISE_NLMEANS_PATCH,  col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_nlmeans_block_size);
+    add_combobox(cx_nlmeans_search, ID_CX_DENOISE_NLMEANS_SEARCH, lb_nlmeans_search, ID_LB_DENOISE_NLMEANS_SEARCH, LB_CX_DENOISE_NLMEANS_SEARCH, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_nlmeans_block_size);
+    add_combobox(cx_nlmeans_fp16,   ID_CX_DENOISE_NLMEANS_FP16,   lb_nlmeans_fp16,   ID_LB_DENOISE_NLMEANS_FP16,   LB_CX_DENOISE_NLMEANS_FP16,   col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_nlmeans_fp16);
+
     //pmd
     move_group(y_pos, col, col_width, CLFILTER_CHECK_PMD_ENABLE, CLFILTER_CHECK_PMD_MAX, CLFILTER_TRACK_PMD_FIRST, CLFILTER_TRACK_PMD_MAX, track_bar_delta_y, ADD_CX_FIRST, 0, cx_y_pos, checkbox_idx, dialog_rc);
 
@@ -1993,6 +2079,14 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp, const FILTER_PRO
     prm.vpp.knn.strength       = (float)fp->track[CLFILTER_TRACK_KNN_STRENGTH] * 0.01f;
     prm.vpp.knn.lerpC          = (float)fp->track[CLFILTER_TRACK_KNN_LERP] * 0.01f;
     prm.vpp.knn.lerp_threshold = (float)fp->track[CLFILTER_TRACK_KNN_TH_LERP] * 0.01f;
+
+    //nlmeans
+    prm.vpp.nlmeans.enable     = fp->check[CLFILTER_CHECK_NLMEANS_ENABLE] != 0;
+    prm.vpp.nlmeans.patchSize  = cl_exdata.nlmeans_patch;
+    prm.vpp.nlmeans.searchSize = cl_exdata.nlmeans_search;
+    prm.vpp.nlmeans.sigma      = (float)fp->track[CLFILTER_TRACK_NLMEANS_SIGMA] * 0.001f;
+    prm.vpp.nlmeans.h          = (float)fp->track[CLFILTER_TRACK_NLMEANS_H] * 0.001f;
+    prm.vpp.nlmeans.fp16       = cl_exdata.nlmeans_fp16;
 
     //pmd
     prm.vpp.pmd.enable         = fp->check[CLFILTER_CHECK_PMD_ENABLE] != 0;

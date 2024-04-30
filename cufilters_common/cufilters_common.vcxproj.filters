@@ -89,6 +89,9 @@
     <ClInclude Include="rgy_nvrtc.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="NVEncFilterDenoiseNLMeans.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="NVEncFilterConvolution3d.cu">
@@ -128,6 +131,9 @@
       <Filter>ソース ファイル</Filter>
     </CudaCompile>
     <CudaCompile Include="NVEncFilterWarpsharp.cu">
+      <Filter>ソース ファイル</Filter>
+    </CudaCompile>
+    <CudaCompile Include="NVEncFilterDenoiseNLMeans.cu">
       <Filter>ソース ファイル</Filter>
     </CudaCompile>
   </ItemGroup>

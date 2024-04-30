@@ -32,6 +32,7 @@
 #include "NVEncFilterColorspace.h"
 #include "NVEncFilterNnedi.h"
 #include "NVEncFilterDenoiseKnn.h"
+#include "NVEncFilterDenoiseNLMeans.h"
 #include "NVEncFilterDenoisePmd.h"
 #include "NVEncFilterDenoiseDct.h"
 #include "NVEncFilterNvvfx.h"
@@ -371,6 +372,26 @@ RGY_ERR cuFilterChain::configureOneFilter(std::unique_ptr<RGYFilterBase>& filter
         auto sts = filter->init(param, m_log);
         if (sts != RGY_ERR_NONE) {
             PrintMes(RGY_LOG_ERROR, _T("failed to init knn.\n"));
+            return sts;
+        }
+        //入力フレーム情報を更新
+        inputFrame = param->frameOut;
+    }
+    //ノイズ除去 (nlmeans)
+    if (filterType == VppType::CL_DENOISE_NLMEANS) {
+        if (!filter) {
+            //フィルタチェーンに追加
+            filter.reset(new NVEncFilterDenoiseNLMeans());
+        }
+        std::shared_ptr<NVEncFilterParamDenoiseNLMeans> param(new NVEncFilterParamDenoiseNLMeans());
+        param->nlmeans = m_prm.vpp.nlmeans;
+        if (m_cuDevice) param->compute_capability = m_cuDevice->getCUDAVer();
+        param->frameIn = inputFrame;
+        param->frameOut = inputFrame;
+        param->bOutOverwrite = false;
+        auto sts = filter->init(param, m_log);
+        if (sts != RGY_ERR_NONE) {
+            PrintMes(RGY_LOG_ERROR, _T("failed to init nlmeans.\n"));
             return sts;
         }
         //入力フレーム情報を更新

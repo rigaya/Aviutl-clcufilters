@@ -2006,6 +2006,96 @@ int parse_one_vpp_option(const TCHAR *option_name, const TCHAR *strInput[], int 
         }
         return 0;
     }
+    if (IS_OPTION("vpp-nlmeans")) {
+        vpp->nlmeans.enable = true;
+        if (i + 1 >= nArgNum || strInput[i + 1][0] == _T('-')) {
+            return 0;
+        }
+        i++;
+
+        const auto paramList = std::vector<std::string>{ "sigma", "patch", "search", "h", "fp16", "shared_mem" };
+
+        for (const auto& param : split(strInput[i], _T(","))) {
+            auto pos = param.find_first_of(_T("="));
+            if (pos != std::string::npos) {
+                auto param_arg = param.substr(0, pos);
+                auto param_val = param.substr(pos + 1);
+                param_arg = tolowercase(param_arg);
+                if (param_arg == _T("enable")) {
+                    bool b = false;
+                    if (!cmd_string_to_bool(&b, param_val)) {
+                        vpp->nlmeans.enable = b;
+                    } else {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
+                if (param_arg == _T("patch")) {
+                    try {
+                        vpp->nlmeans.patchSize = std::stoi(param_val);
+                    } catch (...) {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
+                if (param_arg == _T("search")) {
+                    try {
+                        vpp->nlmeans.searchSize = std::stoi(param_val);
+                    } catch (...) {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
+                if (param_arg == _T("sigma")) {
+                    try {
+                        vpp->nlmeans.sigma = std::stof(param_val);
+                    } catch (...) {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
+                if (param_arg == _T("h")) {
+                    try {
+                        vpp->nlmeans.h = std::stof(param_val);
+                    } catch (...) {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
+                if (param_arg == _T("fp16")) {
+                    int value = 0;
+                    if (get_list_value(list_vpp_nlmeans_fp16, param_val.c_str(), &value)) {
+                        vpp->nlmeans.fp16 = (VppNLMeansFP16Opt)value;
+                    } else {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val, list_vpp_fp_prec);
+                        return 1;
+                    }
+                    continue;
+                }
+                if (param_arg == _T("shared_mem")) {
+                    bool b = false;
+                    if (!cmd_string_to_bool(&b, param_val)) {
+                        vpp->nlmeans.sharedMem = b;
+                    } else {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
+                print_cmd_error_unknown_opt_param(option_name, param_arg, paramList);
+                return 1;
+            } else {
+                print_cmd_error_unknown_opt_param(option_name, param, paramList);
+                return 1;
+            }
+        }
+        return 0;
+    }
     if (IS_OPTION("vpp-pmd") && ENABLE_VPP_FILTER_PMD) {
         vpp->pmd.enable = true;
         if (i+1 >= nArgNum || strInput[i+1][0] == _T('-')) {
@@ -3369,12 +3459,25 @@ int parse_one_input_option(const TCHAR *option_name, const TCHAR *strInput[], in
                     }
                     continue;
                 }
+                if (param_arg == _T("ignore_sar")) {
+                    bool b = false;
+                    if (!cmd_string_to_bool(&b, param_val)) {
+                        inprm->ignoreSAR = b;
+                    } else {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
                 print_cmd_error_unknown_opt_param(option_name, param_arg, paramList);
                 return 1;
+            } else if (param == _T("ignore_sar")) {
+                inprm->ignoreSAR = true;
+                continue;
             } else {
                 int a[2] = { 0 };
-                if (   2 == _stscanf_s(strInput[i], _T("%dx%d"), &a[0], &a[1])
-                    || 2 == _stscanf_s(strInput[i], _T("%d:%d"), &a[0], &a[1])) {
+                if (   2 == _stscanf_s(param.c_str(), _T("%dx%d"), &a[0], &a[1])
+                    || 2 == _stscanf_s(param.c_str(), _T("%d:%d"), &a[0], &a[1])) {
                     input->dstWidth  = a[0];
                     input->dstHeight = a[1];
                     continue;
@@ -3552,7 +3655,7 @@ int parse_log_level_param(const TCHAR *option_name, const TCHAR *arg_value, RGYP
 }
 
 int parse_one_audio_param(AudioSelect& chSel, const tstring& str, const TCHAR *option_name) {
-    const auto paramList = std::vector<std::string>{ "codec", "bitrate", "quality", "samplerate", "delay", "profile", "disposition", "filter", "dec_prm", "enc_prm", "lang", "select-codec", "metadata", "bsf", "copy" };
+    const auto paramList = std::vector<std::string>{ "codec", "bitrate", "quality", "samplerate", "delay", "profile", "disposition", "filter", "dec_prm", "enc_prm", "lang", "select-codec", "metadata", "bsf", "resampler", "copy" };
     for (const auto &param : split(str, _T(";"))) {
         auto pos = param.find_first_of(_T("="));
         if (pos != std::string::npos) {
@@ -3604,6 +3707,8 @@ int parse_one_audio_param(AudioSelect& chSel, const tstring& str, const TCHAR *o
                 chSel.selectCodec = tchar_to_string(param_val);
             } else if (param_arg == _T("metadata")) {
                 chSel.metadata.push_back(param_val);
+            } else if (param_arg == _T("resampler")) {
+                chSel.resamplerPrm = tchar_to_string(param_val);
             } else if (param_arg == _T("bsf")) {
                 chSel.bsf = param_val;
             } else {
@@ -4338,15 +4443,22 @@ int parse_one_common_option(const TCHAR *option_name, const TCHAR *strInput[], i
         }
     }
     if (IS_OPTION("audio-resampler")) {
-        i++;
         int v = 0;
-        if (PARSE_ERROR_FLAG != (v = get_value_from_chr(list_resampler, strInput[i]))) {
-            common->audioResampler = v;
-        } else if (1 == _stscanf_s(strInput[i], _T("%d"), &v) && 0 <= v && v < _countof(list_resampler) - 1) {
+        if (PARSE_ERROR_FLAG != (v = get_value_from_chr(list_resampler, strInput[i+1]))) {
+            i++;
             common->audioResampler = v;
         } else {
-            print_cmd_error_invalid_value(option_name, strInput[i], list_resampler);
-            return 1;
+            try {
+                auto ret = set_audio_prm([](AudioSelect* pAudioSelect, int trackId, const TCHAR* prmstr) {
+                    if (trackId != 0 || pAudioSelect->resamplerPrm.length() == 0) {
+                        pAudioSelect->resamplerPrm = tchar_to_string(prmstr);
+                    }
+                    });
+                return ret;
+            } catch (...) {
+                print_cmd_error_invalid_value(option_name, strInput[i]);
+                return 1;
+            }
         }
         return 0;
     }
@@ -5875,6 +5987,9 @@ tstring gen_cmd(const VideoInfo *param, const VideoInfo *defaultPrm, const RGYPa
         if (inprm->resizeResMode != inprmDefault->resizeResMode) {
             cmd << _T(",preserve_aspect_ratio=") << get_chr_from_value(list_vpp_resize_res_mode, (int)(inprm->resizeResMode));
         }
+        if (inprm->ignoreSAR != inprmDefault->ignoreSAR) {
+            cmd << _T(",ignore_sar=") << (inprm->ignoreSAR ? (_T("true")) : (_T("false")));
+        }
     }
     return cmd.str();
 }
@@ -6187,6 +6302,25 @@ tstring gen_cmd(const RGYParamVpp *param, const RGYParamVpp *defaultPrm, bool sa
             cmd << _T(" --vpp-knn ") << tmp.str().substr(1);
         } else if (param->knn.enable) {
             cmd << _T(" --vpp-knn");
+        }
+    }
+    if (param->nlmeans != defaultPrm->nlmeans) {
+        tmp.str(tstring());
+        if (!param->nlmeans.enable && save_disabled_prm) {
+            tmp << _T(",enable=false");
+        }
+        if (param->nlmeans.enable || save_disabled_prm) {
+            ADD_FLOAT(_T("sigma"), nlmeans.sigma, 3);
+            ADD_NUM(_T("patch"), nlmeans.patchSize);
+            ADD_NUM(_T("search"), nlmeans.searchSize);
+            ADD_FLOAT(_T("h"), nlmeans.h, 3);
+            ADD_LST(_T("fp16"), nlmeans.fp16, list_vpp_nlmeans_fp16);
+            ADD_BOOL(_T("shared_mem"), nlmeans.sharedMem);
+        }
+        if (!tmp.str().empty()) {
+            cmd << _T(" --vpp-nlmeans ") << tmp.str().substr(1);
+        } else if (param->nlmeans.enable) {
+            cmd << _T(" --vpp-nlmeans");
         }
     }
     if (param->pmd != defaultPrm->pmd) {
@@ -6581,6 +6715,13 @@ tstring gen_cmd(const RGYParamCommon *param, const RGYParamCommon *defaultPrm, b
         }
     }
     OPT_LST(_T("--audio-resampler"), audioResampler, list_resampler);
+    for (int i = 0; i < param->nAudioSelectCount; i++) {
+        const AudioSelect *pAudioSelect = param->ppAudioSelectList[i];
+        if (pAudioSelect->encCodec != RGY_AVCODEC_COPY
+            && pAudioSelect->filter.length() > 0) {
+            cmd << _T(" --audio-resampler ") << printTrack(pAudioSelect) << _T("?") << char_to_tstring(pAudioSelect->resamplerPrm);
+        }
+    }
 
     for (int i = 0; i < param->nAudioSelectCount; i++) {
         const AudioSelect *pAudioSelect = param->ppAudioSelectList[i];
@@ -7048,6 +7189,7 @@ tstring gen_cmd_help_input() {
         _T("      preserve_aspect_ratio=<string>   preserve input aspect ratio.\n")
         _T("        decrease ... preserve aspect ratio by decreasing resolution specified.\n")
         _T("        increase ... preserve aspect ratio by increasing resolution specified.\n")
+        _T("      ignore_sar=<bool>                ignore sar when using negative value.\n")
         _T("\n")
         _T("   --frames <int>               frames to encode (based on input frames)\n")
         _T("   --fps <int>/<int> or <float> set framerate\n")
@@ -7147,7 +7289,8 @@ tstring gen_cmd_help_common() {
         _T("   --audio-samplerate [<int>?]<int>\n")
         _T("                                set sampling rate for audio (Hz).\n")
         _T("                                  in [<int>?], specify track number of audio.\n")
-        _T("   --audio-resampler <string>   set audio resampler.\n")
+        _T("   --audio-resampler [<int>?]<string>\n")
+        _T("                                set audio resampler or resampler params.\n")
         _T("                                  swr (swresampler: default), soxr (libsoxr)\n")
         _T("   --audio-delay [<int>?]<float>  set audio delay (ms).\n")
         _T("   --audio-stream [<int>?][<string1>][:<string2>][,[<string1>][:<string2>]][..\n")
@@ -7487,13 +7630,13 @@ tstring gen_cmd_help_vpp() {
         int length = 80;
         for (int ia = 0; list_vpp_resize[ia].desc; ia++) {
             if (length > 77) {
-                length = _tcslen(indent);
+                length = (int)_tcslen(indent);
                 str += tstring(_T("\n")) + indent;
             } else {
-                length += _tcslen(_T(", "));
+                length += (int)_tcslen(_T(", "));
                 str += _T(", ");
             }
-            length += _tcslen(list_vpp_resize[ia].desc);
+            length += (int)_tcslen(list_vpp_resize[ia].desc);
             str += list_vpp_resize[ia].desc;
         }
         str += _T("        default: auto\n");
@@ -7536,6 +7679,28 @@ tstring gen_cmd_help_vpp() {
         _T("                                  higher value will preserve edge.\n"),
         FILTER_DEFAULT_KNN_RADIUS, FILTER_DEFAULT_KNN_STRENGTH, FILTER_DEFAULT_KNN_LERPC,
         FILTER_DEFAULT_KNN_LERPC_THRESHOLD);
+#if ENABLE_VPP_FILTER_NLMEANS
+    str += strsprintf(_T("\n")
+        _T("   --vpp-nlmeans [<param1>=<value>][,<param2>=<value>][...]\n")
+        _T("     enable denoise filter by non-local means.\n")
+        _T("    params\n")
+        _T("      sigma=<float>  sigma (default=%.3, 0.0 -)\n")
+        _T("      h=<float>      h (default=%.3f, 0.0 <)\n")
+#if ENCODER_NVENC
+        _T("      patch=<int>    patch size (default=%d, 3-21)\n")
+        _T("      search=<int>   search size (default=%d, 3-21)\n")
+#else
+        _T("      patch=<int>    patch size (default=%d, 3-)\n")
+        _T("      search=<int>   search size (default=%d, 3-)\n")
+#endif
+        _T("      fp16=<string>  select fp16 usage.\n")
+        _T("                       none, blockdiff (default), all\n")
+        ,
+        FILTER_DEFAULT_NLMEANS_FILTER_SIGMA, FILTER_DEFAULT_NLMEANS_H,
+        FILTER_DEFAULT_NLMEANS_PATCH_SIZE, FILTER_DEFAULT_NLMEANS_SEARCH_SIZE
+        //,FILTER_DEFAULT_NLMEANS_FILTER_SIGMA, FILTER_DEFAULT_NLMEANS_PATCH_SIGMA,
+        );
+#endif
 #if ENABLE_VPP_FILTER_PMD
     str += strsprintf(_T("\n")
         _T("   --vpp-pmd [<param1>=<value>][,<param2>=<value>][...]\n")

@@ -50,6 +50,7 @@
     <ClInclude Include="NVEncFilterDeband.h" />
     <ClInclude Include="NVEncFilterDenoiseDct.h" />
     <ClInclude Include="NVEncFilterDenoiseKnn.h" />
+    <ClInclude Include="NVEncFilterDenoiseNLMeans.h" />
     <ClInclude Include="NVEncFilterDenoisePmd.h" />
     <ClInclude Include="NVEncFilterEdgelevel.h" />
     <ClInclude Include="NVEncFilterNnedi.h" />
@@ -68,6 +69,7 @@
     <CudaCompile Include="NVEncFilterDeband.cu" />
     <CudaCompile Include="NVEncFilterDenoiseDct.cu" />
     <CudaCompile Include="NVEncFilterDenoiseKnn.cu" />
+    <CudaCompile Include="NVEncFilterDenoiseNLMeans.cu" />
     <CudaCompile Include="NVEncFilterDenoisePmd.cu" />
     <CudaCompile Include="NVEncFilterEdgelevel.cu" />
     <CudaCompile Include="NVEncFilterNnedi.cu" />

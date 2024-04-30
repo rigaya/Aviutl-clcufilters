@@ -49,6 +49,7 @@
     <None Include="rgy_filter_deband_gen_rand.cl" />
     <None Include="rgy_filter_denoise_dct.cl" />
     <None Include="rgy_filter_denoise_knn.cl" />
+    <None Include="rgy_filter_denoise_nlmeans.cl" />
     <None Include="rgy_filter_denoise_pmd.cl" />
     <None Include="rgy_filter_edgelevel.cl" />
     <None Include="rgy_filter_nnedi_common.cl" />
@@ -70,6 +71,7 @@
     <ClCompile Include="rgy_filter_deband.cpp" />
     <ClCompile Include="rgy_filter_denoise_dct.cpp" />
     <ClCompile Include="rgy_filter_denoise_knn.cpp" />
+    <ClCompile Include="rgy_filter_denoise_nlmeans.cpp" />
     <ClCompile Include="rgy_filter_denoise_pmd.cpp" />
     <ClCompile Include="rgy_filter_edgelevel.cpp" />
     <ClCompile Include="rgy_filter_nnedi.cpp" />
@@ -90,6 +92,7 @@
     <ClInclude Include="rgy_filter_deband.h" />
     <ClInclude Include="rgy_filter_denoise_dct.h" />
     <ClInclude Include="rgy_filter_denoise_knn.h" />
+    <ClInclude Include="rgy_filter_denoise_nlmeans.h" />
     <ClInclude Include="rgy_filter_denoise_pmd.h" />
     <ClInclude Include="rgy_filter_edgelevel.h" />
     <ClInclude Include="rgy_filter_nnedi.h" />
