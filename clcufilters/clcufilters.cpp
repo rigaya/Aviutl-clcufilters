@@ -1868,7 +1868,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     add_combobox(cx_knn_radius, ID_CX_KNN_RADIUS, lb_knn_radius, ID_LB_KNN_RADIUS, LB_CX_KNN_RADIUS, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_raduis);
 
     //nlmeans
-    move_group(y_pos, col, col_width, CLFILTER_CHECK_NLMEANS_ENABLE, CLFILTER_CHECK_NLMEANS_MAX, CLFILTER_TRACK_NLMEANS_FIRST, CLFILTER_TRACK_NLMEANS_MAX, track_bar_delta_y, ADD_CX_FIRST, 3, cx_y_pos, checkbox_idx, dialog_rc);
+    move_group(y_pos, col, col_width, CLFILTER_CHECK_NLMEANS_ENABLE, CLFILTER_CHECK_NLMEANS_MAX, CLFILTER_TRACK_NLMEANS_FIRST, CLFILTER_TRACK_NLMEANS_MAX, track_bar_delta_y, ADD_CX_FIRST, 2, cx_y_pos, checkbox_idx, dialog_rc);
     add_combobox(cx_nlmeans_patch,  ID_CX_DENOISE_NLMEANS_PATCH,  lb_nlmeans_patch,  ID_LB_DENOISE_NLMEANS_PATCH,  LB_CX_DENOISE_NLMEANS_PATCH,  col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_nlmeans_block_size);
     add_combobox(cx_nlmeans_search, ID_CX_DENOISE_NLMEANS_SEARCH, lb_nlmeans_search, ID_LB_DENOISE_NLMEANS_SEARCH, LB_CX_DENOISE_NLMEANS_SEARCH, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_nlmeans_block_size);
 
