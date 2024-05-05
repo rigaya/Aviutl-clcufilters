@@ -114,8 +114,6 @@ enum {
     ID_CX_DENOISE_NLMEANS_PATCH,
     ID_LB_DENOISE_NLMEANS_SEARCH,
     ID_CX_DENOISE_NLMEANS_SEARCH,
-    ID_LB_DENOISE_NLMEANS_FP16,
-    ID_CX_DENOISE_NLMEANS_FP16,
 
     ID_LB_SMOOTH_QUALITY,
     ID_CX_SMOOTH_QUALITY,
@@ -171,9 +169,8 @@ struct CLFILTER_EXDATA {
 
     int nlmeans_patch;
     int nlmeans_search;
-    VppNLMeansFP16Opt nlmeans_fp16;
 
-    char reserved[608];
+    char reserved[612];
 };
 # pragma pack()
 static const size_t exdatasize = sizeof(CLFILTER_EXDATA);
@@ -228,7 +225,6 @@ static void cl_exdata_set_default() {
     VppNLMeans nlmeans;
     cl_exdata.nlmeans_patch = nlmeans.patchSize;
     cl_exdata.nlmeans_search = nlmeans.searchSize;
-    cl_exdata.nlmeans_fp16 = nlmeans.fp16;
 
     VppPmd pmd;
     cl_exdata.pmd_apply_count = pmd.applyCount;
@@ -272,7 +268,6 @@ static const char *LB_CX_DENOISE_DCT_STEP = "品質";
 static const char *LB_CX_DENOISE_DCT_BLOCK_SIZE = "ブロックサイズ";
 static const char *LB_CX_DENOISE_NLMEANS_PATCH = "パッチサイズ";
 static const char *LB_CX_DENOISE_NLMEANS_SEARCH = "探索範囲";
-static const char *LB_CX_DENOISE_NLMEANS_FP16 = "fp16";
 static const char *LB_CX_SMOOTH_QUALITY = "品質";
 static const char *LB_CX_KNN_RADIUS = "適用半径";
 static const char *LB_CX_UNSHARP_RADIUS = "範囲";
@@ -300,7 +295,6 @@ static const char *LB_CX_DENOISE_DCT_STEP = "step";
 static const char *LB_CX_DENOISE_DCT_BLOCK_SIZE = "blocksize";
 static const char *LB_CX_DENOISE_NLMEANS_PATCH = "patch size";
 static const char *LB_CX_DENOISE_NLMEANS_SEARCH = "search size";
-static const char *LB_CX_DENOISE_NLMEANS_FP16 = "fp16";
 static const char *LB_CX_SMOOTH_QUALITY = "quality";
 static const char *LB_CX_KNN_RADIUS = "radius";
 static const char *LB_CX_UNSHARP_RADIUS = "radius";
@@ -467,7 +461,7 @@ int track_s[] = {
     0, //denoise-dct
     1, //smooth
     0,0,0, //knn
-    1,1,//nlmeans
+    0,1,//nlmeans
     1,0,0, //pmd
     0,0, //unsharp
     -31,0,0,0, //エッジレベル調整
@@ -774,8 +768,6 @@ static HWND lb_nlmeans_patch;
 static HWND cx_nlmeans_patch;
 static HWND lb_nlmeans_search;
 static HWND cx_nlmeans_search;
-static HWND lb_nlmeans_fp16;
-static HWND cx_nlmeans_fp16;
 static HWND lb_denoise_dct_step;
 static HWND cx_denoise_dct_step;
 static HWND lb_denoise_dct_block_size;
@@ -842,8 +834,6 @@ static void set_cl_exdata(const HWND hwnd, const int value) {
         cl_exdata.nlmeans_patch = value;
     } else if (hwnd == cx_nlmeans_search) {
         cl_exdata.nlmeans_search = value;
-    } else if (hwnd == cx_nlmeans_fp16) {
-        cl_exdata.nlmeans_fp16 = (VppNLMeansFP16Opt)value;
     } else if (hwnd == cx_denoise_dct_step) {
         cl_exdata.denoise_dct_step = value;
     } else if (hwnd == cx_denoise_dct_block_size) {
@@ -1145,7 +1135,6 @@ static void update_cx(FILTER *fp) {
     select_combo_item(cx_knn_radius,                  cl_exdata.knn_radius);
     select_combo_item(cx_nlmeans_patch,               cl_exdata.nlmeans_patch);
     select_combo_item(cx_nlmeans_search,              cl_exdata.nlmeans_search);
-    select_combo_item(cx_nlmeans_fp16,                cl_exdata.nlmeans_fp16);
     select_combo_item(cx_denoise_dct_step,            cl_exdata.denoise_dct_step);
     select_combo_item(cx_denoise_dct_block_size,      cl_exdata.denoise_dct_block_size);
     select_combo_item(cx_smooth_quality,              cl_exdata.smooth_quality);
@@ -1531,15 +1520,6 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
                 break;
             }
             break;
-        case ID_CX_DENOISE_NLMEANS_FP16: // コンボボックス
-            switch (HIWORD(wparam)) {
-            case CBN_SELCHANGE: // 選択変更
-                change_cx_param(cx_nlmeans_fp16);
-                return TRUE; //TRUEを返すと画像処理が更新される
-            default:
-                break;
-            }
-            break;
         case ID_CX_UNSHARP_RADIUS: // コンボボックス
             switch (HIWORD(wparam)) {
             case CBN_SELCHANGE: // 選択変更
@@ -1891,7 +1871,6 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     move_group(y_pos, col, col_width, CLFILTER_CHECK_NLMEANS_ENABLE, CLFILTER_CHECK_NLMEANS_MAX, CLFILTER_TRACK_NLMEANS_FIRST, CLFILTER_TRACK_NLMEANS_MAX, track_bar_delta_y, ADD_CX_FIRST, 3, cx_y_pos, checkbox_idx, dialog_rc);
     add_combobox(cx_nlmeans_patch,  ID_CX_DENOISE_NLMEANS_PATCH,  lb_nlmeans_patch,  ID_LB_DENOISE_NLMEANS_PATCH,  LB_CX_DENOISE_NLMEANS_PATCH,  col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_nlmeans_block_size);
     add_combobox(cx_nlmeans_search, ID_CX_DENOISE_NLMEANS_SEARCH, lb_nlmeans_search, ID_LB_DENOISE_NLMEANS_SEARCH, LB_CX_DENOISE_NLMEANS_SEARCH, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_nlmeans_block_size);
-    add_combobox(cx_nlmeans_fp16,   ID_CX_DENOISE_NLMEANS_FP16,   lb_nlmeans_fp16,   ID_LB_DENOISE_NLMEANS_FP16,   LB_CX_DENOISE_NLMEANS_FP16,   col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_nlmeans_fp16);
 
     //pmd
     move_group(y_pos, col, col_width, CLFILTER_CHECK_PMD_ENABLE, CLFILTER_CHECK_PMD_MAX, CLFILTER_TRACK_PMD_FIRST, CLFILTER_TRACK_PMD_MAX, track_bar_delta_y, ADD_CX_FIRST, 0, cx_y_pos, checkbox_idx, dialog_rc);
@@ -2086,7 +2065,6 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp, const FILTER_PRO
     prm.vpp.nlmeans.searchSize = cl_exdata.nlmeans_search;
     prm.vpp.nlmeans.sigma      = (float)fp->track[CLFILTER_TRACK_NLMEANS_SIGMA] * 0.001f;
     prm.vpp.nlmeans.h          = (float)fp->track[CLFILTER_TRACK_NLMEANS_H] * 0.001f;
-    prm.vpp.nlmeans.fp16       = cl_exdata.nlmeans_fp16;
 
     //pmd
     prm.vpp.pmd.enable         = fp->check[CLFILTER_CHECK_PMD_ENABLE] != 0;
