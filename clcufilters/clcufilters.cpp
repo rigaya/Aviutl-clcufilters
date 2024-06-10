@@ -2237,7 +2237,7 @@ BOOL clcuFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_
         mt_frame_copy_data copyPrm;
         copyPrm.src = (char *)srcptr;
         copyPrm.srcPitch = fpip->max_w * sizeof(PIXEL_YC);
-        copyPrm.dst = (char *)m_sharedFrames[sharedPrms->frame_n % m_sharedFrames.size()]->ptr();
+        copyPrm.dst = (char *)m_sharedFrames[sharedPrms->currentFrameId % m_sharedFrames.size()]->ptr();
         copyPrm.dstPitch = m_sharedFramesPitchBytes;
         copyPrm.width = width;
         copyPrm.height = height;
@@ -2287,7 +2287,7 @@ BOOL clcuFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_
     }
     // 共有メモリからコピー
     mt_frame_copy_data copyPrm;
-    copyPrm.src = (char *)m_sharedFrames[(sharedPrms->frame_n + 1) % m_sharedFrames.size()]->ptr();
+    copyPrm.src = (char *)m_sharedFrames[(sharedPrms->currentFrameId + 1) % m_sharedFrames.size()]->ptr();
     copyPrm.srcPitch = m_sharedFramesPitchBytes;
     copyPrm.dst = (char *)fpip->ycp_edit;
     copyPrm.dstPitch = fpip->max_w * sizeof(PIXEL_YC);
