@@ -184,7 +184,7 @@
     </Link>
     <CudaCompile>
       <CodeGeneration>$(CUDA_CODE_GEN)</CodeGeneration>
-      <AdditionalOptions>-Wno-deprecated-gpu-targets -Xcudafe "--display_error_number --diag_suppress=negative_shift_count --diag_suppress=signed_one_bit_field --diag_suppress=expr_has_no_effect --diag_suppress=177 --diag_suppress=186 --diag_suppress=815  --diag_suppress=1444 --diag_suppress=2465" -allow-unsupported-compiler %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-Wno-deprecated-gpu-targets -Xcudafe "--display_error_number --diag_suppress=negative_shift_count --diag_suppress=signed_one_bit_field --diag_suppress=expr_has_no_effect --diag_suppress=177 --diag_suppress=186 --diag_suppress=815  --diag_suppress=1444 --diag_suppress=2465" $(CUDA_THREADS) -allow-unsupported-compiler </AdditionalOptions>
     </CudaCompile>
     <ResourceCompile>
       <Culture>0x0411</Culture>
@@ -214,7 +214,7 @@
     </Link>
     <CudaCompile>
       <CodeGeneration>$(CUDA_CODE_GEN)</CodeGeneration>
-      <AdditionalOptions>-Wno-deprecated-gpu-targets -Xcudafe "--display_error_number --diag_suppress=negative_shift_count --diag_suppress=signed_one_bit_field --diag_suppress=expr_has_no_effect --diag_suppress=177 --diag_suppress=186 --diag_suppress=815  --diag_suppress=1444 --diag_suppress=2465" -allow-unsupported-compiler %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-Wno-deprecated-gpu-targets -Xcudafe "--display_error_number --diag_suppress=negative_shift_count --diag_suppress=signed_one_bit_field --diag_suppress=expr_has_no_effect --diag_suppress=177 --diag_suppress=186 --diag_suppress=815  --diag_suppress=1444 --diag_suppress=2465" $(CUDA_THREADS) -allow-unsupported-compiler </AdditionalOptions>
     </CudaCompile>
     <ResourceCompile>
       <Culture>0x0411</Culture>
@@ -251,7 +251,7 @@
     </Link>
     <CudaCompile>
       <CodeGeneration>$(CUDA_CODE_GEN)</CodeGeneration>
-      <AdditionalOptions>-Wno-deprecated-gpu-targets -Xcudafe "--display_error_number --diag_suppress=negative_shift_count --diag_suppress=signed_one_bit_field --diag_suppress=expr_has_no_effect --diag_suppress=177 --diag_suppress=186 --diag_suppress=815  --diag_suppress=1444 --diag_suppress=2465" -allow-unsupported-compiler %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-Wno-deprecated-gpu-targets -Xcudafe "--display_error_number --diag_suppress=negative_shift_count --diag_suppress=signed_one_bit_field --diag_suppress=expr_has_no_effect --diag_suppress=177 --diag_suppress=186 --diag_suppress=815  --diag_suppress=1444 --diag_suppress=2465" $(CUDA_THREADS) -allow-unsupported-compiler </AdditionalOptions>
       <PtxAsOptionV>true</PtxAsOptionV>
     </CudaCompile>
     <ResourceCompile>
@@ -289,7 +289,7 @@
     </Link>
     <CudaCompile>
       <CodeGeneration>$(CUDA_CODE_GEN)</CodeGeneration>
-      <AdditionalOptions>-Wno-deprecated-gpu-targets -Xcudafe "--display_error_number --diag_suppress=negative_shift_count --diag_suppress=signed_one_bit_field --diag_suppress=expr_has_no_effect --diag_suppress=177 --diag_suppress=186 --diag_suppress=815  --diag_suppress=1444 --diag_suppress=2465" -allow-unsupported-compiler %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-Wno-deprecated-gpu-targets -Xcudafe "--display_error_number --diag_suppress=negative_shift_count --diag_suppress=signed_one_bit_field --diag_suppress=expr_has_no_effect --diag_suppress=177 --diag_suppress=186 --diag_suppress=815  --diag_suppress=1444 --diag_suppress=2465" $(CUDA_THREADS) -allow-unsupported-compiler </AdditionalOptions>
       <PtxAsOptionV>true</PtxAsOptionV>
     </CudaCompile>
     <ResourceCompile>
@@ -320,7 +320,7 @@
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <CodeGeneration>$(CUDA_CODE_GEN)</CodeGeneration>
-      <AdditionalOptions>-Wno-deprecated-gpu-targets -Xcudafe "--display_error_number --diag_suppress=negative_shift_count --diag_suppress=signed_one_bit_field --diag_suppress=expr_has_no_effect --diag_suppress=177 --diag_suppress=186 --diag_suppress=815  --diag_suppress=1444 --diag_suppress=2465" -allow-unsupported-compiler %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-Wno-deprecated-gpu-targets -Xcudafe "--display_error_number --diag_suppress=negative_shift_count --diag_suppress=signed_one_bit_field --diag_suppress=expr_has_no_effect --diag_suppress=177 --diag_suppress=186 --diag_suppress=815  --diag_suppress=1444 --diag_suppress=2465" $(CUDA_THREADS) -allow-unsupported-compiler </AdditionalOptions>
     </CudaCompile>
     <ResourceCompile>
       <Culture>0x0411</Culture>
@@ -355,7 +355,7 @@
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <CodeGeneration>$(CUDA_CODE_GEN)</CodeGeneration>
-      <AdditionalOptions>-Wno-deprecated-gpu-targets -Xcudafe "--display_error_number --diag_suppress=negative_shift_count --diag_suppress=signed_one_bit_field --diag_suppress=expr_has_no_effect --diag_suppress=177 --diag_suppress=186 --diag_suppress=815  --diag_suppress=1444 --diag_suppress=2465" -allow-unsupported-compiler %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-Wno-deprecated-gpu-targets -Xcudafe "--display_error_number --diag_suppress=negative_shift_count --diag_suppress=signed_one_bit_field --diag_suppress=expr_has_no_effect --diag_suppress=177 --diag_suppress=186 --diag_suppress=815  --diag_suppress=1444 --diag_suppress=2465" $(CUDA_THREADS) -allow-unsupported-compiler </AdditionalOptions>
     </CudaCompile>
     <ResourceCompile>
       <Culture>0x0411</Culture>
@@ -396,7 +396,7 @@
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <CodeGeneration>$(CUDA_CODE_GEN)</CodeGeneration>
-      <AdditionalOptions>-Wno-deprecated-gpu-targets -Xcudafe "--display_error_number --diag_suppress=negative_shift_count --diag_suppress=signed_one_bit_field --diag_suppress=expr_has_no_effect --diag_suppress=177 --diag_suppress=186 --diag_suppress=815  --diag_suppress=1444 --diag_suppress=2465" -allow-unsupported-compiler %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-Wno-deprecated-gpu-targets -Xcudafe "--display_error_number --diag_suppress=negative_shift_count --diag_suppress=signed_one_bit_field --diag_suppress=expr_has_no_effect --diag_suppress=177 --diag_suppress=186 --diag_suppress=815  --diag_suppress=1444 --diag_suppress=2465" $(CUDA_THREADS) -allow-unsupported-compiler </AdditionalOptions>
       <PtxAsOptionV>true</PtxAsOptionV>
     </CudaCompile>
     <ResourceCompile>
@@ -438,7 +438,7 @@
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <CodeGeneration>$(CUDA_CODE_GEN)</CodeGeneration>
-      <AdditionalOptions>-Wno-deprecated-gpu-targets -Xcudafe "--display_error_number --diag_suppress=negative_shift_count --diag_suppress=signed_one_bit_field --diag_suppress=expr_has_no_effect --diag_suppress=177 --diag_suppress=186 --diag_suppress=815  --diag_suppress=1444 --diag_suppress=2465" -allow-unsupported-compiler %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-Wno-deprecated-gpu-targets -Xcudafe "--display_error_number --diag_suppress=negative_shift_count --diag_suppress=signed_one_bit_field --diag_suppress=expr_has_no_effect --diag_suppress=177 --diag_suppress=186 --diag_suppress=815  --diag_suppress=1444 --diag_suppress=2465" $(CUDA_THREADS) -allow-unsupported-compiler </AdditionalOptions>
       <PtxAsOptionV>true</PtxAsOptionV>
     </CudaCompile>
     <ResourceCompile>
