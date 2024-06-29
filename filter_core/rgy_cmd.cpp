@@ -1439,6 +1439,79 @@ int parse_one_vpp_option(const TCHAR *option_name, const TCHAR *strInput[], int 
         return 0;
     }
 
+    if (IS_OPTION("vpp-decomb") && ENABLE_VPP_FILTER_DECOMB) {
+        vpp->decomb.enable = true;
+        if (i + 1 >= nArgNum || strInput[i + 1][0] == _T('-')) {
+            return 0;
+        }
+        i++;
+
+        const auto paramList = std::vector<std::string>{ "full", "threshold", "dthreshold", "blend" };
+
+        for (const auto& param : split(strInput[i], _T(","))) {
+            auto pos = param.find_first_of(_T("="));
+            if (pos != std::string::npos) {
+                auto param_arg = param.substr(0, pos);
+                auto param_val = param.substr(pos + 1);
+                param_arg = tolowercase(param_arg);
+                if (param_arg == _T("enable")) {
+                    bool b = false;
+                    if (!cmd_string_to_bool(&b, param_val)) {
+                        vpp->decomb.enable = b;
+                    } else {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
+                if (param_arg == _T("full")) {
+                    bool b = false;
+                    if (!cmd_string_to_bool(&b, param_val)) {
+                        vpp->decomb.full = b;
+                    } else {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
+                if (param_arg == _T("threshold")) {
+                    try {
+                        vpp->decomb.threshold = std::stoi(param_val);
+                    } catch (...) {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
+                if (param_arg == _T("dthreshold")) {
+                    try {
+                        vpp->decomb.dthreshold = std::stoi(param_val);
+                    } catch (...) {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
+                if (param_arg == _T("blend")) {
+                    bool b = false;
+                    if (!cmd_string_to_bool(&b, param_val)) {
+                        vpp->decomb.blend = b;
+                    } else {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
+                print_cmd_error_unknown_opt_param(option_name, param_arg, paramList);
+                return 1;
+            } else {
+                print_cmd_error_unknown_opt_param(option_name, param, paramList);
+                return 1;
+            }
+        }
+        return 0;
+    }
+
     if (IS_OPTION("vpp-rff") && ENABLE_VPP_FILTER_RFF) {
         vpp->rff.enable = true;
         if (i + 1 >= nArgNum || strInput[i + 1][0] == _T('-')) {
@@ -2323,6 +2396,114 @@ int parse_one_vpp_option(const TCHAR *option_name, const TCHAR *strInput[], int 
                         vpp->smooth.maxQPTableErrCount = std::stoi(param_val);
                     } catch (...) {
                         print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
+                print_cmd_error_unknown_opt_param(option_name, param_arg, paramList);
+                return 1;
+            } else {
+                print_cmd_error_unknown_opt_param(option_name, param, paramList);
+                return 1;
+            }
+        }
+        return 0;
+    }
+    if (IS_OPTION("vpp-fft3d") && ENABLE_VPP_FILTER_FFT3D) {
+        vpp->fft3d.enable = true;
+        if (i + 1 >= nArgNum || strInput[i + 1][0] == _T('-')) {
+            return 0;
+        }
+        i++;
+        const auto paramList = std::vector<std::string>{
+            "sigma", "amount", "block_size", "overlap",/*"overlap2",*/ "method", "temporal", "prec"};
+        for (const auto &param : split(strInput[i], _T(","))) {
+            auto pos = param.find_first_of(_T("="));
+            if (pos != std::string::npos) {
+                auto param_arg = param.substr(0, pos);
+                auto param_val = param.substr(pos + 1);
+                param_arg = tolowercase(param_arg);
+                if (param_arg == _T("enable")) {
+                    if (param_val == _T("true")) {
+                        vpp->fft3d.enable = true;
+                    } else if (param_val == _T("false")) {
+                        vpp->fft3d.enable = false;
+                    } else {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
+                if (param_arg == _T("sigma")) {
+                    try {
+                        vpp->fft3d.sigma = std::stof(param_val);
+                    } catch (...) {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
+                if (param_arg == _T("amount")) {
+                    try {
+                        vpp->fft3d.amount = std::stof(param_val);
+                    } catch (...) {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
+                if (param_arg == _T("block_size")) {
+                    int value = 0;
+                    if (get_list_value(list_vpp_fft3d_block_size, param_val.c_str(), &value)) {
+                        vpp->fft3d.block_size = value;
+                    } else {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val, list_vpp_fft3d_block_size);
+                        return 1;
+                    }
+                    continue;
+                }
+                if (param_arg == _T("overlap")) {
+                    try {
+                        vpp->fft3d.overlap = std::stof(param_val);
+                    } catch (...) {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
+                if (param_arg == _T("overlap2")) {
+                    try {
+                        vpp->fft3d.overlap2 = std::stof(param_val);
+                    } catch (...) {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
+                if (param_arg == _T("method")) {
+                    try {
+                        vpp->fft3d.method = std::stoi(param_val);
+                    } catch (...) {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
+                if (param_arg == _T("temporal")) {
+                    try {
+                        vpp->fft3d.temporal = std::stoi(param_val);
+                    } catch (...) {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val);
+                        return 1;
+                    }
+                    continue;
+                }
+                if (param_arg == _T("prec")) {
+                    int value = 0;
+                    if (get_list_value(list_vpp_fp_prec, param_val.c_str(), &value)) {
+                        vpp->fft3d.precision = (VppFpPrecision)value;
+                    } else {
+                        print_cmd_error_invalid_value(tstring(option_name) + _T(" ") + param_arg + _T("="), param_val, list_vpp_fp_prec);
                         return 1;
                     }
                     continue;
@@ -3579,6 +3760,10 @@ int parse_one_input_option(const TCHAR *option_name, const TCHAR *strInput[], in
     if (IS_OPTION("avsw")) {
 #if ENABLE_AVSW_READER
         input->type = RGY_INPUT_FMT_AVSW;
+        if (i + 1 <= nArgNum && strInput[i+1][0] != _T('-')) {
+            i++;
+            inprm->avswDecoder = strInput[i];
+        }
         return 0;
 #else
         _ftprintf(stderr, _T("avsw reader not supported in this build.\n"));
@@ -4795,10 +4980,12 @@ int parse_one_common_option(const TCHAR *option_name, const TCHAR *strInput[], i
                         auto track = std::make_pair(TRACK_SELECT_BY_LANG, tchar_to_string(str));
                         trackSet[track].trackID = TRACK_SELECT_BY_LANG;
                         trackSet[track].lang = tchar_to_string(str);
+                        trackSet[track].encCodec = RGY_AVCODEC_COPY;
                     } else if (avcodec_exists(tchar_to_string(str), AVMEDIA_TYPE_DATA)) {
                         auto track = std::make_pair(TRACK_SELECT_BY_CODEC, tchar_to_string(str));
                         trackSet[track].trackID = TRACK_SELECT_BY_CODEC;
                         trackSet[track].selectCodec = tchar_to_string(str);
+                        trackSet[track].encCodec = RGY_AVCODEC_COPY;
                     } else {
                         print_cmd_error_invalid_value(option_name, strInput[i], _T("invalid track ID."));
                         return 1;
@@ -4806,6 +4993,7 @@ int parse_one_common_option(const TCHAR *option_name, const TCHAR *strInput[], i
                 } else {
                     auto track = std::make_pair(iTrack, "");
                     trackSet[track].trackID = iTrack;
+                    trackSet[track].encCodec = RGY_AVCODEC_COPY;
                 }
             }
         } else {
@@ -4823,6 +5011,7 @@ int parse_one_common_option(const TCHAR *option_name, const TCHAR *strInput[], i
                 pDataSelect = common->ppDataSelectList[dataIdx];
             }
             pDataSelect[0] = it->second;
+            pDataSelect->encCodec = RGY_AVCODEC_COPY;
 
             if (dataIdx < 0) {
                 dataIdx = common->nDataSelectCount;
@@ -4873,6 +5062,7 @@ int parse_one_common_option(const TCHAR *option_name, const TCHAR *strInput[], i
                     return 1;
                 } else {
                     trackSet[iTrack].trackID = iTrack;
+                    trackSet[iTrack].encCodec = RGY_AVCODEC_COPY;
                 }
             }
         } else {
@@ -4889,6 +5079,7 @@ int parse_one_common_option(const TCHAR *option_name, const TCHAR *strInput[], i
                 pAttachmentSelect = common->ppAttachmentSelectList[dataIdx];
             }
             pAttachmentSelect[0] = it->second;
+            pAttachmentSelect->encCodec = RGY_AVCODEC_COPY;
 
             if (dataIdx < 0) {
                 dataIdx = common->nAttachmentSelectCount;
@@ -5789,9 +5980,9 @@ int parse_one_ctrl_option(const TCHAR *option_name, const TCHAR *strInput[], int
         return 0;
     }
 #if defined(_WIN32) || defined(_WIN64)
-    if (IS_OPTION("vpydir")) {
+    if (IS_OPTION("vsdir")) {
         i++;
-        ctrl->vpydir = strInput[i];
+        ctrl->vsdir = strInput[i];
         return 0;
     }
 #endif
@@ -5967,7 +6158,7 @@ tstring gen_cmd(const VideoInfo *param, const VideoInfo *defaultPrm, const RGYPa
     case RGY_INPUT_FMT_VPY:    cmd << _T(" --vpy"); break;
     case RGY_INPUT_FMT_VPY_MT: cmd << _T(" --vpy-mt"); break;
     case RGY_INPUT_FMT_AVHW:   cmd << _T(" --avhw"); break;
-    case RGY_INPUT_FMT_AVSW:   cmd << _T(" --avsw"); break;
+    case RGY_INPUT_FMT_AVSW:   cmd << _T(" --avsw"); if (!inprm->avswDecoder.empty()) cmd << _T(" ") << inprm->avswDecoder; break;
     default: break;
     }
     if (param->csp != RGY_CSP_NA) {
@@ -6197,6 +6388,23 @@ tstring gen_cmd(const RGYParamVpp *param, const RGYParamVpp *defaultPrm, bool sa
             cmd << _T(" --vpp-yadif");
         }
     }
+    if (param->decomb != defaultPrm->decomb) {
+        tmp.str(tstring());
+        if (!param->decomb.enable && save_disabled_prm) {
+            tmp << _T(",enable=false");
+        }
+        if (param->decomb.enable || save_disabled_prm) {
+            ADD_BOOL(_T("full"), decomb.full);
+            ADD_NUM(_T("threshold"), decomb.threshold);
+            ADD_NUM(_T("dthreshold"), decomb.dthreshold);
+            ADD_BOOL(_T("blend"), decomb.blend);
+        }
+        if (!tmp.str().empty()) {
+            cmd << _T(" --vpp-decomb ") << tmp.str().substr(1);
+        } else if (param->decomb.enable) {
+            cmd << _T(" --vpp-decomb");
+        }
+    }
     if (param->rff != defaultPrm->rff) {
         tmp.str(tstring());
         if (!param->rff.enable && save_disabled_prm) {
@@ -6384,6 +6592,27 @@ tstring gen_cmd(const RGYParamVpp *param, const RGYParamVpp *defaultPrm, bool sa
             cmd << _T(" --vpp-smooth ") << tmp.str().substr(1);
         } else if (param->smooth.enable) {
             cmd << _T(" --vpp-smooth");
+        }
+    }
+    if (param->fft3d != defaultPrm->fft3d) {
+        tmp.str(tstring());
+        if (!param->fft3d.enable && save_disabled_prm) {
+            tmp << _T(",enable=false");
+        }
+        if (param->fft3d.enable || save_disabled_prm) {
+            ADD_FLOAT(_T("sigma"), fft3d.sigma, 3);
+            ADD_FLOAT(_T("amount"), fft3d.amount, 3);
+            ADD_NUM(_T("block_size"), fft3d.block_size);
+            ADD_FLOAT(_T("overlap"), fft3d.overlap, 3);
+            ADD_FLOAT(_T("overlap2"), fft3d.overlap2, 3);
+            ADD_NUM(_T("method"), fft3d.method);
+            ADD_NUM(_T("temporal"), fft3d.temporal);
+            ADD_LST(_T("prec"), fft3d.precision, list_vpp_fp_prec);
+        }
+        if (!tmp.str().empty()) {
+            cmd << _T(" --vpp-fft3d ") << tmp.str().substr(1);
+        } else if (param->fft3d.enable) {
+            cmd << _T(" --vpp-fft3d");
         }
     }
     for (size_t i = 0; i < param->subburn.size(); i++) {
@@ -7080,7 +7309,7 @@ tstring gen_cmd(const RGYParamControl *param, const RGYParamControl *defaultPrm,
     OPT_BOOL(_T("--skip-hwenc-check"), _T(""), skipHWEncodeCheck);
     OPT_BOOL(_T("--skip-hwdec-check"), _T(""), skipHWDecodeCheck);
     OPT_STR_PATH(_T("--avsdll"), avsdll);
-    OPT_STR_PATH(_T("--vpydir"), vpydir);
+    OPT_STR_PATH(_T("--vsdir"), vsdir);
     if (param->perfMonitorSelect != defaultPrm->perfMonitorSelect) {
         auto select = (int)param->perfMonitorSelect;
         std::basic_stringstream<TCHAR> tmp;
@@ -7188,7 +7417,7 @@ tstring gen_cmd_help_input() {
 #endif
 #if ENABLE_AVSW_READER
         _T("   --avhw                       use libavformat + hw decode for input\n")
-        _T("   --avsw                       set input to use avcodec + sw decoder\n")
+        _T("   --avsw [<string>]            set input to use avcodec + sw decoder\n")
 #endif
         _T("   --input-res <int>x<int>        set input resolution\n")
         _T("   --crop <int>,<int>,<int>,<int> crop pixels from left,top,right,bottom\n")
@@ -7263,7 +7492,7 @@ tstring gen_cmd_help_common() {
         _T("                                  in [<string>?], specify output format.\n")
         _T("   --trim <int>:<int>[,<int>:<int>]...\n")
         _T("                                trim video for the frame range specified.\n")
-        _T("                                 frame range should not overwrap each other.\n")
+        _T("                                 frame range should not overlap each other.\n")
         _T("   --seek [<int>:][<int>:]<int>[.<int>] (hh:mm:ss.ms)\n")
         _T("                                skip video for the time specified,\n")
         _T("                                 seek will be inaccurate but fast.\n")
@@ -7578,6 +7807,17 @@ tstring gen_cmd_help_vpp() {
         _T("          bob_tff           Generate one frame from each field assuming tff.\n")
         _T("          bob_bff           Generate one frame from each field assuming bff.\n"));
 #endif
+#if ENABLE_VPP_FILTER_DECOMB
+    str += strsprintf(_T("\n")
+        _T("   --vpp-decomb [<param1>=<value>]\n")
+        _T("     enable decomb deinterlacer\n")
+        _T("    params\n")
+        _T("      full=<bool>           deinterlace all frames\n")
+        _T("      threshold=<int>       default %d (0 - 255)\n")
+        _T("      dthreshold=<int>      default %d (0 - 255)\n")
+        _T("      blend=<bool>          blend rather than interpolate\n"),
+        FILTER_DEFAULT_DECOMB_THRESHOLD, FILTER_DEFAULT_DECOMB_DTHRESHOLD);
+#endif
 #if ENABLE_VPP_FILTER_RFF
     str += strsprintf(_T("\n")
         _T("   --vpp-rff                    apply rff flag, with %savsw reader only.\n"),
@@ -7752,6 +7992,26 @@ tstring gen_cmd_help_vpp() {
         _T("      block_size=<int>      block size of calculation.\n")
         _T("                              8 (default), 16\n"),
         FILTER_DEFAULT_DENOISE_DCT_SIGMA);
+#endif
+#if ENABLE_VPP_FILTER_FFT3D
+    str += strsprintf(_T("\n")
+        _T("   --vpp-fft3d [<param1>=<value>][,<param2>=<value>][...]\n")
+        _T("     enable fft based denoise filter.\n")
+        _T("    params\n")
+        _T("      sigma=<float>         strength of filter (default=%.2f, 0 - 100)\n")
+        _T("      amount=<float>        amount of denoising (default=%.2f, 0 - 1)\n")
+        _T("      block_size=<int>      block size of calculation.\n")
+        _T("                              8, 16, 32 (default), 64\n")
+        _T("      overlap=<float>       block overlap (default=%.2f, 0.2 - 0.8)\n")
+        //_T("      overlap2=<float>      block overlap to be averaged (default=%.2f, 0 - 0.8)\n")
+        //_T("                              overlap + overlap2 must be below 0.8.\n")
+        _T("      method=<int>          method of denoising\n")
+        _T("                              0 (default), 1\n")
+        _T("      temporal=<int>        Enable temporal filtering (default=%d)\n")
+        _T("      prec=<string>         Select calculation precision.\n")
+        _T("                              auto (default), fp16, fp32\n"),
+        FILTER_DEFAULT_DENOISE_FFT3D_SIGMA, FILTER_DEFAULT_DENOISE_FFT3D_AMOUNT, FILTER_DEFAULT_DENOISE_FFT3D_BLOCK_SIZE,
+        FILTER_DEFAULT_DENOISE_FFT3D_OVERLAP, /* FILTER_DEFAULT_DENOISE_FFT3D_OVERLAP2,*/ FILTER_DEFAULT_DENOISE_FFT3D_TEMPORAL);
 #endif
     str += strsprintf(_T("\n")
         _T("   --vpp-subburn [<param1>=<value>][,<param2>=<value>][...]\n")
@@ -8038,7 +8298,7 @@ tstring gen_cmd_help_ctrl() {
         _T("   --avsdll <string>            specifies AviSynth DLL location to use.\n"));
 #if defined(_WIN32) || defined(_WIN64)
     str += strsprintf(_T("\n")
-        _T("   --vpydir <string>            specifies VapourSynth portable directory to use.\n"));
+        _T("   --vsdir <string>            specifies VapourSynth portable directory to use.\n"));
     str += strsprintf(_T("\n")
         _T("   --process-codepage <string>  utf8 ... use UTF-8 (default)\n")
         _T("                                os   ... use the codepage set in Operating System.\n"));
