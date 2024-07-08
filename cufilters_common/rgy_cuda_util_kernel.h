@@ -42,6 +42,12 @@ static const int WARP_SIZE = (1<<WARP_SIZE_2N);
 #define ENABLE_CUDA_FP16_DEVICE 0
 #endif
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
+#pragma GCC diagnostic ignored "-Weffc++"
+#endif /* defined(__GNUC__) */
+
 struct __align__(sizeof(int) * 8) int8 {
     int s0, s1, s2, s3, s4, s5, s6, s7;
 };
@@ -244,6 +250,8 @@ public:
     __host__ __device__ float f7() const { return h.s7; }
 };
 
+
+
 static __device__ float2 operator*(float2 a, float b) {
     a.x *= b;
     a.y *= b;
@@ -388,7 +396,6 @@ static __device__ float8 __expf(float8 a) {
     a.s7 = __expf(a.s7);
     return a;
 }
-
 
 static __device__ float4 operator*(float4 a, float b) {
     a.x *= b;
@@ -1032,6 +1039,184 @@ static __device__ half8& operator-=(half8& a, half8 b) {
     return a;
 }
 
+static __host__ __device__ __forceinline__ void set_complex(__half2& val, float real, float img) {
+#if ENABLE_CUDA_FP16_DEVICE
+    // half2の定数化を効率よく行うためには、__half2をuint32_tに変換してから代入する
+    __half2 c_h2 = __half2(__half(real), __half(img));
+    uint32_t c_uint = (*(uint32_t *)(&c_h2));
+    val = *(__half2 *)(&c_uint);
+#endif
+}
+
+static __host__ __device__ __forceinline__ void set_complex(float2& val, float real, float img) {
+    val.x = real;
+    val.y = img;
+}
+
+template<typename T>
+struct __align__(sizeof(T)) complex {
+    T v;
+    __host__ __device__ complex() {};
+    __host__ __device__ complex(float real, float img) {
+        set_complex(v, real, img);
+    }
+    __host__ __device__ complex(T val) {
+        v = val;
+    }
+    __host__ __device__ complex& operator=(const complex & src) {
+        this->v = src.v;
+        return *this;
+    }
+    __host__ __device__ complex(const complex & src) {
+        this->v = src.v;
+    }
+    __host__ __device__ decltype(T::x) square() const {
+        return v.x * v.x + v.y * v.y;
+    }
+    __host__ __device__ decltype(T::x) real() const {
+        return v.x;
+    }
+    __host__ __device__ decltype(T::x) imag() const {
+        return v.y;
+    }
+    __host__ __device__ float squaref() const {
+        float vx = v.x, vy = v.y;
+        return vx * vx + vy * vy;
+    }
+    __host__ __device__ float realf() const {
+        return v.x;
+    }
+    __host__ __device__ float imagf() const {
+        return v.y;
+    }
+};
+
+template<typename T>
+__device__ __forceinline__ complex<T> operator*(complex<T> a, float b) {
+    a.v *= b;
+    return a;
+}
+
+template<>
+__device__ __forceinline__ complex<__half2> operator*(complex<__half2> a, float b) {
+#if ENABLE_CUDA_FP16_DEVICE
+    __half2 bh2 = __float2half2_rn(b);
+    a.v *= bh2;
+#endif
+    return a;
+}
+template<typename T>
+__device__ __forceinline__ complex<T> operator*(const complex<T>& a, const complex<T>& b) {
+    complex<T> result;
+    result.v.x = (a.v.x * b.v.x) - (a.v.y * b.v.y);
+    result.v.y = (a.v.x * b.v.y) + (a.v.y * b.v.x);
+    return result;
+}
+template<>
+__device__ __forceinline__ complex<__half2> operator*(const complex<__half2>& a, const complex<__half2>& b) {
+    complex<__half2> result;
+#if ENABLE_CUDA_FP16_DEVICE
+    if (true) { // こちらのほうがPRMT命令が減って若干高速
+        // b_yx = __half2(-b.v.y, b.v.x)を作りたいので、b.vのy,xを入れ替えて(__lowhigh2highlow)、そのあと上位だけビット演算で符号反転
+        __half2 b_yx_h2 = __lowhigh2highlow(b.v);
+        uint32_t b_yx_uint = (*(uint32_t *)(&b_yx_h2)) ^ (0x80000000);
+        __half2 b_yx = *(__half2 *)(&b_yx_uint);
+
+        __half2 a_x = __low2half2(a.v);
+        __half2 a_y = __high2half2(a.v);
+        result.v = a_x * b.v + a_y * b_yx;
+    } else {
+        __half2 a_x  = __half2(a.v.x, a.v.x);
+        __half2 a_y  = __half2(a.v.y, a.v.y);
+        __half2 b_yx = __half2(-b.v.y, b.v.x);
+        result.v = __hfma2(a_x, b.v, a_y * b_yx);
+    }
+#endif
+    return result;
+}
+
+template<typename T>
+__device__ __forceinline__ complex<T>& operator*=(complex<T>& a, float b) {
+    a.v *= b;
+    return a;
+}
+
+template<>
+__device__ __forceinline__ complex<__half2>& operator*=(complex<__half2>& a, float b) {
+#if ENABLE_CUDA_FP16_DEVICE
+    __half2 bh2 = __float2half2_rn(b);
+    a.v *= bh2;
+#endif
+    return a;
+}
+
+template<typename T>
+__device__ __forceinline__ complex<T>& operator*=(complex<T>& a, complex<T> b) {
+    complex<T> result;
+    result.v.x = (a.v.x * b.v.x) - (a.v.y * b.v.y);
+    result.v.y = (a.v.x * b.v.y) + (a.v.y * b.v.x);
+    a = result;
+    return a;
+}
+template<>
+__device__ __forceinline__ complex<__half2>& operator*=(complex<__half2>& a, complex<__half2> b) {
+#if ENABLE_CUDA_FP16_DEVICE
+    __half2 a_x = __half2(a.v.x, a.v.x);
+    __half2 a_y = __half2(a.v.y, a.v.y);
+    __half2 b_yx = __half2(b.v.y, b.v.x);
+    a.v = __hfma2(a_x, b.v, a_y * b_yx);
+#endif
+    return a;
+}
+
+template<typename T>
+__device__ __forceinline__ complex<T> operator+(complex<T> a, float b) {
+    a.v += b;
+    return a;
+}
+
+template<typename T>
+__device__ __forceinline__ complex<T> operator+(complex<T> a, complex<T> b) {
+    a.v += b.v;
+    return a;
+}
+
+template<typename T>
+__device__ __forceinline__ complex<T>& operator+=(complex<T>& a, float b) {
+    a.v += b;
+    return a;
+}
+
+template<typename T>
+__device__ __forceinline__ complex<T>& operator+=(complex<T>& a, complex<T> b) {
+    a.v += b.v;
+    return a;
+}
+
+template<typename T>
+__device__ __forceinline__ complex<T> operator-(complex<T> a, float b) {
+    a.v -= b;
+    return a;
+}
+
+template<typename T>
+__device__ __forceinline__ complex<T> operator-(complex<T> a, complex<T> b) {
+    a.v -= b.v;
+    return a;
+}
+
+template<typename T>
+__device__ __forceinline__ complex<T>& operator-=(complex<T>& a, float b) {
+    a.v -= b;
+    return a;
+}
+
+template<typename T>
+__device__ __forceinline__ complex<T>& operator-=(complex<T>& a, complex<T> b) {
+    a.v -= b.v;
+    return a;
+}
+
 #if __CUDACC_VER_MAJOR__ >= 9
 #define __shfl(x, y)     __shfl_sync(0xFFFFFFFFU, x, y)
 #define __shfl_up(x, y)   __shfl_up_sync(0xFFFFFFFFU, x, y)
@@ -1197,6 +1382,16 @@ static __device__ T *selectptr(T *ptr0, T *ptr1, T *ptr2, const int idx) {
     if (idx == 2) return ptr2;
     return ptr0;
 }
+
+template<typename T>
+static __device__ T *selectptr2(T *ptr0, T *ptr1, const int idx) {
+    if (idx == 1) return ptr1;
+    return ptr0;
+}
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif /* defined(__GNUC__) */
 
 #undef ENABLE_CUDA_FP16_DEVICE
 
