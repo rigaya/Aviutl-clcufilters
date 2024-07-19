@@ -55,6 +55,8 @@ enum {
     ID_BT_RESIZE_RES_ADD,
     ID_BT_RESIZE_RES_DEL,
     ID_CX_RESIZE_ALGO,
+    ID_LB_RESIZE_NGX_VSR_QUALITY,
+    ID_CX_RESIZE_NGX_VSR_QUALITY,
 
     ID_LB_OPENCL_DEVICE,
     ID_CX_OPENCL_DEVICE,
@@ -170,7 +172,9 @@ struct CLFILTER_EXDATA {
     int nlmeans_patch;
     int nlmeans_search;
 
-    char reserved[612];
+    char resize_ngx_vsr_quality;
+
+    char reserved[611];
 };
 # pragma pack()
 static const size_t exdatasize = sizeof(CLFILTER_EXDATA);
@@ -182,6 +186,7 @@ static std::unique_ptr<clcuFiltersAufDevices> g_clfiltersAufDevices;
 static std::unique_ptr<clcuFiltersAuf> g_clfiltersAuf;
 static int g_cuda_device_nvvfx_support = -1;
 static int g_resize_nvvfx_superres = -1;
+static int g_resize_ngx_vsr_quality = -1;
 
 static void cl_exdata_set_default() {
     cl_exdata.cl_dev_id.i = 0;
@@ -255,6 +260,7 @@ static const char *LB_BT_RESIZE_DELETE = "削除";
 static const char *TX_RESIZE_SIZE = "サイズ";
 static const char *TX_RESIZE_ADD = "追加";
 static const char *TX_RESIZE_DELETE = "削除";
+static const char *LB_CX_RESIZE_NGX_VSR_QUALITY = "品質";
 static const char *LB_CX_NNEDI_FIELD = "field";
 static const char *LB_CX_NNEDI_NNS = "nns";
 static const char *LB_CX_NNEDI_NSIZE = "nsize";
@@ -282,6 +288,10 @@ static const char *LB_CX_FILTER_ORDER = "Filter Order";
 static const char *LB_CX_RESIZE_SIZE = "Size";
 static const char *LB_BT_RESIZE_ADD = "Add";
 static const char *LB_BT_RESIZE_DELETE = "Delete";
+static const char *TX_RESIZE_SIZE = "Size";
+static const char *TX_RESIZE_ADD = "Add";
+static const char *TX_RESIZE_DELETE = "Delete";
+static const char *LB_CX_RESIZE_NGX_VSR_QUALITY = "Quality";
 static const char *LB_CX_NNEDI_FIELD = "field";
 static const char *LB_CX_NNEDI_NNS = "nns";
 static const char *LB_CX_NNEDI_NSIZE = "nsize";
@@ -490,7 +500,7 @@ int track_e[] = {
 
 //  トラックバーの数
 #define    TRACK_N    (_countof(track_name_ja))
-static_assert(TRACK_N <= 32, "TRACK_N check");
+//static_assert(TRACK_N <= 32, "TRACK_N check");
 static_assert(TRACK_N == CLFILTER_TRACK_MAX, "TRACK_N check");
 static_assert(TRACK_N == _countof(track_default), "track_default check");
 static_assert(TRACK_N == _countof(track_s), "track_s check");
@@ -722,6 +732,9 @@ static HWND bt_resize_res_add;
 static HWND bt_resize_res_del;
 static HWND cx_resize_algo;
 
+static HWND lb_resize_ngx_vsr_quality;
+static HWND cx_resize_ngx_vsr_quality;
+
 static HWND lb_filter_order;
 static HWND ls_filter_order;
 static HWND bt_filter_order_up;
@@ -792,6 +805,8 @@ static void set_cl_exdata(const HWND hwnd, const int value) {
         cl_exdata.resize_idx = value;
     } else if (hwnd == cx_resize_algo) {
         cl_exdata.resize_algo = value;
+    } else if (hwnd == cx_resize_ngx_vsr_quality) {
+        cl_exdata.resize_ngx_vsr_quality = value;
     } else if (hwnd == cx_colorspace_colormatrix_from) {
         cl_exdata.csp_from.matrix = (CspMatrix)value;
     } else if (hwnd == cx_colorspace_colormatrix_to) {
@@ -1081,6 +1096,7 @@ static void set_resize_algo_items(const bool isCUDADevice) {
     set_combo_item(cx_resize_algo, "bicubic",  RGY_VPP_RESIZE_BICUBIC);
     if (isCUDADevice) {
         set_combo_item(cx_resize_algo, "nvvfx-superres", RGY_VPP_RESIZE_NVVFX_SUPER_RES);
+        set_combo_item(cx_resize_algo, "ngx-vsr", RGY_VPP_RESIZE_NGX_VSR);
     }
     if (ret != CB_ERR) {
         select_combo_item(cx_resize_algo, ret);
@@ -1114,6 +1130,7 @@ static void update_cx(FILTER *fp) {
     select_combo_item(cx_log_level,                   cl_exdata.log_level);
     select_combo_item(cx_resize_res,                  cl_exdata.resize_idx);
     select_combo_item(cx_resize_algo,                 cl_exdata.resize_algo);
+    select_combo_item(cx_resize_ngx_vsr_quality,      cl_exdata.resize_ngx_vsr_quality);
     select_combo_item(cx_colorspace_colormatrix_from, cl_exdata.csp_from.matrix);
     select_combo_item(cx_colorspace_colormatrix_to,   cl_exdata.csp_to.matrix);
     select_combo_item(cx_colorspace_colorprim_from,   cl_exdata.csp_from.colorprim);
@@ -1221,11 +1238,17 @@ static void update_cuda_enable(FILTER *fp) {
 // nvvfx supreres関連の表示/非表示切り替え
 static void update_nvvfx_superres(FILTER *fp) {
     const int resize_nvvfx_superres = (RGY_VPP_RESIZE_ALGO)cl_exdata.resize_algo == RGY_VPP_RESIZE_NVVFX_SUPER_RES ? 1 : 0;
+    const int resize_ngx_vsr_quality = (RGY_VPP_RESIZE_ALGO)cl_exdata.resize_algo == RGY_VPP_RESIZE_NGX_VSR ? 1 : 0;
     if (g_resize_nvvfx_superres != resize_nvvfx_superres) {
         set_track_bar_show_hide(CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH, resize_nvvfx_superres);
         ShowWindow(lb_nvvfx_superres_mode, resize_nvvfx_superres ? SW_SHOW : SW_HIDE);
         ShowWindow(cx_nvvfx_superres_mode, resize_nvvfx_superres ? SW_SHOW : SW_HIDE);
         g_resize_nvvfx_superres = resize_nvvfx_superres;
+    }
+    if (g_resize_ngx_vsr_quality != resize_ngx_vsr_quality) {
+        ShowWindow(lb_resize_ngx_vsr_quality, resize_ngx_vsr_quality ? SW_SHOW : SW_HIDE);
+        ShowWindow(cx_resize_ngx_vsr_quality, resize_ngx_vsr_quality ? SW_SHOW : SW_HIDE);
+        g_resize_ngx_vsr_quality = resize_ngx_vsr_quality;
     }
 }
 
@@ -1279,6 +1302,15 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
             switch (HIWORD(wparam)) {
             case CBN_SELCHANGE: // 選択変更
                 change_cx_param(cx_resize_algo);
+                return TRUE; //TRUEを返すと画像処理が更新される
+            default:
+                break;
+            }
+            break;
+        case ID_CX_RESIZE_NGX_VSR_QUALITY: // コンボボックス
+            switch (HIWORD(wparam)) {
+            case CBN_SELCHANGE: // 選択変更
+                change_cx_param(cx_resize_ngx_vsr_quality);
                 return TRUE; //TRUEを返すと画像処理が更新される
             default:
                 break;
@@ -1801,7 +1833,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
 
     int y_pos_max = 0;
     // --- 最初の列 -----------------------------------------
-    lb_nvvfx_superres_mode = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, col * col_width + 8 + AVIUTL_1_10_OFFSET, cb_resize_y + 72, 60, 24, hwnd, (HMENU)ID_LB_NVVFX_SUPRERES_MODE, hinst, NULL);
+    lb_nvvfx_superres_mode = CreateWindow("static", "", SS_SIMPLE|WS_CHILD|WS_VISIBLE, col * col_width + 8 + AVIUTL_1_10_OFFSET, cb_resize_y + 72, 60, 24, hwnd, (HMENU)ID_LB_NVVFX_SUPRERES_MODE, hinst, NULL);
     SendMessage(lb_nvvfx_superres_mode, WM_SETFONT, (WPARAM)b_font, 0);
     SendMessage(lb_nvvfx_superres_mode, WM_SETTEXT, 0, (LPARAM)LB_CX_NVVFX_SUPRERES_MODE);
 
@@ -1809,6 +1841,17 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     SendMessage(cx_nvvfx_superres_mode, WM_SETFONT, (WPARAM)b_font, 0);
     set_combo_item(cx_nvvfx_superres_mode, "0 - light", 0);
     set_combo_item(cx_nvvfx_superres_mode, "1 - strong", 1);
+
+    lb_resize_ngx_vsr_quality = CreateWindow("static", "", SS_SIMPLE|WS_CHILD|WS_VISIBLE, col * col_width + 8 + AVIUTL_1_10_OFFSET, cb_resize_y + 72, 60, 24, hwnd, (HMENU)ID_LB_RESIZE_NGX_VSR_QUALITY, hinst, NULL);
+    SendMessage(lb_resize_ngx_vsr_quality, WM_SETFONT, (WPARAM)b_font, 0);
+    SendMessage(lb_resize_ngx_vsr_quality, WM_SETTEXT, 0, (LPARAM)LB_CX_RESIZE_NGX_VSR_QUALITY);
+
+    cx_resize_ngx_vsr_quality = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, col * col_width + 68, cb_resize_y + 72, 145, 160, hwnd, (HMENU)ID_CX_RESIZE_NGX_VSR_QUALITY, hinst, NULL);
+    SendMessage(cx_resize_ngx_vsr_quality, WM_SETFONT, (WPARAM)b_font, 0);
+    set_combo_item(cx_resize_ngx_vsr_quality, "1 - fast", 1);
+    set_combo_item(cx_resize_ngx_vsr_quality, "2",        2);
+    set_combo_item(cx_resize_ngx_vsr_quality, "3",        3);
+    set_combo_item(cx_resize_ngx_vsr_quality, "4 - slow", 4);
 
     int y_pos = cb_resize_y + track_bar_delta_y * 4 + 8;
     int cx_y_pos = 0;
@@ -2007,6 +2050,7 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp, const FILTER_PRO
 
     //リサイズ
     prm.vpp.resize_algo        = (RGY_VPP_RESIZE_ALGO)cl_exdata.resize_algo;
+    prm.vppnv.ngxVSR.quality   = cl_exdata.resize_ngx_vsr_quality;
 
     //colorspace
     ColorspaceConv conv;

@@ -89,6 +89,8 @@ jobs:
       - name: Checkout dependencies
         run: |
           git clone https://github.com/KhronosGroup/OpenCL-Headers.git ..\openclheaders
+          if "${{ matrix.release_name }}" == "cufilters" curl -s -o NVEncNVSDKNGX_x64.7z -L https://github.com/rigaya/NVEnc/releases/download/7.55/NVEncNVSDKNGX_20240629_x64.7z
+          if "${{ matrix.release_name }}" == "cufilters" 7z x -oNVEncNVSDKNGXBin -y NVEncNVSDKNGX_x64.7z
 
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v2
@@ -115,6 +117,7 @@ jobs:
           copy _build\${{ matrix.platform }}\${{ matrix.configuration }}\${{ matrix.release_name }}.${{ matrix.release_ext }} clcufilters_release
           if "${{ matrix.release_name }}" == "cufilters" copy "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }}\bin\nvrtc64_*_0.dll" clcufilters_release
           if "${{ matrix.release_name }}" == "cufilters" copy "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }}\bin\nvrtc-builtins64_*.dll" clcufilters_release
+          if "${{ matrix.release_name }}" == "cufilters" copy NVEncNVSDKNGXBin\*.dll clcufilters_release
           7z a -mx9 ${{ matrix.release_name }}_${{ matrix.configuration }}_${{ needs.get_version_name.outputs.version_name }}.7z .\clcufilters_release\*
 
       - name: Check Version

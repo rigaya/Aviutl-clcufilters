@@ -35,6 +35,7 @@
 #include "NVEncFilterDenoiseNLMeans.h"
 #include "NVEncFilterDenoisePmd.h"
 #include "NVEncFilterDenoiseDct.h"
+#include "NVEncFilterNGX.h"
 #include "NVEncFilterNvvfx.h"
 #include "NVEncFilterSmooth.h"
 #include "NVEncFilterUnsharp.h"
@@ -42,6 +43,8 @@
 #include "NVEncFilterWarpsharp.h"
 #include "NVEncFilterDeband.h"
 #include "NVEncFilterTweak.h"
+#include "rgy_device.h"
+#include "cudaD3D11.h"
 
 cuFilterFrameBuffer::cuFilterFrameBuffer() :
     clcuFilterFrameBuffer() {
@@ -94,7 +97,8 @@ cuDevice::cuDevice() :
     m_device(0),
     m_deviceName(),
     m_cuda_driver_version(0),
-    m_cuda_version() {}
+    m_cuda_version(),
+    m_dx11() {}
 
 cuDevice::~cuDevice() {
     close();
@@ -121,6 +125,8 @@ void cuDevice::PrintMes(const RGYLogLevel logLevel, const TCHAR *format, ...) {
     m_log->write_log(logLevel, RGY_LOGT_APP, (tstring(_T("cudevice[exe]: ")) + tstring(buffer.data())).c_str());
 }
 
+DeviceDX11 *cuDevice::dx11() { return m_dx11.get(); }
+
 RGY_ERR cuDevice::init(const int deviceID, std::shared_ptr<RGYLog> log) {
     m_log = log;
     m_deviceID = deviceID;
@@ -128,33 +134,25 @@ RGY_ERR cuDevice::init(const int deviceID, std::shared_ptr<RGYLog> log) {
     //ひとまず、これまでのすべてのエラーをflush
     cudaGetLastError();
 
-    int deviceCount = 0;
-    auto sts = err_to_rgy(cuDeviceGetCount(&deviceCount));
+    PrintMes(RGY_LOG_DEBUG, _T("checking for DX11 device #%d.\n"), deviceID);
+    m_dx11 = std::make_unique<DeviceDX11>();
+    auto err = m_dx11->Init(deviceID, m_log);
+    if (err != RGY_ERR_NONE) {
+        PrintMes(RGY_LOG_DEBUG, _T("Failed to init DX11 device #%d: %s\n"), deviceID, get_err_mes(err));
+        return err;
+    }
+    PrintMes(RGY_LOG_DEBUG, _T("Init DX11 device %d.\n"), wstring_to_tstring(m_dx11->GetDisplayDeviceName()).c_str());
+    //DX11デバイスの初期化に成功したら、そのデバイスのCUDAをcudaD3D11GetDeviceを使って初期化
+    CUdevice cudev = 0;
+    auto sts = err_to_rgy(cuD3D11GetDevice(&cudev, m_dx11->GetAdaptor()));
     if (sts != RGY_ERR_NONE) {
-        PrintMes(RGY_LOG_ERROR, _T("cuDeviceGetCount error: %s\n"), get_err_mes(sts));
-        return sts;
+        PrintMes(RGY_LOG_DEBUG, _T("Failed to init CUDA device #%d from DX11 device.\n"), deviceID);
+        return RGY_ERR_CUDA;
     }
-    if (deviceCount == 0) {
-        PrintMes(RGY_LOG_ERROR, _T("Error: no CUDA device.\n"));
-        return RGY_ERR_DEVICE_NOT_FOUND;
-    }
-    PrintMes(RGY_LOG_DEBUG, _T("cuDeviceGetCount: Success, %d.\n"), deviceCount);
-
-    if (m_deviceID > deviceCount - 1) {
-        PrintMes(RGY_LOG_ERROR, _T("Invalid Device Id = %d\n"), m_deviceID);
-        return RGY_ERR_DEVICE_NOT_FOUND;
-    }
-    CUdevice cuDevice = 0;
-    sts = err_to_rgy(cuDeviceGet(&cuDevice, m_deviceID));
-    if (sts != RGY_ERR_NONE) {
-        PrintMes(RGY_LOG_ERROR, _T("  Error: cuDeviceGet(%d): %s\n"), m_deviceID, get_err_mes(sts));
-        return RGY_ERR_DEVICE_NOT_FOUND;
-    }
-    PrintMes(RGY_LOG_DEBUG, _T("  cuDeviceGet(%d): success\n"), m_deviceID);
-    m_device = cuDevice;
+    PrintMes(RGY_LOG_DEBUG, _T("  cuDeviceGet:DX11(%d): success: %d\n"), deviceID, cudev);
 
     char dev_name[256] = { 0 };
-    if ((sts = err_to_rgy(cuDeviceGetName(dev_name, _countof(dev_name), cuDevice))) != RGY_ERR_NONE) {
+    if ((sts = err_to_rgy(cuDeviceGetName(dev_name, _countof(dev_name), cudev))) != RGY_ERR_NONE) {
         PrintMes(RGY_LOG_ERROR, _T("  Error: cuDeviceGetName(%d): %s\n"), m_deviceID, get_err_mes(sts));
         return RGY_ERR_DEVICE_NOT_AVAILABLE;
     }
@@ -470,6 +468,12 @@ RGY_ERR cuFilterChain::configureOneFilter(std::unique_ptr<RGYFilterBase>& filter
             param->nvvfxSuperRes->compute_capability = m_cuDevice->getCUDAVer();
             //param->nvvfxSuperRes->modelDir = inputParam->vppnv.nvvfxModelDir;
             //param->nvvfxSuperRes->vuiInfo = VuiFiltered;
+        } else if (isNgxResizeFiter(m_prm.vpp.resize_algo)) {
+            param->ngxvsr = std::make_shared<NVEncFilterParamNGXVSR>();
+            param->ngxvsr->ngxvsr = m_prm.vppnv.ngxVSR;
+            param->ngxvsr->compute_capability = m_cuDevice->getCUDAVer();
+            param->ngxvsr->dx11 = m_cuDevice->dx11();
+            //param->ngxvsr->vui = VuiFiltered;
         }
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;

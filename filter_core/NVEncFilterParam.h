@@ -32,6 +32,7 @@
 #include <limits.h>
 #include <vector>
 #include "rgy_osdep.h"
+#include "rgy_version.h"
 #if ENCODER_NVENC
 #pragma warning (push)
 #pragma warning (disable: 4819)
@@ -59,8 +60,22 @@ static const float FILTER_DEFAULT_NVVFX_SUPER_RES_STRENGTH = 0.4f;
 static const int FILTER_DEFAULT_NVVFX_SUPER_RES_MODE = 1;
 static const float FILTER_DEFAULT_NVVFX_UPSCALER_STRENGTH = 0.4f;
 
+static const int FILTER_DEFAULT_NGX_VSR_QUALITY = 1;
+static const int FILTER_DEFAULT_NGX_TRUEHDR_CONTRAST = 100;
+static const int FILTER_DEFAULT_NGX_TRUEHDR_SATURATION = 100;
+static const int FILTER_DEFAULT_NGX_TRUEHDR_MIDDLE_GRAY = 50;
+static const int FILTER_DEFAULT_NGX_TRUEHDR_MAX_LUMINANCE = 1000;
+
 #if ENCODER_NVENC
 static const int DEFAULT_CUDA_SCHEDULE = CU_CTX_SCHED_AUTO;
+
+const CX_DESC list_deinterlace[] = {
+    { _T("none"),     cudaVideoDeinterlaceMode_Weave    },
+    { _T("bob"),      cudaVideoDeinterlaceMode_Bob      },
+    { _T("adaptive"), cudaVideoDeinterlaceMode_Adaptive },
+    { _T("normal"),   cudaVideoDeinterlaceMode_Adaptive },
+    { NULL, 0 }
+};
 
 const CX_DESC list_nppi_gauss[] = {
     { _T("disabled"), 0 },
@@ -178,6 +193,29 @@ struct VppNvvfxUpScaler {
     tstring print() const;
 };
 
+struct VppNGXVSR {
+    bool enable;
+    int quality;
+
+    VppNGXVSR();
+    bool operator==(const VppNGXVSR &x) const;
+    bool operator!=(const VppNGXVSR &x) const;
+    tstring print() const;
+};
+
+struct VppNGXTrueHDR {
+    bool enable;
+    uint32_t contrast;
+    uint32_t saturation;
+    uint32_t middleGray;
+    uint32_t maxLuminance;
+
+    VppNGXTrueHDR();
+    bool operator==(const VppNGXTrueHDR &x) const;
+    bool operator!=(const VppNGXTrueHDR &x) const;
+    tstring print() const;
+};
+
 struct VppParam {
 #if ENCODER_NVENC
     cudaVideoDeinterlaceMode  deinterlace;
@@ -188,6 +226,8 @@ struct VppParam {
     VppNvvfxSuperRes          nvvfxSuperRes;
     VppNvvfxUpScaler          nvvfxUpScaler;
     tstring                   nvvfxModelDir;
+    VppNGXVSR                 ngxVSR;
+    VppNGXTrueHDR             ngxTrueHDR;
 
     VppParam();
     bool operator==(const VppParam &x) const;

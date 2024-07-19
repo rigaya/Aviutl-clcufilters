@@ -299,7 +299,23 @@ Non local meansを用いたノイズ除去フィルタ。
   | lanczos4 | 8x8 lanczos補間 |
   | bilinear | 線形補間 |
   | bicubic  |  双三次補間 |
+  | nvvfx-superres | NVIDIA Video EffectsによるSuper Resolution (拡大のみ)  |
+  | ngx-vsr       | NVIDIA VSR (Video Super Resolution)  |
 
+- **追加パラメータ**
+  - nvvfx-superres選択時
+    - モード
+      nvvfx-superres のモードの選択。
+      - 0 ... 弱め (default)
+      - 1 ... 強め
+
+    - 強度
+      nvvfx-superresの強さの指定。
+
+  - ngx-vsr選択時
+    - 品質
+      ngx-vsr使用時の品質の設定。 (デフォルト=1, 1 - 4)  
+      数字が大きいほど高品質。
 
 ### unsharp  
 輪郭・ディテール強調用のフィルタ。

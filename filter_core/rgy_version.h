@@ -29,9 +29,9 @@
 #ifndef __RGY_VERSION_H__
 #define __RGY_VERSION_H__
 
-#define VER_FILEVERSION             0,1,3,0
-#define VER_STR_FILEVERSION          "1.03"
-#define VER_STR_FILEVERSION_TCHAR _T("1.03")
+#define VER_FILEVERSION             0,1,4,0
+#define VER_STR_FILEVERSION          "1.04"
+#define VER_STR_FILEVERSION_TCHAR _T("1.04")
 
 
 #ifdef _M_IX86
@@ -56,9 +56,17 @@ const char *get_encoder_version();
 #if CUFILTERS && defined(_WIN64)
 #define ENABLE_NVRTC 1
 #define ENABLE_NVVFX 1
+#define ENABLE_NVSDKNGX 1
+#define ENABLE_D3D9 1
+#define ENABLE_D3D11 1
+#define ENABLE_D3D11_DEVINFO_WMI 0
 #else
 #define ENABLE_NVRTC 0
 #define ENABLE_NVVFX 0
+#define ENABLE_NVSDKNGX 0
+#define ENABLE_D3D9 0
+#define ENABLE_D3D11 0
+#define ENABLE_D3D11_DEVINFO_WMI 0
 #endif
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -66,8 +74,6 @@ const char *get_encoder_version();
 #define ENABLE_PERF_COUNTER 0
 #define ENABLE_AVCODEC_OUT_THREAD 1
 #define ENABLE_AVCODEC_AUDPROCESS_THREAD 1
-#define ENABLE_D3D9 1
-#define ENABLE_D3D11 1
 #define ENABLE_VULKAN 0
 #define VULKAN_DEFAULT_DEVICE_ONLY 0
 #define ENABLE_CPP_REGEX 1

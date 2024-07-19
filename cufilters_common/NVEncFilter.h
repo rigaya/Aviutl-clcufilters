@@ -106,6 +106,16 @@ protected:
     std::unique_ptr<cudaEvent_t, cudaevent_deleter> m_peFilterFin;
 };
 
+class NVEncFilterDisabled : public NVEncFilter {
+public:
+    NVEncFilterDisabled() : NVEncFilter() {};
+    virtual ~NVEncFilterDisabled() {};
+    virtual RGY_ERR init(shared_ptr<NVEncFilterParam> pParam, shared_ptr<RGYLog> pPrintMes) override;
+    virtual RGY_ERR run_filter(const RGYFrameInfo *pInputFrame, RGYFrameInfo **ppOutputFrames, int *pOutputFrameNum, cudaStream_t stream) override;
+protected:
+    virtual void close() override;
+};
+
 class NVEncFilterParamCrop : public NVEncFilterParam {
 public:
     sInputCrop crop;
@@ -133,18 +143,22 @@ protected:
 };
 
 class NVEncFilterParamNvvfxSuperRes;
+class NVEncFilterParamNGXVSR;
+class DeviceDX11;
 
 class NVEncFilterParamResize : public NVEncFilterParam {
 public:
     RGY_VPP_RESIZE_ALGO interp;
     RGY_VPP_RESIZE_ALGO nvvfxSubAlgo;
     std::shared_ptr<NVEncFilterParamNvvfxSuperRes> nvvfxSuperRes;
+    std::shared_ptr<NVEncFilterParamNGXVSR> ngxvsr;
     NVEncFilterParamResize();
     virtual ~NVEncFilterParamResize();
     virtual tstring print() const override;
 };
 
 class NVEncFilterNvvfxSuperRes;
+class NVEncFilterNGXVSR;
 
 class NVEncFilterResize : public NVEncFilter {
 public:
@@ -163,6 +177,7 @@ protected:
     std::unique_ptr<CUMemBuf> m_weightSpline;
     RGY_VPP_RESIZE_ALGO m_weightSplineAlgo;
     std::unique_ptr<NVEncFilterNvvfxSuperRes> m_nvvfxSuperRes;
+    std::unique_ptr<NVEncFilterNGXVSR> m_ngxVSR;
 };
 
 

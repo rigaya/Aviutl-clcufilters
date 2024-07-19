@@ -35,6 +35,7 @@
     <ClCompile Include="rgy_frame_info.cpp" />
     <ClCompile Include="rgy_filter.cpp" />
     <ClCompile Include="NVEncFilterParam.cpp" />
+    <ClCompile Include="rgy_device.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="rgy_prm.h" />
@@ -75,5 +76,6 @@
     <ClInclude Include="rgy_frame_info.h" />
     <ClInclude Include="rgy_filter.h" />
     <ClInclude Include="NVEncFilterParam.h" />
+    <ClInclude Include="rgy_device.h" />
   </ItemGroup>
 </Project>

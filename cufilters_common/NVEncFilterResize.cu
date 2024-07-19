@@ -33,6 +33,7 @@
 #include "convert_csp.h"
 #include "NVEncFilter.h"
 #include "NVEncFilterNvvfx.h"
+#include "NVEncFilterNGX.h"
 #include "rgy_prm.h"
 #pragma warning (push)
 #pragma warning (disable: 4819)
@@ -117,6 +118,12 @@ const TCHAR *NVRTC_BUILTIN_DLL_NAME_TSTR = _T("nvrtc-builtins64_122.dll");
 #elif __CUDACC_VER_MAJOR__ == 12 && __CUDACC_VER_MINOR__ == 3
 const TCHAR *NVRTC_DLL_NAME_TSTR = _T("nvrtc64_120_0.dll");
 const TCHAR *NVRTC_BUILTIN_DLL_NAME_TSTR = _T("nvrtc-builtins64_123.dll");
+#elif __CUDACC_VER_MAJOR__ == 12 && __CUDACC_VER_MINOR__ == 4
+const TCHAR* NVRTC_DLL_NAME_TSTR = _T("nvrtc64_120_0.dll");
+const TCHAR* NVRTC_BUILTIN_DLL_NAME_TSTR = _T("nvrtc-builtins64_124.dll");
+#elif __CUDACC_VER_MAJOR__ == 12 && __CUDACC_VER_MINOR__ == 5
+const TCHAR* NVRTC_DLL_NAME_TSTR = _T("nvrtc64_120_0.dll");
+const TCHAR* NVRTC_BUILTIN_DLL_NAME_TSTR = _T("nvrtc-builtins64_125.dll");
 #endif
 #else //#if defined(_WIN32) || defined(_WIN64)
 const TCHAR *NPPI_DLL_NAME_TSTR = _T("libnppc.so");
@@ -683,7 +690,12 @@ RGY_ERR NVEncFilterResize::resizeNppiYUV444(RGYFrameInfo *pOutputFrame, const RG
 #endif
 }
 
-NVEncFilterResize::NVEncFilterResize() : m_bInterlacedWarn(false), m_weightSpline(), m_weightSplineAlgo(RGY_VPP_RESIZE_UNKNOWN), m_nvvfxSuperRes() {
+NVEncFilterResize::NVEncFilterResize() :
+    m_bInterlacedWarn(false),
+    m_weightSpline(),
+    m_weightSplineAlgo(RGY_VPP_RESIZE_UNKNOWN),
+    m_nvvfxSuperRes(),
+    m_ngxVSR() {
     m_name = _T("resize");
 }
 
@@ -840,6 +852,16 @@ RGY_ERR NVEncFilterResize::init(shared_ptr<NVEncFilterParam> pParam, shared_ptr<
             return sts;
         }
         resizeInterp = pResizeParam->nvvfxSubAlgo;
+    } else if (isNgxResizeFiter(pResizeParam->interp)) {
+        m_ngxVSR = std::make_unique<NVEncFilterNGXVSR>();
+        pResizeParam->ngxvsr->frameIn = pResizeParam->frameIn;
+        pResizeParam->ngxvsr->frameOut = pResizeParam->frameOut;
+        sts = m_ngxVSR->init(pResizeParam->ngxvsr, m_pLog);
+        if (sts != RGY_ERR_NONE) {
+            AddMessage(RGY_LOG_ERROR, _T("Failed to init ngx vsr filter.\n"));
+            return sts;
+        }
+        pResizeParam->frameOut = pResizeParam->ngxvsr->frameOut;
     } else {
         m_nvvfxSuperRes.reset(); // 不要になったら解放
         pResizeParam->nvvfxSuperRes.reset();
@@ -914,6 +936,18 @@ RGY_ERR NVEncFilterResize::init(shared_ptr<NVEncFilterParam> pParam, shared_ptr<
                 pResizeParam->nvvfxSuperRes->frameOut.width, pResizeParam->nvvfxSuperRes->frameOut.height,
                 pParam->frameOut.width, pParam->frameOut.height);
         }
+    } else if (m_ngxVSR) {
+        info = strsprintf(_T("resize: %s %dx%d -> %dx%d"),
+            get_chr_from_value(list_vpp_resize, pResizeParam->interp),
+            pParam->frameIn.width, pParam->frameIn.height,
+            pParam->frameOut.width, pParam->frameOut.height);
+        const auto indent2 = tstring(_tcslen(_T("resize:")) + 5, _T(' '));
+        const auto indent = tstring(INFO_INDENT) + indent2;
+        bool firstIndent = true;
+        for (const auto& str : split(m_ngxVSR->GetInputMessage(), _T("\n"))) {
+            info += _T("\n") + ((firstIndent) ? indent : indent2) + str;
+            firstIndent = false;
+        }
     } else {
         info = pResizeParam->print();
     }
@@ -926,7 +960,10 @@ RGY_ERR NVEncFilterResize::init(shared_ptr<NVEncFilterParam> pParam, shared_ptr<
 
 
 NVEncFilterParamResize::NVEncFilterParamResize() :
-    nvvfxSuperRes(), nvvfxSubAlgo(RGY_VPP_RESIZE_SPLINE36), interp(RGY_VPP_RESIZE_SPLINE36) {
+    interp(RGY_VPP_RESIZE_SPLINE36),
+    nvvfxSubAlgo(RGY_VPP_RESIZE_SPLINE36),
+    nvvfxSuperRes(),
+    ngxvsr() {
 }
 
 NVEncFilterParamResize::~NVEncFilterParamResize() {};
@@ -973,10 +1010,6 @@ RGY_ERR NVEncFilterResize::run_filter(const RGYFrameInfo *pInputFrame, RGYFrameI
         AddMessage(RGY_LOG_ERROR, _T("only supported on device memory.\n"));
         return RGY_ERR_UNSUPPORTED;
     }
-    if (m_param->frameOut.csp != m_param->frameIn.csp) {
-        AddMessage(RGY_LOG_ERROR, _T("csp does not match.\n"));
-        return RGY_ERR_UNSUPPORTED;
-    }
 
     auto pResizeParam = std::dynamic_pointer_cast<NVEncFilterParamResize>(m_param);
     if (!pResizeParam) {
@@ -1006,6 +1039,26 @@ RGY_ERR NVEncFilterResize::run_filter(const RGYFrameInfo *pInputFrame, RGYFrameI
             ppOutputFrames[0]->width = pResizeParam->nvvfxSuperRes->frameIn.width;
             ppOutputFrames[0]->height = pResizeParam->nvvfxSuperRes->frameIn.height;
         }
+    } else if (m_ngxVSR) {
+        int vsrOutputNum = 0;
+        RGYFrameInfo *outInfo[1] = { 0 };
+        RGYFrameInfo inputFrame = *pInputFrame;
+        auto sts_filter = m_ngxVSR->filter(&inputFrame, (RGYFrameInfo **)&outInfo, &vsrOutputNum, stream);
+        if (outInfo[0] == nullptr || vsrOutputNum != 1) {
+            AddMessage(RGY_LOG_ERROR, _T("Unknown behavior \"%s\".\n"), m_ngxVSR->name().c_str());
+            return sts_filter;
+        }
+        if (sts_filter != RGY_ERR_NONE || vsrOutputNum != 1) {
+            AddMessage(RGY_LOG_ERROR, _T("Error while running filter \"%s\".\n"), m_ngxVSR->name().c_str());
+            return sts_filter;
+        }
+        ppOutputFrames[0] = outInfo[0];
+        return RGY_ERR_NONE;
+    }
+
+    if (m_param->frameOut.csp != m_param->frameIn.csp) {
+        AddMessage(RGY_LOG_ERROR, _T("csp does not match.\n"));
+        return RGY_ERR_UNSUPPORTED;
     }
 
     static const auto supportedCspYV12   = make_array<RGY_CSP>(RGY_CSP_YV12, RGY_CSP_YV12_09, RGY_CSP_YV12_10, RGY_CSP_YV12_12, RGY_CSP_YV12_14, RGY_CSP_YV12_16);
@@ -1072,6 +1125,7 @@ RGY_ERR NVEncFilterResize::run_filter(const RGYFrameInfo *pInputFrame, RGYFrameI
 
 void NVEncFilterResize::close() {
     m_frameBuf.clear();
+    m_ngxVSR.reset();
     m_nvvfxSuperRes.reset();
     m_weightSpline.reset();
     m_weightSplineAlgo = RGY_VPP_RESIZE_UNKNOWN;

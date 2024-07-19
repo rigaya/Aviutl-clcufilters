@@ -494,6 +494,7 @@
     <ClCompile Include="rgy_cmd.cpp" />
     <ClCompile Include="rgy_codepage.cpp" />
     <ClCompile Include="rgy_def.cpp" />
+    <ClCompile Include="rgy_device.cpp" />
     <ClCompile Include="rgy_env.cpp" />
     <ClCompile Include="rgy_err.cpp" />
     <ClCompile Include="rgy_event.cpp" />
@@ -530,6 +531,7 @@
     <ClInclude Include="rgy_cmd.h" />
     <ClInclude Include="rgy_codepage.h" />
     <ClInclude Include="rgy_def.h" />
+    <ClInclude Include="rgy_device.h" />
     <ClInclude Include="rgy_env.h" />
     <ClInclude Include="rgy_err.h" />
     <ClInclude Include="rgy_event.h" />

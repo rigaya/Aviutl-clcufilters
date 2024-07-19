@@ -52,6 +52,8 @@ protected:
     std::array<std::unique_ptr<RGYFrame>, bufSize> m_frameHost;
 };
 
+class DeviceDX11;
+
 class cuDevice {
 public:
     cuDevice();
@@ -62,6 +64,7 @@ public:
     const tstring& getDeviceName() const { return m_deviceName; }
     int getDriverVersion() const { return m_cuda_driver_version; }
     std::pair<int, int> getCUDAVer() const { return m_cuda_version; }
+    DeviceDX11 *dx11();
 protected:
     void PrintMes(const RGYLogLevel logLevel, const TCHAR *format, ...);
 
@@ -71,6 +74,7 @@ protected:
     tstring m_deviceName;
     int m_cuda_driver_version;
     std::pair<int, int> m_cuda_version;
+    std::unique_ptr<DeviceDX11> m_dx11;
 };
 
 class cuFilterChain : public clcuFilterChain {

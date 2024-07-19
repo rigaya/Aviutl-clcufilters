@@ -38,6 +38,7 @@
 #include "clcufilters_version.h"
 #include "cufilters_chain.h"
 #include "cufilters_exe.h"
+#include "rgy_device.h"
 #include "rgy_util.h"
 #include "rgy_cmd.h"
 #include "rgy_err.h"
@@ -76,13 +77,12 @@ std::string cuFiltersExe::checkCUDADevices() {
     //ひとまず、これまでのすべてのエラーをflush
     cudaGetLastError();
 
-    int deviceCount = 0;
-    auto sts = err_to_rgy(cuDeviceGetCount(&deviceCount));
-    if (sts != RGY_ERR_NONE) {
-        AddMessage(RGY_LOG_ERROR, _T("cuDeviceGetCount error: %s\n"), get_err_mes(sts));
+    const int deviceCount = DX11AdapterManager::getInstance()->adapterCount();
+    if (deviceCount == 0) {
+        AddMessage(RGY_LOG_ERROR, _T("Failed to get device count from DX11 interface.\n"));
         return devices;
     }
-    AddMessage(RGY_LOG_DEBUG, _T("cuDeviceGetCount: Success, %d.\n"), deviceCount);
+    AddMessage(RGY_LOG_DEBUG, _T("deviceCount: Success, %d.\n"), deviceCount);
     if (deviceCount == 0) {
         return devices;
     }
