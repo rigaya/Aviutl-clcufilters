@@ -583,6 +583,27 @@ RGY_ERR cuFilterChain::configureOneFilter(std::unique_ptr<RGYFilterBase>& filter
         //入力フレーム情報を更新
         inputFrame = param->frameOut;
     }
+    //truehdr
+    if (filterType == VppType::NGX_TRUEHDR) {
+        if (!filter) {
+            //フィルタチェーンに追加
+            filter.reset(new NVEncFilterNGXTrueHDR());
+        }
+        shared_ptr<NVEncFilterParamNGXTrueHDR> param(new NVEncFilterParamNGXTrueHDR());
+        param->trueHDR = m_prm.vppnv.ngxTrueHDR;
+        param->compute_capability = m_cuDevice->getCUDAVer();
+        param->dx11 = m_cuDevice->dx11();
+        //param->vui = VuiFiltered;
+        param->frameIn = inputFrame;
+        param->frameOut = inputFrame;
+        param->bOutOverwrite = true;
+        auto sts = filter->init(param, m_log);
+        if (sts != RGY_ERR_NONE) {
+            return sts;
+        }
+        //入力フレーム情報を更新
+        inputFrame = param->frameOut;
+    }
     return RGY_ERR_NONE;
 }
 

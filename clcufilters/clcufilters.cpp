@@ -28,6 +28,7 @@
 
 #include "rgy_osdep.h"
 #include <windows.h>
+#include <commctrl.h>
 #include <process.h>
 #include <algorithm>
 #include <vector>
@@ -131,9 +132,33 @@ enum {
 
     ID_LB_DEBAND_SAMPLE,
     ID_CX_DEBAND_SAMPLE,
+
+    ID_TB_NGX_TRUEHDR_CONTRAST,
+    ID_TB_NGX_TRUEHDR_SATURATION = ID_TB_NGX_TRUEHDR_CONTRAST + 5,
+    ID_TB_NGX_TRUEHDR_MIDDLEGRAY = ID_TB_NGX_TRUEHDR_SATURATION + 5,
+    ID_TB_NGX_TRUEHDR_MAXLUMINANCE = ID_TB_NGX_TRUEHDR_MIDDLEGRAY + 5,
 };
 
 #pragma pack(1)
+
+struct CLFILTER_TRACKBAR {
+    int id;
+    HWND label;
+    HWND trackbar;
+    HWND bt_left;
+    HWND bt_right;
+    HWND bt_text;
+};
+
+struct CLFILTER_TRACKBAR_DATA {
+    CLFILTER_TRACKBAR *tb;
+    const char *labelText;
+    int label_id;
+    int val_min;
+    int val_max;
+    int val_default;
+    int *ex_data_pos;
+};
 
 struct CLFILTER_EXDATA {
     CL_PLATFORM_DEVICE cl_dev_id;
@@ -173,10 +198,17 @@ struct CLFILTER_EXDATA {
     int nlmeans_search;
 
     char resize_ngx_vsr_quality;
+    char reserved3[3];
 
-    char reserved[611];
+    int ngx_truehdr_contrast;
+    int ngx_truehdr_saturation;
+    int ngx_truehdr_middlegray;
+    int ngx_truehdr_maxluminance;
+
+    char reserved[592];
 };
 # pragma pack()
+static const int extra_track_data_offset = 32;
 static const size_t exdatasize = sizeof(CLFILTER_EXDATA);
 static_assert(exdatasize == 1024);
 
@@ -187,63 +219,8 @@ static std::unique_ptr<clcuFiltersAuf> g_clfiltersAuf;
 static int g_cuda_device_nvvfx_support = -1;
 static int g_resize_nvvfx_superres = -1;
 static int g_resize_ngx_vsr_quality = -1;
-
-static void cl_exdata_set_default() {
-    cl_exdata.cl_dev_id.i = 0;
-    cl_exdata.log_level = RGY_LOG_QUIET;
-
-    cl_exdata.resize_idx = 0;
-    cl_exdata.resize_algo = RGY_VPP_RESIZE_SPLINE36;
-
-    cl_exdata.csp_from = VideoVUIInfo();
-    cl_exdata.csp_to = VideoVUIInfo();
-    cl_exdata.hdr2sdr = HDR2SDR_DISABLED;
-
-    VppNnedi nnedi;
-    cl_exdata.nnedi_field = VPP_NNEDI_FIELD_USE_TOP;
-    cl_exdata.nnedi_nns = nnedi.nns;
-    cl_exdata.nnedi_nsize = nnedi.nsize;
-    cl_exdata.nnedi_quality = nnedi.quality;
-    cl_exdata.nnedi_prescreen = nnedi.pre_screen;
-    cl_exdata.nnedi_errortype = nnedi.errortype;
-
-    VppNvvfxDenoise nvvfxdenoise;
-    cl_exdata.nvvfx_denoise_strength = nvvfxdenoise.strength;
-
-    VppNvvfxArtifactReduction nvvfxArtifactReduction;
-    cl_exdata.nvvfx_artifact_reduction_mode = nvvfxArtifactReduction.mode;
-
-    VppNvvfxSuperRes nvvfxSuperRes;
-    cl_exdata.nvvfx_superres_mode = nvvfxSuperRes.mode;
-    cl_exdata.nvvfx_superres_strength = (int)(nvvfxSuperRes.strength * 100.0f + 0.5f);
-
-    VppDenoiseDct dct;
-    cl_exdata.denoise_dct_step = dct.step;
-    cl_exdata.denoise_dct_block_size = dct.block_size;
-
-    VppSmooth smooth;
-    cl_exdata.smooth_quality = smooth.quality;
-
-    VppKnn knn;
-    cl_exdata.knn_radius = knn.radius;
-
-    VppNLMeans nlmeans;
-    cl_exdata.nlmeans_patch = nlmeans.patchSize;
-    cl_exdata.nlmeans_search = nlmeans.searchSize;
-
-    VppPmd pmd;
-    cl_exdata.pmd_apply_count = pmd.applyCount;
-
-    VppUnsharp unsharp;
-    cl_exdata.unsharp_radius = unsharp.radius;
-
-    VppWarpsharp warpsharp;
-    cl_exdata.warpsharp_blur = warpsharp.blur;
-
-    VppDeband deband;
-    cl_exdata.deband_sample = deband.sample;
-}
-
+static std::vector<CLFILTER_TRACKBAR_DATA> g_trackBars;
+static HBRUSH g_hbrBackground = NULL;
 
 //---------------------------------------------------------------------
 //        ラベル
@@ -279,6 +256,10 @@ static const char *LB_CX_KNN_RADIUS = "適用半径";
 static const char *LB_CX_UNSHARP_RADIUS = "範囲";
 static const char *LB_CX_WARPSHARP_BLUR = "ブラー";
 static const char *LB_CX_DEBAND_SAMPLE = "sample";
+static const char *LB_CX_TRUEHDR_CONTRAST = "コントラスト";
+static const char *LB_CX_TRUEHDR_SATURATION = "彩度";
+static const char *LB_CX_TRUEHDR_MIDDLEGRAY = "目標輝度";
+static const char *LB_CX_TRUEHDR_MAXLUMINANCE = "最大輝度";
 #else
 static const char *LB_WND_OPENCL_UNAVAIL = "Filter disabled, OpenCL could not be used.";
 static const char *LB_WND_OPENCL_AVAIL = "OpenCL Enabled";
@@ -310,6 +291,10 @@ static const char *LB_CX_KNN_RADIUS = "radius";
 static const char *LB_CX_UNSHARP_RADIUS = "radius";
 static const char *LB_CX_WARPSHARP_BLUR = "blur";
 static const char *LB_CX_DEBAND_SAMPLE = "sample";
+static const char *LB_CX_TRUEHDR_CONTRAST = "contrast";
+static const char *LB_CX_TRUEHDR_SATURATION = "saturation";
+static const char *LB_CX_TRUEHDR_MIDDLEGRAY = "middlegray";
+static const char *LB_CX_TRUEHDR_MAXLUMINANCE = "maxluminance";
 #endif
 
 //---------------------------------------------------------------------
@@ -440,6 +425,9 @@ enum {
     CLFILTER_TRACK_NNEDI_FIRST = CLFILTER_TRACK_DEBAND_MAX,
     CLFILTER_TRACK_NNEDI_MAX = CLFILTER_TRACK_NNEDI_FIRST,
 
+    CLFILTER_TRACK_NGX_TRUEHDR_FIRST = CLFILTER_TRACK_NNEDI_MAX,
+    CLFILTER_TRACK_NGX_TRUEHDR_MAX = CLFILTER_TRACK_NGX_TRUEHDR_FIRST,
+
     CLFILTER_TRACK_MAX = CLFILTER_TRACK_NNEDI_MAX,
 };
 
@@ -514,6 +502,7 @@ const TCHAR *check_name_ja[] = {
     "ファイルに出力", // log to file
     "リサイズ",
     "色空間変換", "matrix", "colorprim", "transfer", "range",
+    "nnedi",
     "ノイズ除去 (nvvfx-denoise)",
     "ノイズ除去 (nvvfx-artifact-reduction)",
     "ノイズ除去 (denoise-dct)",
@@ -526,7 +515,7 @@ const TCHAR *check_name_ja[] = {
     "warpsharp", "マスクサイズ off:13x13, on:5x5", "色差マスク",
     "色調補正",
     "バンディング低減", "ブラー処理を先に", "毎フレーム乱数を生成",
-    "nnedi"
+    "TrueHDR"
 };
 const TCHAR *check_name_en[] = {
 #if ENABLE_FIELD
@@ -535,6 +524,7 @@ const TCHAR *check_name_en[] = {
     "log to file", // log to file
     "resize",
     "colorspace", "matrix", "colorprim", "transfer", "range",
+    "nnedi",
     "nvvfx-denoise",
     "nvvfx-artifact-reduction",
     "denoise-dct",
@@ -547,7 +537,7 @@ const TCHAR *check_name_en[] = {
     "warpsharp", "type [off:13x13, on:5x5]", "chroma",
     "tweak",
     "deband", "blurfirst", "rand_each_frame",
-    "nnedi"
+    "TrueHDR"
 };
 static_assert(_countof(check_name_ja) == _countof(check_name_en), "CHECK_N check");
 
@@ -574,7 +564,10 @@ enum {
     CLFILTER_CHECK_COLORSPACE_RANGE_ENABLE,
     CLFILTER_CHECK_COLORSPACE_MAX,
 
-    CLFILTER_CHECK_NVVFX_DENOISE_ENABLE = CLFILTER_CHECK_COLORSPACE_MAX,
+    CLFILTER_CHECK_NNEDI_ENABLE = CLFILTER_CHECK_COLORSPACE_MAX,
+    CLFILTER_CHECK_NNEDI_MAX,
+
+    CLFILTER_CHECK_NVVFX_DENOISE_ENABLE = CLFILTER_CHECK_NNEDI_MAX,
     CLFILTER_CHECK_NVVFX_DENOISE_MAX,
 
     CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE = CLFILTER_CHECK_NVVFX_DENOISE_MAX,
@@ -614,10 +607,10 @@ enum {
     CLFILTER_CHECK_DEBAND_RAND_EACH_FRAME,
     CLFILTER_CHECK_DEBAND_MAX,
 
-    CLFILTER_CHECK_NNEDI_ENABLE = CLFILTER_CHECK_DEBAND_MAX,
-    CLFILTER_CHECK_NNEDI_MAX,
+    CLFILTER_CHECK_TRUEHDR_ENABLE = CLFILTER_CHECK_DEBAND_MAX,
+    CLFILTER_CHECK_TRUEHDR_MAX,
 
-    CLFILTER_CHECK_MAX = CLFILTER_CHECK_NNEDI_MAX,
+    CLFILTER_CHECK_MAX = CLFILTER_CHECK_TRUEHDR_MAX,
 };
 
 //  チェックボックスの初期値 (値は0か1)
@@ -628,6 +621,7 @@ int check_default[] = {
     0, // log to file
     0, // resize
     0, 0, 0, 0, 0, // colorspace
+    0, //nnedi
     0, // nvvfx-denoise
     0, // nvvfx-artifact-reduction
     0, // denoise-dct
@@ -640,7 +634,7 @@ int check_default[] = {
     0, 0, 0, // warpsharp
     0, // tweak
     0, 0, 0, // deband
-    0 //nnedi
+    0 // TrueHDR
 };
 //  チェックボックスの数
 #define    CHECK_N    (_countof(check_name_ja))
@@ -713,6 +707,70 @@ BOOL func_exit( FILTER *fp ) {
 BOOL func_update(FILTER* fp, int status) {
     update_cx(fp);
     return TRUE;
+}
+
+static void cl_exdata_set_default() {
+    cl_exdata.cl_dev_id.i = 0;
+    cl_exdata.log_level = RGY_LOG_QUIET;
+
+    cl_exdata.resize_idx = 0;
+    cl_exdata.resize_algo = RGY_VPP_RESIZE_SPLINE36;
+
+    cl_exdata.resize_ngx_vsr_quality = FILTER_DEFAULT_NGX_VSR_QUALITY;
+
+    cl_exdata.csp_from = VideoVUIInfo();
+    cl_exdata.csp_to = VideoVUIInfo();
+    cl_exdata.hdr2sdr = HDR2SDR_DISABLED;
+
+    VppNnedi nnedi;
+    cl_exdata.nnedi_field = VPP_NNEDI_FIELD_USE_TOP;
+    cl_exdata.nnedi_nns = nnedi.nns;
+    cl_exdata.nnedi_nsize = nnedi.nsize;
+    cl_exdata.nnedi_quality = nnedi.quality;
+    cl_exdata.nnedi_prescreen = nnedi.pre_screen;
+    cl_exdata.nnedi_errortype = nnedi.errortype;
+
+    VppNvvfxDenoise nvvfxdenoise;
+    cl_exdata.nvvfx_denoise_strength = (int)(nvvfxdenoise.strength + 0.5);
+
+    VppNvvfxArtifactReduction nvvfxArtifactReduction;
+    cl_exdata.nvvfx_artifact_reduction_mode = nvvfxArtifactReduction.mode;
+
+    VppNvvfxSuperRes nvvfxSuperRes;
+    cl_exdata.nvvfx_superres_mode = nvvfxSuperRes.mode;
+    cl_exdata.nvvfx_superres_strength = (int)(nvvfxSuperRes.strength * 100.0f + 0.5f);
+
+    VppDenoiseDct dct;
+    cl_exdata.denoise_dct_step = dct.step;
+    cl_exdata.denoise_dct_block_size = dct.block_size;
+
+    VppSmooth smooth;
+    cl_exdata.smooth_quality = smooth.quality;
+
+    VppKnn knn;
+    cl_exdata.knn_radius = knn.radius;
+
+    VppNLMeans nlmeans;
+    cl_exdata.nlmeans_patch = nlmeans.patchSize;
+    cl_exdata.nlmeans_search = nlmeans.searchSize;
+
+    VppPmd pmd;
+    cl_exdata.pmd_apply_count = pmd.applyCount;
+
+    VppUnsharp unsharp;
+    cl_exdata.unsharp_radius = unsharp.radius;
+
+    VppWarpsharp warpsharp;
+    cl_exdata.warpsharp_blur = warpsharp.blur;
+
+    VppDeband deband;
+    cl_exdata.deband_sample = deband.sample;
+
+    VppNGXTrueHDR ngxTrueHDR;
+    cl_exdata.ngx_truehdr_contrast = ngxTrueHDR.contrast;
+    cl_exdata.ngx_truehdr_saturation = ngxTrueHDR.saturation;
+    cl_exdata.ngx_truehdr_middlegray = ngxTrueHDR.middleGray;
+    cl_exdata.ngx_truehdr_maxluminance = ngxTrueHDR.maxLuminance;
 }
 
 //---------------------------------------------------------------------
@@ -795,6 +853,11 @@ static HWND cx_warpsharp_blur;
 static HWND lb_deband_sample;
 static HWND cx_deband_sample;
 
+static CLFILTER_TRACKBAR tb_ngx_truehdr_contrast;
+static CLFILTER_TRACKBAR tb_ngx_truehdr_saturation;
+static CLFILTER_TRACKBAR tb_ngx_truehdr_middlegray;
+static CLFILTER_TRACKBAR tb_ngx_truehdr_maxluminance;
+
 
 static void set_cl_exdata(const HWND hwnd, const int value) {
     if (hwnd == cx_opencl_device) {
@@ -806,7 +869,7 @@ static void set_cl_exdata(const HWND hwnd, const int value) {
     } else if (hwnd == cx_resize_algo) {
         cl_exdata.resize_algo = value;
     } else if (hwnd == cx_resize_ngx_vsr_quality) {
-        cl_exdata.resize_ngx_vsr_quality = value;
+        cl_exdata.resize_ngx_vsr_quality = (char)value;
     } else if (hwnd == cx_colorspace_colormatrix_from) {
         cl_exdata.csp_from.matrix = (CspMatrix)value;
     } else if (hwnd == cx_colorspace_colormatrix_to) {
@@ -862,6 +925,99 @@ static void set_cl_exdata(const HWND hwnd, const int value) {
     } else if (hwnd == cx_deband_sample) {
         cl_exdata.deband_sample = value;
     }
+}
+
+CLFILTER_TRACKBAR create_trackbar(HWND hwndParent, HINSTANCE hInstance, const char *labelText,
+    const int x, const int y, const int trackbar_label_id, const int val_min, const int val_max, const int val_default) {
+    CLFILTER_TRACKBAR trackbar;
+    trackbar.id = trackbar_label_id;
+    
+    HFONT b_font = CreateFont(14, 0, 0, 0, FW_MEDIUM, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, DEFAULT_PITCH | FF_MODERN, "Meiryo UI");
+    
+    // ラベルの作成
+    trackbar.label = CreateWindow(
+        "STATIC", labelText, SS_SIMPLE|WS_CHILD|WS_VISIBLE,
+        x, y, 50, 20, hwndParent, (HMENU)trackbar_label_id, hInstance, NULL);
+    SendMessage(trackbar.label, WM_SETFONT, (WPARAM)b_font, 0);
+
+    // トラックバーの作成
+    trackbar.trackbar = CreateWindowEx(
+        0, TRACKBAR_CLASS, NULL, WS_CHILD | WS_VISIBLE | TBS_HORZ,
+        x + 52, y, 190, 25, hwndParent, (HMENU)(trackbar_label_id+1), hInstance, NULL);
+    SendMessage(trackbar.trackbar, WM_SETFONT, (WPARAM)b_font, 0);
+    SendMessage(trackbar.trackbar, TBM_SETRANGE, TRUE, MAKELONG(val_min, val_max));
+    SendMessage(trackbar.trackbar, TBM_SETPOS, TRUE, val_default);
+    SendMessage(trackbar.trackbar, TBM_SETPAGESIZE, val_default, 1);
+    SendMessage(trackbar.trackbar, TBM_SETTICFREQ, std::max((val_max - val_min) / 2, 0), 0);
+
+    HFONT hFontButton = CreateFont(
+        12, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Arial"
+    );
+    // 左ボタンの作成
+    auto handleAviutl = GetModuleHandle(nullptr);
+    auto hIconLeft = LoadImage(handleAviutl, "ICON_LEFT", IMAGE_ICON, 0, 0, 0);
+    trackbar.bt_left = CreateWindowExW(
+        0, L"BUTTON", hIconLeft ? L"" : L"◄", WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON | BS_ICON,
+        x + 242, y, 16, 16, hwndParent, (HMENU)(trackbar_label_id+2), hInstance, NULL);
+    SendMessage(trackbar.bt_left, WM_SETFONT, (WPARAM)hFontButton, 0);
+    if (hIconLeft) {
+        SendMessage(trackbar.bt_left, BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIconLeft);
+    }
+
+    // 右ボタンの作成
+    auto hIconRight = LoadImage(handleAviutl, "ICON_RIGHT", IMAGE_ICON, 0, 0, 0);
+    trackbar.bt_right = CreateWindowExW(
+        0, L"BUTTON", hIconRight ? L"" : L"►", WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON | BS_ICON,
+        x + 258, y, 16, 16, hwndParent, (HMENU)(trackbar_label_id+3), hInstance, NULL);
+    SendMessage(trackbar.bt_right, WM_SETFONT, (WPARAM)hFontButton, 0);
+    if (hIconRight) {
+        SendMessage(trackbar.bt_right, BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIconRight);
+    }
+
+    // テキストボックスの作成
+    trackbar.bt_text = CreateWindow(
+        "EDIT", "0", WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_LEFT,
+        x + 274, y, 30, 20, hwndParent, (HMENU)(trackbar_label_id+4), hInstance, NULL);
+    SendMessage(trackbar.bt_text, WM_SETFONT, (WPARAM)b_font, 0);
+
+    //テキストボックスにデフォルト値を設定
+    char text_val[32];
+    sprintf_s(text_val, "%d", val_default);
+    SetWindowText(trackbar.bt_text, text_val);
+    return trackbar;
+}
+
+void create_trackbars(HWND hwndParent, HINSTANCE hInstance, const int x, int& y_pos, int track_bar_delta_y, const CLFILTER_TRACKBAR_DATA *trackbars) {
+    for (; trackbars->tb != nullptr; trackbars++, y_pos += track_bar_delta_y) {
+        (*trackbars->tb) = create_trackbar(hwndParent, hInstance, trackbars->labelText, x, y_pos, trackbars->label_id, trackbars->val_min, trackbars->val_max, trackbars->val_default);
+        g_trackBars.push_back((*trackbars));
+    }
+}
+
+const CLFILTER_TRACKBAR_DATA *get_trackbar_data(const int control_id) {
+    for (const auto& tb : g_trackBars) {
+        if (tb.label_id <= control_id && control_id < tb.label_id + 5) {
+            return &tb;
+        }
+    }
+    return nullptr;
+}
+
+const CLFILTER_TRACKBAR_DATA *get_trackbar_data_from_handle(const HWND handle) {
+    for (const auto& tb : g_trackBars) {
+        if (tb.tb) {
+            if (   tb.tb->label    == handle
+                || tb.tb->trackbar == handle
+                || tb.tb->bt_left  == handle
+                || tb.tb->bt_right == handle
+                || tb.tb->bt_text  == handle) {
+                return &tb;
+            }
+        }
+    }
+    return nullptr;
 }
 
 static void set_filter_order() {
@@ -1026,8 +1182,10 @@ static BOOL out_opencl_info(FILTER *fp) {
         if (proc->run(args, nullptr, 0, true, true) == 0) {
             auto str = proc->getOutput();
             if (str.length() > 0) {
-                auto fpclinfo = std::unique_ptr<FILE, fp_deleter>(_tfopen(char_to_tstring(filename).c_str(), _T("w")), fp_deleter());
-                fprintf(fpclinfo.get(), "%s", str.c_str());
+                if (FILE *fpcl = nullptr; _tfopen_s(&fpcl, char_to_tstring(filename).c_str(), _T("w")) == 0 && fpcl) {
+                    auto fpclinfo = std::unique_ptr<FILE, fp_deleter>(fpcl, fp_deleter());
+                    fprintf(fpclinfo.get(), "%s", str.c_str());
+                }
             }
         }
         proc->close();
@@ -1122,7 +1280,7 @@ void set_check_box_show_hide(int check_box, bool show) {
     ShowWindow(child_hwnd[checkbox_idx + check_box], show ? SW_SHOW : SW_HIDE);
 }
 
-static void update_cx(FILTER *fp) {
+void update_cx(FILTER *fp) {
     if (cl_exdata.nnedi_nns == 0) {
         cl_exdata_set_default();
     }
@@ -1167,8 +1325,8 @@ static void init_filter_order_list(FILTER *fp) {
     SendMessage(ls_filter_order, LB_RESETCONTENT, 0, 0);
 
     // フィルタリストが何件あるかを確認
-    int current_count = 0;
-    for (int i = 0; i < std::min<int>(filterList.size(), _countof(cl_exdata.filterOrder)); i++, current_count++) {
+    size_t current_count = 0;
+    for (size_t i = 0; i < std::min(filterList.size(), _countof(cl_exdata.filterOrder)); i++, current_count++) {
         if (cl_exdata.filterOrder[i] == VppType::VPP_NONE) {
             current_count = i;
             break;
@@ -1222,15 +1380,25 @@ static void update_cuda_enable(FILTER *fp) {
         set_check_box_enable(CLFILTER_CHECK_NVVFX_DENOISE_ENABLE, cudaNvvfxSupport);
         set_check_box_enable(CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE, cudaNvvfxSupport);
         set_resize_algo_items(cudaNvvfxSupport);
+        const int checkbox_idx = 1 + 5 * CLFILTER_TRACK_MAX;
         if (!cudaNvvfxSupport) {
-            const int checkbox_idx = 1 + 5 * CLFILTER_TRACK_MAX;
-
             fp->check[CLFILTER_CHECK_NVVFX_DENOISE_ENABLE] = FALSE;
             SendMessage(child_hwnd[checkbox_idx + CLFILTER_CHECK_NVVFX_DENOISE_ENABLE], BM_SETCHECK, BST_UNCHECKED, 0);
 
             fp->check[CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE] = FALSE;
             SendMessage(child_hwnd[checkbox_idx + CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE], BM_SETCHECK, BST_UNCHECKED, 0);
         }
+
+        set_check_box_enable(CLFILTER_CHECK_TRUEHDR_ENABLE, cudaNvvfxSupport);
+        //set_track_bar_enable(CLFILTER_TRACK_TRUEHDR_CONTRAST, cudaNvvfxSupport);
+        //set_track_bar_enable(CLFILTER_TRACK_TRUEHDR_SATURATION, cudaNvvfxSupport);
+        //set_track_bar_enable(CLFILTER_TRACK_TRUEHDR_MIDDLEGRAY, cudaNvvfxSupport);
+        //set_track_bar_enable(CLFILTER_TRACK_TRUEHDR_MAX_LUMINANCE, cudaNvvfxSupport);
+        if (!cudaNvvfxSupport) {
+            fp->check[CLFILTER_CHECK_TRUEHDR_ENABLE] = FALSE;
+            SendMessage(child_hwnd[checkbox_idx + CLFILTER_CHECK_TRUEHDR_ENABLE], BM_SETCHECK, BST_UNCHECKED, 0);
+        }
+
         g_cuda_device_nvvfx_support = cudaNvvfxSupport;
     }
 }
@@ -1260,6 +1428,7 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
     case WM_FILTER_INIT:
         cl_exdata_set_default();
         init_dialog(hwnd, fp);
+        g_hbrBackground = (HBRUSH)GetClassLongPtr(hwnd, GCLP_HBRBACKGROUND);
         return TRUE;
     case WM_FILTER_UPDATE: // フィルタ更新
     case WM_FILTER_SAVE_END: // セーブ終了
@@ -1268,6 +1437,42 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
         update_cuda_enable(fp);
         update_nvvfx_superres(fp);
         break;
+    case WM_NOTIFY: {
+        if (auto trackbar = get_trackbar_data(wparam); trackbar != nullptr) {
+            // トラックバーをドラッグしている最中の処理
+            if (((const NMHDR *)lparam)->code == NM_CUSTOMDRAW) {
+                // トラックバーの現在の値を取得
+                int pos = SendMessage(trackbar->tb->trackbar, TBM_GETPOS, 0, 0);
+                // テキストボックスに値を設定 (テキストボックスが最小値-最大値の範囲内の場合のみ更新する)
+                char buffer[256] = { 0 };
+                GetWindowText(trackbar->tb->bt_text, buffer, sizeof(buffer));
+                int value = 0;
+                if (sscanf_s(buffer, "%d", &value) == 1
+                    && trackbar->val_min <= value && value <= trackbar->val_max) {
+                    SetWindowText(trackbar->tb->bt_text, strsprintf("%d", pos).c_str());
+                }
+            }
+        }
+        break;
+    }
+    case WM_HSCROLL: {
+        if (auto trackbar = get_trackbar_data_from_handle((HWND)lparam); trackbar != nullptr) {
+            // トラックバーをドラッグし終わったときの処理
+            HWND hwndTrackbar = (HWND)lparam;
+            // トラックバーの現在の値を取得
+            int pos = SendMessage(hwndTrackbar, TBM_GETPOS, 0, 0);
+            // テキストボックスに値を設定 (テキストボックスが最小値-最大値の範囲内の場合のみ更新する)
+            char buffer[256] = { 0 };
+            GetWindowText(trackbar->tb->bt_text, buffer, sizeof(buffer));
+            int value = 0;
+            if (sscanf_s(buffer, "%d", &value) == 1
+                && trackbar->val_min <= value && value <= trackbar->val_max) {
+                SetWindowText(trackbar->tb->bt_text, strsprintf("%d", pos).c_str());
+            }
+            *(trackbar->ex_data_pos) = pos;
+        }
+        break;
+    }
     case WM_COMMAND:
         switch (LOWORD(wparam)) {
         case ID_CX_OPENCL_DEVICE: // コンボボックス
@@ -1579,10 +1784,86 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
                 break;
             }
             break;
-        default:
+        default: {
+            const auto ctrlID = LOWORD(wparam);
+            // 追加したトラックバーに関する処理
+            if (const auto trackbar = get_trackbar_data(ctrlID); trackbar != nullptr) {
+                if (ctrlID - trackbar->label_id == 2) { // 左ボタンの処理
+                    // トラックバーの現在の値を取得
+                    int pos = SendMessage(trackbar->tb->trackbar, TBM_GETPOS, 0, 0);
+                    // 値を1減らす
+                    pos = std::max(pos - 1, trackbar->val_min);
+                    // トラックバーの値を設定
+                    SendMessage(trackbar->tb->trackbar, TBM_SETPOS, TRUE, pos);
+                    // テキストボックスに値を設定
+                    SetWindowText(trackbar->tb->bt_text, strsprintf("%d", pos).c_str());
+                    *(trackbar->ex_data_pos) = pos;
+                    return TRUE; //TRUEを返すと画像処理が更新される
+                } else if (ctrlID - trackbar->label_id == 3) { // 右ボタンの処理
+                    // トラックバーの現在の値を取得
+                    int pos = SendMessage(trackbar->tb->trackbar, TBM_GETPOS, 0, 0);
+                    // 値を1増やす
+                    pos = std::min(pos + 1, trackbar->val_max);
+                    // トラックバーの値を設定
+                    SendMessage(trackbar->tb->trackbar, TBM_SETPOS, TRUE, pos);
+                    // テキストボックスに値を設定
+                    SetWindowText(trackbar->tb->bt_text, strsprintf("%d", pos).c_str());
+                    *(trackbar->ex_data_pos) = pos;
+                    return TRUE; //TRUEを返すと画像処理が更新される
+                }  else if (ctrlID - trackbar->label_id == 4) { // テキストボックスの処理
+                    if (HIWORD(wparam) == EN_CHANGE) {
+                        // 現在のカーソル位置を取得
+                        DWORD start, end;
+                        SendMessage(trackbar->tb->bt_text, EM_GETSEL, (WPARAM)&start, (LPARAM)&end);
+                        // テキストボックスの内容が変更されたとき
+                        char buffer[256] = { 0 };
+                        int value = 0;
+                        GetWindowText(trackbar->tb->bt_text, buffer, sizeof(buffer));
+                        if (sscanf_s(buffer, "%d", &value) == 1) {
+                            const int pos = clamp(value, trackbar->val_min, trackbar->val_max);
+                            SendMessage(trackbar->tb->trackbar, TBM_SETPOS, TRUE, pos);
+                            *(trackbar->ex_data_pos) = pos;
+                        }
+                        // カーソル位置を復元
+                        SendMessage(trackbar->tb->bt_text, EM_SETSEL, start, end);
+                        return TRUE; //TRUEを返すと画像処理が更新される
+                    } else if (HIWORD(wparam) == EN_KILLFOCUS) {
+                        // 現在のカーソル位置を取得
+                        DWORD start, end;
+                        SendMessage(trackbar->tb->bt_text, EM_GETSEL, (WPARAM)&start, (LPARAM)&end);
+                        char buffer[256] = { 0 };
+                        int org_value = 0;
+                        if (strlen(buffer) == 0) {
+                            // 空白の場合、元の値に戻す
+                            const int pos = SendMessage(trackbar->tb->trackbar, TBM_GETPOS, 0, 0);
+                            SetWindowText(trackbar->tb->bt_text, strsprintf("%d", pos).c_str());
+                        } else if (sscanf_s(buffer, "%d", &org_value) == 1) {
+                            const int pos = clamp(org_value, trackbar->val_min, trackbar->val_max);
+                            SendMessage(trackbar->tb->trackbar, TBM_SETPOS, TRUE, pos);
+                            if (pos != org_value) {
+                                SetWindowText(trackbar->tb->bt_text, strsprintf("%d", pos).c_str());
+                            }
+                            *(trackbar->ex_data_pos) = pos;
+                        }
+                        // カーソル位置を復元
+                        SendMessage(trackbar->tb->bt_text, EM_SETSEL, start, end);
+                        return TRUE; //TRUEを返すと画像処理が更新される
+                    }
+                }
+            }
             break;
         }
+        }
         break;
+    // テキストボックスの背景色を変更したいが、WM_CTLCOLOREDITが送られてこないため断念
+    // case WM_CTLCOLOREDIT:
+    //     if (auto trackbar = get_trackbar_data_from_handle((HWND)lparam); trackbar != nullptr) {
+    //         if (trackbar->tb->bt_text == (HWND)lparam) { // テキストボックスの処理
+    //             SetBkColor((HDC)wparam, GetSysColor(COLOR_WINDOW)); // 背景色をメインウィンドウの背景色に設定
+    //             return (LRESULT)g_hbrBackground;
+    //         }
+    //     }
+    //     break;
     case WM_FILTER_EXIT:
         break;
     case WM_KEYUP:
@@ -1590,6 +1871,13 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
     case WM_MOUSEWHEEL:
         SendMessage(GetWindow(hwnd, GW_OWNER), message, wparam, lparam);
         break;
+    //case WM_SETFOCUS:
+    //    if (const auto trackbar = get_trackbar_data_from_handle((HWND)wparam); trackbar != nullptr) {
+    //        if (trackbar->tb->bt_text == (HWND)wparam) {
+    //            SendMessage(trackbar->tb->bt_text, EM_SETSEL, 0, -1);
+    //        }
+    //    }
+    //    break;
     default:
         return FALSE;
     }
@@ -1939,6 +2227,17 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     //バンディング
     move_group(y_pos, col, col_width, CLFILTER_CHECK_DEBAND_ENABLE, CLFILTER_CHECK_DEBAND_MAX, CLFILTER_TRACK_DEBAND_FIRST, CLFILTER_TRACK_DEBAND_MAX, track_bar_delta_y, ADD_CX_AFTER_TRACK, 1, cx_y_pos, checkbox_idx, dialog_rc);
     add_combobox(cx_deband_sample, ID_CX_DEBAND_SAMPLE, lb_deband_sample, ID_LB_DEBAND_SAMPLE, LB_CX_DEBAND_SAMPLE, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_deband);
+
+    //TrueHDR
+    move_group(y_pos, col, col_width, CLFILTER_CHECK_TRUEHDR_ENABLE, CLFILTER_CHECK_TRUEHDR_MAX, CLFILTER_TRACK_NGX_TRUEHDR_FIRST, CLFILTER_TRACK_NGX_TRUEHDR_MAX, track_bar_delta_y, ADD_CX_AFTER_TRACK, 5, cx_y_pos, checkbox_idx, dialog_rc);
+    const CLFILTER_TRACKBAR_DATA tb_truehdr[] = {
+        { &tb_ngx_truehdr_contrast,     LB_CX_TRUEHDR_CONTRAST,     ID_TB_NGX_TRUEHDR_CONTRAST,       0,  200,  100, &cl_exdata.ngx_truehdr_contrast     },
+        { &tb_ngx_truehdr_saturation,   LB_CX_TRUEHDR_SATURATION,   ID_TB_NGX_TRUEHDR_SATURATION,     0,  200,  100, &cl_exdata.ngx_truehdr_saturation   },
+        { &tb_ngx_truehdr_middlegray,   LB_CX_TRUEHDR_MIDDLEGRAY,   ID_TB_NGX_TRUEHDR_MIDDLEGRAY,    10,  100,   50, &cl_exdata.ngx_truehdr_middlegray   },
+        { &tb_ngx_truehdr_maxluminance, LB_CX_TRUEHDR_MAXLUMINANCE, ID_TB_NGX_TRUEHDR_MAXLUMINANCE, 400, 2000, 1000, &cl_exdata.ngx_truehdr_maxluminance },
+        { 0 }
+    };
+    create_trackbars(hwnd, hinst, col * col_width + 8 + AVIUTL_1_10_OFFSET, cx_y_pos, track_bar_delta_y, tb_truehdr);
     
     y_pos_max = std::max(y_pos_max, y_pos);
 
@@ -2073,13 +2372,23 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp, const FILTER_PRO
     prm.colorspace.hdr2sdr.desat_exp      = (float)fp->track[CLFILTER_TRACK_COLORSPACE_DESAT_EXP] * 0.1f;
 #endif //#if ENABLE_HDR2SDR_DESAT
 
+    //nnedi
+    prm.vpp.nnedi.enable        = fp->check[CLFILTER_CHECK_NNEDI_ENABLE] != 0;
+    prm.vpp.nnedi.field         = cl_exdata.nnedi_field;
+    prm.vpp.nnedi.nsize         = cl_exdata.nnedi_nsize;
+    prm.vpp.nnedi.nns           = cl_exdata.nnedi_nns;
+    prm.vpp.nnedi.quality       = cl_exdata.nnedi_quality;
+    prm.vpp.nnedi.pre_screen    = cl_exdata.nnedi_prescreen;
+    prm.vpp.nnedi.errortype     = cl_exdata.nnedi_errortype;
+    prm.vpp.nnedi.precision     = VPP_FP_PRECISION_AUTO;
+
     //nvvfx-superres
     prm.vppnv.nvvfxSuperRes.mode     = cl_exdata.nvvfx_superres_mode;
     prm.vppnv.nvvfxSuperRes.strength = fp->track[CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH] * 0.01f;
 
     //nvvfx-denoise
     prm.vppnv.nvvfxDenoise.enable   = isCUDADevice && fp->check[CLFILTER_CHECK_NVVFX_DENOISE_ENABLE] != 0;
-    prm.vppnv.nvvfxDenoise.strength = cl_exdata.nvvfx_denoise_strength;
+    prm.vppnv.nvvfxDenoise.strength = (float)cl_exdata.nvvfx_denoise_strength;
 
     //nvvfx-artifact-reduction
     prm.vppnv.nvvfxArtifactReduction.enable = isCUDADevice && fp->check[CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE] != 0;
@@ -2158,15 +2467,12 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp, const FILTER_PRO
     prm.vpp.deband.blurFirst     = fp->check[CLFILTER_CHECK_DEBAND_BLUR_FIRST] != 0;
     prm.vpp.deband.randEachFrame = fp->check[CLFILTER_CHECK_DEBAND_RAND_EACH_FRAME] != 0;
 
-    //nnedi
-    prm.vpp.nnedi.enable        = fp->check[CLFILTER_CHECK_NNEDI_ENABLE] != 0;
-    prm.vpp.nnedi.field         = cl_exdata.nnedi_field;
-    prm.vpp.nnedi.nsize         = cl_exdata.nnedi_nsize;
-    prm.vpp.nnedi.nns           = cl_exdata.nnedi_nns;
-    prm.vpp.nnedi.quality       = cl_exdata.nnedi_quality;
-    prm.vpp.nnedi.pre_screen    = cl_exdata.nnedi_prescreen;
-    prm.vpp.nnedi.errortype     = cl_exdata.nnedi_errortype;
-    prm.vpp.nnedi.precision     = VPP_FP_PRECISION_AUTO;
+    //TrueHDR
+    prm.vppnv.ngxTrueHDR.enable       = fp->check[CLFILTER_CHECK_TRUEHDR_ENABLE] != 0;
+    prm.vppnv.ngxTrueHDR.contrast     = cl_exdata.ngx_truehdr_contrast;
+    prm.vppnv.ngxTrueHDR.saturation   = cl_exdata.ngx_truehdr_saturation;
+    prm.vppnv.ngxTrueHDR.middleGray   = cl_exdata.ngx_truehdr_middlegray;
+    prm.vppnv.ngxTrueHDR.maxLuminance = cl_exdata.ngx_truehdr_maxluminance;
 
     return prm;
 }

@@ -227,7 +227,8 @@ std::vector<VppType> clFilterChainParam::getFilterChain(const bool resizeRequire
            || (vpp.edgelevel.enable  && filterType == VppType::CL_EDGELEVEL)
            || (vpp.warpsharp.enable  && filterType == VppType::CL_WARPSHARP)
            || (vpp.tweak.enable      && filterType == VppType::CL_TWEAK)
-           || (vpp.deband.enable     && filterType == VppType::CL_DEBAND)) {
+           || (vpp.deband.enable     && filterType == VppType::CL_DEBAND)
+           || (vppnv.ngxTrueHDR.enable && filterType == VppType::NGX_TRUEHDR)) {
             enabledFilterOrder.push_back(filterType);
         }
     }
