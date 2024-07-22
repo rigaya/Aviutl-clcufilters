@@ -1259,6 +1259,13 @@ void set_track_bar_enable(int track_bar, bool enable) {
         EnableWindow(child_hwnd[track_bar * 5 + j + 1], enable);
     }
 }
+void set_track_bar_ex_enable(const CLFILTER_TRACKBAR& tb, bool enable) {
+    EnableWindow(tb.label, enable);
+    EnableWindow(tb.trackbar, enable);
+    EnableWindow(tb.bt_left, enable);
+    EnableWindow(tb.bt_right, enable);
+    EnableWindow(tb.bt_text, enable);
+}
 void set_check_box_enable(int check_box, bool enable) {
     const int checkbox_idx = 1 + 5 * CLFILTER_TRACK_MAX;
     EnableWindow(child_hwnd[checkbox_idx + check_box], enable);
@@ -1383,10 +1390,10 @@ static void update_cuda_enable(FILTER *fp) {
         }
 
         set_check_box_enable(CLFILTER_CHECK_TRUEHDR_ENABLE, cudaNvvfxSupport);
-        //set_track_bar_enable(CLFILTER_TRACK_TRUEHDR_CONTRAST, cudaNvvfxSupport);
-        //set_track_bar_enable(CLFILTER_TRACK_TRUEHDR_SATURATION, cudaNvvfxSupport);
-        //set_track_bar_enable(CLFILTER_TRACK_TRUEHDR_MIDDLEGRAY, cudaNvvfxSupport);
-        //set_track_bar_enable(CLFILTER_TRACK_TRUEHDR_MAX_LUMINANCE, cudaNvvfxSupport);
+        set_track_bar_ex_enable(tb_ngx_truehdr_contrast, cudaNvvfxSupport);
+        set_track_bar_ex_enable(tb_ngx_truehdr_saturation, cudaNvvfxSupport);
+        set_track_bar_ex_enable(tb_ngx_truehdr_middlegray, cudaNvvfxSupport);
+        set_track_bar_ex_enable(tb_ngx_truehdr_maxluminance, cudaNvvfxSupport);
         if (!cudaNvvfxSupport) {
             fp->check[CLFILTER_CHECK_TRUEHDR_ENABLE] = FALSE;
             SendMessage(child_hwnd[checkbox_idx + CLFILTER_CHECK_TRUEHDR_ENABLE], BM_SETCHECK, BST_UNCHECKED, 0);
