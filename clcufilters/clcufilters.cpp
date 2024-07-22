@@ -927,7 +927,7 @@ static void set_cl_exdata(const HWND hwnd, const int value) {
     }
 }
 
-CLFILTER_TRACKBAR create_trackbar(HWND hwndParent, HINSTANCE hInstance, const char *labelText,
+CLFILTER_TRACKBAR create_trackbar_ex(HWND hwndParent, HINSTANCE hInstance, const char *labelText,
     const int x, const int y, const int trackbar_label_id, const int val_min, const int val_max, const int val_default) {
     CLFILTER_TRACKBAR trackbar;
     trackbar.id = trackbar_label_id;
@@ -982,9 +982,9 @@ CLFILTER_TRACKBAR create_trackbar(HWND hwndParent, HINSTANCE hInstance, const ch
     return trackbar;
 }
 
-void create_trackbars(HWND hwndParent, HINSTANCE hInstance, const int x, int& y_pos, int track_bar_delta_y, const CLFILTER_TRACKBAR_DATA *trackbars) {
+void create_trackbars_ex(HWND hwndParent, HINSTANCE hInstance, const int x, int& y_pos, int track_bar_delta_y, const CLFILTER_TRACKBAR_DATA *trackbars) {
     for (; trackbars->tb != nullptr; trackbars++, y_pos += track_bar_delta_y) {
-        (*trackbars->tb) = create_trackbar(hwndParent, hInstance, trackbars->labelText, x, y_pos, trackbars->label_id, trackbars->val_min, trackbars->val_max, trackbars->val_default);
+        (*trackbars->tb) = create_trackbar_ex(hwndParent, hInstance, trackbars->labelText, x, y_pos, trackbars->label_id, trackbars->val_min, trackbars->val_max, trackbars->val_default);
         g_trackBars.push_back((*trackbars));
     }
 }
@@ -1420,6 +1420,72 @@ static void update_nvvfx_superres(FILTER *fp) {
     }
 }
 
+BOOL proc_trackbar_ex(const CLFILTER_TRACKBAR_DATA *trackbar, const int ctrlID, WPARAM wparam, LPARAM lparam) {
+    if (ctrlID - trackbar->label_id == 2) { // 左ボタンの処理
+        // トラックバーの現在の値を取得
+        int pos = SendMessage(trackbar->tb->trackbar, TBM_GETPOS, 0, 0);
+        // 値を1減らす
+        pos = std::max(pos - 1, trackbar->val_min);
+        // トラックバーの値を設定
+        SendMessage(trackbar->tb->trackbar, TBM_SETPOS, TRUE, pos);
+        // テキストボックスに値を設定
+        SetWindowText(trackbar->tb->bt_text, strsprintf("%d", pos).c_str());
+        *(trackbar->ex_data_pos) = pos;
+        return TRUE; //TRUEを返すと画像処理が更新される
+    } else if (ctrlID - trackbar->label_id == 3) { // 右ボタンの処理
+        // トラックバーの現在の値を取得
+        int pos = SendMessage(trackbar->tb->trackbar, TBM_GETPOS, 0, 0);
+        // 値を1増やす
+        pos = std::min(pos + 1, trackbar->val_max);
+        // トラックバーの値を設定
+        SendMessage(trackbar->tb->trackbar, TBM_SETPOS, TRUE, pos);
+        // テキストボックスに値を設定
+        SetWindowText(trackbar->tb->bt_text, strsprintf("%d", pos).c_str());
+        *(trackbar->ex_data_pos) = pos;
+        return TRUE; //TRUEを返すと画像処理が更新される
+    }  else if (ctrlID - trackbar->label_id == 4) { // テキストボックスの処理
+        if (HIWORD(wparam) == EN_CHANGE) {
+            // 現在のカーソル位置を取得
+            DWORD start, end;
+            SendMessage(trackbar->tb->bt_text, EM_GETSEL, (WPARAM)&start, (LPARAM)&end);
+            // テキストボックスの内容が変更されたとき
+            char buffer[256] = { 0 };
+            int value = 0;
+            GetWindowText(trackbar->tb->bt_text, buffer, sizeof(buffer));
+            if (sscanf_s(buffer, "%d", &value) == 1) {
+                const int pos = clamp(value, trackbar->val_min, trackbar->val_max);
+                SendMessage(trackbar->tb->trackbar, TBM_SETPOS, TRUE, pos);
+                *(trackbar->ex_data_pos) = pos;
+            }
+            // カーソル位置を復元
+            SendMessage(trackbar->tb->bt_text, EM_SETSEL, start, end);
+            return TRUE; //TRUEを返すと画像処理が更新される
+        } else if (HIWORD(wparam) == EN_KILLFOCUS) {
+            // 現在のカーソル位置を取得
+            DWORD start, end;
+            SendMessage(trackbar->tb->bt_text, EM_GETSEL, (WPARAM)&start, (LPARAM)&end);
+            char buffer[256] = { 0 };
+            int org_value = 0;
+            if (strlen(buffer) == 0) {
+                // 空白の場合、元の値に戻す
+                const int pos = SendMessage(trackbar->tb->trackbar, TBM_GETPOS, 0, 0);
+                SetWindowText(trackbar->tb->bt_text, strsprintf("%d", pos).c_str());
+            } else if (sscanf_s(buffer, "%d", &org_value) == 1) {
+                const int pos = clamp(org_value, trackbar->val_min, trackbar->val_max);
+                SendMessage(trackbar->tb->trackbar, TBM_SETPOS, TRUE, pos);
+                if (pos != org_value) {
+                    SetWindowText(trackbar->tb->bt_text, strsprintf("%d", pos).c_str());
+                }
+                *(trackbar->ex_data_pos) = pos;
+            }
+            // カーソル位置を復元
+            SendMessage(trackbar->tb->bt_text, EM_SETSEL, start, end);
+            return TRUE; //TRUEを返すと画像処理が更新される
+        }
+    }
+    return FALSE;
+}
+
 BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, FILTER *fp) {
     switch (message) {
     case WM_FILTER_FILE_OPEN:
@@ -1788,67 +1854,8 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
             const auto ctrlID = LOWORD(wparam);
             // 追加したトラックバーに関する処理
             if (const auto trackbar = get_trackbar_data(ctrlID); trackbar != nullptr) {
-                if (ctrlID - trackbar->label_id == 2) { // 左ボタンの処理
-                    // トラックバーの現在の値を取得
-                    int pos = SendMessage(trackbar->tb->trackbar, TBM_GETPOS, 0, 0);
-                    // 値を1減らす
-                    pos = std::max(pos - 1, trackbar->val_min);
-                    // トラックバーの値を設定
-                    SendMessage(trackbar->tb->trackbar, TBM_SETPOS, TRUE, pos);
-                    // テキストボックスに値を設定
-                    SetWindowText(trackbar->tb->bt_text, strsprintf("%d", pos).c_str());
-                    *(trackbar->ex_data_pos) = pos;
-                    return TRUE; //TRUEを返すと画像処理が更新される
-                } else if (ctrlID - trackbar->label_id == 3) { // 右ボタンの処理
-                    // トラックバーの現在の値を取得
-                    int pos = SendMessage(trackbar->tb->trackbar, TBM_GETPOS, 0, 0);
-                    // 値を1増やす
-                    pos = std::min(pos + 1, trackbar->val_max);
-                    // トラックバーの値を設定
-                    SendMessage(trackbar->tb->trackbar, TBM_SETPOS, TRUE, pos);
-                    // テキストボックスに値を設定
-                    SetWindowText(trackbar->tb->bt_text, strsprintf("%d", pos).c_str());
-                    *(trackbar->ex_data_pos) = pos;
-                    return TRUE; //TRUEを返すと画像処理が更新される
-                }  else if (ctrlID - trackbar->label_id == 4) { // テキストボックスの処理
-                    if (HIWORD(wparam) == EN_CHANGE) {
-                        // 現在のカーソル位置を取得
-                        DWORD start, end;
-                        SendMessage(trackbar->tb->bt_text, EM_GETSEL, (WPARAM)&start, (LPARAM)&end);
-                        // テキストボックスの内容が変更されたとき
-                        char buffer[256] = { 0 };
-                        int value = 0;
-                        GetWindowText(trackbar->tb->bt_text, buffer, sizeof(buffer));
-                        if (sscanf_s(buffer, "%d", &value) == 1) {
-                            const int pos = clamp(value, trackbar->val_min, trackbar->val_max);
-                            SendMessage(trackbar->tb->trackbar, TBM_SETPOS, TRUE, pos);
-                            *(trackbar->ex_data_pos) = pos;
-                        }
-                        // カーソル位置を復元
-                        SendMessage(trackbar->tb->bt_text, EM_SETSEL, start, end);
-                        return TRUE; //TRUEを返すと画像処理が更新される
-                    } else if (HIWORD(wparam) == EN_KILLFOCUS) {
-                        // 現在のカーソル位置を取得
-                        DWORD start, end;
-                        SendMessage(trackbar->tb->bt_text, EM_GETSEL, (WPARAM)&start, (LPARAM)&end);
-                        char buffer[256] = { 0 };
-                        int org_value = 0;
-                        if (strlen(buffer) == 0) {
-                            // 空白の場合、元の値に戻す
-                            const int pos = SendMessage(trackbar->tb->trackbar, TBM_GETPOS, 0, 0);
-                            SetWindowText(trackbar->tb->bt_text, strsprintf("%d", pos).c_str());
-                        } else if (sscanf_s(buffer, "%d", &org_value) == 1) {
-                            const int pos = clamp(org_value, trackbar->val_min, trackbar->val_max);
-                            SendMessage(trackbar->tb->trackbar, TBM_SETPOS, TRUE, pos);
-                            if (pos != org_value) {
-                                SetWindowText(trackbar->tb->bt_text, strsprintf("%d", pos).c_str());
-                            }
-                            *(trackbar->ex_data_pos) = pos;
-                        }
-                        // カーソル位置を復元
-                        SendMessage(trackbar->tb->bt_text, EM_SETSEL, start, end);
-                        return TRUE; //TRUEを返すと画像処理が更新される
-                    }
+                if (proc_trackbar_ex(trackbar, ctrlID, wparam, lparam)) {
+                    return TRUE;
                 }
             }
             break;
@@ -2237,7 +2244,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
         { &tb_ngx_truehdr_maxluminance, LB_CX_TRUEHDR_MAXLUMINANCE, ID_TB_NGX_TRUEHDR_MAXLUMINANCE, 400, 2000, 1000, &cl_exdata.ngx_truehdr_maxluminance },
         { 0 }
     };
-    create_trackbars(hwnd, hinst, col * col_width + 8 + AVIUTL_1_10_OFFSET, cx_y_pos, track_bar_delta_y, tb_truehdr);
+    create_trackbars_ex(hwnd, hinst, col * col_width + 8 + AVIUTL_1_10_OFFSET, cx_y_pos, track_bar_delta_y, tb_truehdr);
     
     y_pos_max = std::max(y_pos_max, y_pos);
 
