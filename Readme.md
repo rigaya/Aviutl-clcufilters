@@ -69,6 +69,39 @@ quiet以外を選択した場合、ログは[patch.aul](https://www.nicovideo.jp
 
 フィルタの適用順を並べ替えることができます。適用順を入れ替えたいフィルタを選択し、上下ボタンで移動してください。
 
+---
+### リサイズ  
+リサイズのアルゴリズムを指定できる。
+
+- **パラメータ**
+  | オプション名 | 説明 |
+  |:---|:---|
+  | spline16 | 4x4 Spline補間 |
+  | spline36 | 6x6 Spline補間 |
+  | spline64 | 8x8 Spline補間 |
+  | lanczos2 | 4x4 lanczos補間 |
+  | lanczos3 | 6x6 lanczos補間 |
+  | lanczos4 | 8x8 lanczos補間 |
+  | bilinear | 線形補間 |
+  | bicubic  |  双三次補間 |
+  | nvvfx-superres | NVIDIA Video EffectsによるSuper Resolution (拡大のみ)  |
+  | ngx-vsr       | NVIDIA VSR (Video Super Resolution)  |
+
+- **追加パラメータ**
+  - nvvfx-superres選択時
+    - モード
+      nvvfx-superres のモードの選択。
+      - 0 ... 弱め (default)
+      - 1 ... 強め
+
+    - 強度
+      nvvfx-superresの強さの指定。
+
+  - ngx-vsr選択時
+    - 品質
+      ngx-vsr使用時の品質の設定。 (デフォルト=1, 1 - 4)  
+      数字が大きいほど高品質。
+
 ### 色空間変換  
 指定の色空間変換を行う。
 
@@ -284,39 +317,6 @@ Non local meansを用いたノイズ除去フィルタ。
   - 閾値  (デフォルト=100, 0-255)  
     フィルタの輪郭検出の閾値。小さいほど輪郭を保持するようになるが、フィルタの効果も弱まる。
 
-
-### リサイズ  
-リサイズのアルゴリズムを指定できる。
-
-- **パラメータ**
-  | オプション名 | 説明 |
-  |:---|:---|
-  | spline16 | 4x4 Spline補間 |
-  | spline36 | 6x6 Spline補間 |
-  | spline64 | 8x8 Spline補間 |
-  | lanczos2 | 4x4 lanczos補間 |
-  | lanczos3 | 6x6 lanczos補間 |
-  | lanczos4 | 8x8 lanczos補間 |
-  | bilinear | 線形補間 |
-  | bicubic  |  双三次補間 |
-  | nvvfx-superres | NVIDIA Video EffectsによるSuper Resolution (拡大のみ)  |
-  | ngx-vsr       | NVIDIA VSR (Video Super Resolution)  |
-
-- **追加パラメータ**
-  - nvvfx-superres選択時
-    - モード
-      nvvfx-superres のモードの選択。
-      - 0 ... 弱め (default)
-      - 1 ... 強め
-
-    - 強度
-      nvvfx-superresの強さの指定。
-
-  - ngx-vsr選択時
-    - 品質
-      ngx-vsr使用時の品質の設定。 (デフォルト=1, 1 - 4)  
-      数字が大きいほど高品質。
-
 ### unsharp  
 輪郭・ディテール強調用のフィルタ。
 
@@ -416,6 +416,25 @@ Non local meansを用いたノイズ除去フィルタ。
   - 毎フレーム乱数生成 (デフォルト=オフ)  
     毎フレーム使用する乱数を変更する。
 
+### NGX TrueHDR
+RTX Video SDKを使用したAIベースのSDR→HDR変換を行う。出力はcolormatrix BT.2020に変換される。使用時にはエンコーダ側で ```--colormatrix bt2020nc --colorprim bt2020 --transfer smpte2084``` の指定を推奨。
+
+Turing以降のGPUかつ、Windows x64版で550.58以降のドライバが必要。
+
+- **パラメータ**
+  - contrast=&lt;int&gt;  (デフォルト=100, 0 - 200)  
+    明暗のコントラスト比の調整。
+
+  - saturation=&lt;int&gt;  (デフォルト=100, 0 - 200)  
+    色の濃さの調整。
+
+  - middlegray=&lt;int&gt;  (デフォルト=50, 10 - 100)  
+    平均の明るさの調整。
+
+  - maxluminance=&lt;int&gt;  (デフォルト=1000, 400 - 2000)  
+    最大輝度(nits)の指定。
+
+---
 ## 処理概要
 
 Aviutlの内部フォーマット(YC48)からGPUで扱いやすいYUV444 16bitに変換したのち、GPUに転送してフィルタ処理を行います。その後、処理結果をCPUに転送し、YC48に戻して処理を完了させます。[]内の処理は別プロセスで行います。
@@ -471,9 +490,6 @@ clcufilters には下記の課題があります。
 
 - 時間方向に参照するフィルタに未対応  
   vpp-convolution3d など。かなり実装がややこしくなってしまうので見送り中です。
-
-- トラックバーを32個より多く設置すると一部が反応しなくなる  
-  なるべくトラックバーを使用しないよう、パラメータ数を抑制しました。Aviutlの制限なのかもしれません。  
 
 ## お知らせ
 
