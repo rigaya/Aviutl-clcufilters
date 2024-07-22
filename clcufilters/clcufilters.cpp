@@ -950,18 +950,13 @@ CLFILTER_TRACKBAR create_trackbar(HWND hwndParent, HINSTANCE hInstance, const ch
     SendMessage(trackbar.trackbar, TBM_SETPAGESIZE, val_default, 1);
     SendMessage(trackbar.trackbar, TBM_SETTICFREQ, std::max((val_max - val_min) / 2, 0), 0);
 
-    HFONT hFontButton = CreateFont(
-        12, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-        DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Arial"
-    );
     // 左ボタンの作成
     auto handleAviutl = GetModuleHandle(nullptr);
     auto hIconLeft = LoadImage(handleAviutl, "ICON_LEFT", IMAGE_ICON, 0, 0, 0);
     trackbar.bt_left = CreateWindowExW(
         0, L"BUTTON", hIconLeft ? L"" : L"◄", WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON | BS_ICON,
         x + 242, y, 16, 16, hwndParent, (HMENU)(trackbar_label_id+2), hInstance, NULL);
-    SendMessage(trackbar.bt_left, WM_SETFONT, (WPARAM)hFontButton, 0);
+    SendMessage(trackbar.bt_left, WM_SETFONT, (WPARAM)b_font, 0);
     if (hIconLeft) {
         SendMessage(trackbar.bt_left, BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIconLeft);
     }
@@ -971,7 +966,7 @@ CLFILTER_TRACKBAR create_trackbar(HWND hwndParent, HINSTANCE hInstance, const ch
     trackbar.bt_right = CreateWindowExW(
         0, L"BUTTON", hIconRight ? L"" : L"►", WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON | BS_ICON,
         x + 258, y, 16, 16, hwndParent, (HMENU)(trackbar_label_id+3), hInstance, NULL);
-    SendMessage(trackbar.bt_right, WM_SETFONT, (WPARAM)hFontButton, 0);
+    SendMessage(trackbar.bt_right, WM_SETFONT, (WPARAM)b_font, 0);
     if (hIconRight) {
         SendMessage(trackbar.bt_right, BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIconRight);
     }
@@ -983,9 +978,7 @@ CLFILTER_TRACKBAR create_trackbar(HWND hwndParent, HINSTANCE hInstance, const ch
     SendMessage(trackbar.bt_text, WM_SETFONT, (WPARAM)b_font, 0);
 
     //テキストボックスにデフォルト値を設定
-    char text_val[32];
-    sprintf_s(text_val, "%d", val_default);
-    SetWindowText(trackbar.bt_text, text_val);
+    SetWindowText(trackbar.bt_text, strsprintf("%d", val_default).c_str());
     return trackbar;
 }
 
