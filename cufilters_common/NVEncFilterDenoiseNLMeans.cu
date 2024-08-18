@@ -513,11 +513,11 @@ RGY_ERR nlmeansCalcWeight(
     const int8 xoffset, const int8 yoffset, const int yoffsetmin, const int offset_count, const bool shared_opt,
     cudaStream_t stream
 ) {
-    // 今のところ、offset_countは4か8しかない
+    // 今のところ、offset_countは3か4か8しかない
     switch (offset_count) {
     //case 1:  return nlmeansCalcWeightOffsetCount<Type, bit_depth, TmpVType8, TmpWPType, TmpWPType2, TmpWPType8, search_radius, 1>(pTmpIWPlane, pTmpVPlane, pInputPlane, sigma, inv_param_h_h, xoffset, yoffset, yoffsetmin, shared_opt, stream);
     //case 2:  return nlmeansCalcWeightOffsetCount<Type, bit_depth, TmpVType8, TmpWPType, TmpWPType2, TmpWPType8, search_radius, 2>(pTmpIWPlane, pTmpVPlane, pInputPlane, sigma, inv_param_h_h, xoffset, yoffset, yoffsetmin, shared_opt, stream);
-    //case 3:  return nlmeansCalcWeightOffsetCount<Type, bit_depth, TmpVType8, TmpWPType, TmpWPType2, TmpWPType8, search_radius, 3>(pTmpIWPlane, pTmpVPlane, pInputPlane, sigma, inv_param_h_h, xoffset, yoffset, yoffsetmin, shared_opt, stream);
+    case 3:  return nlmeansCalcWeightOffsetCount<Type, bit_depth, TmpVType8, TmpWPType, TmpWPType2, TmpWPType8, search_radius, 3>(pTmpIWPlane, pTmpVPlane, pInputPlane, sigma, inv_param_h_h, xoffset, yoffset, yoffsetmin, shared_opt, stream);
     case 4:  return nlmeansCalcWeightOffsetCount<Type, bit_depth, TmpVType8, TmpWPType, TmpWPType2, TmpWPType8, search_radius, 4>(pTmpIWPlane, pTmpVPlane, pInputPlane, sigma, inv_param_h_h, xoffset, yoffset, yoffsetmin, shared_opt, stream);
     //case 5:  return nlmeansCalcWeightOffsetCount<Type, bit_depth, TmpVType8, TmpWPType, TmpWPType2, TmpWPType8, search_radius, 5>(pTmpIWPlane, pTmpVPlane, pInputPlane, sigma, inv_param_h_h, xoffset, yoffset, yoffsetmin, shared_opt, stream);
     //case 6:  return nlmeansCalcWeightOffsetCount<Type, bit_depth, TmpVType8, TmpWPType, TmpWPType2, TmpWPType8, search_radius, 6>(pTmpIWPlane, pTmpVPlane, pInputPlane, sigma, inv_param_h_h, xoffset, yoffset, yoffsetmin, shared_opt, stream);
