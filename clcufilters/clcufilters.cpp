@@ -2573,7 +2573,7 @@ BOOL clcuFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_
     sharedPrms->frameOut = frameOut;
     sharedPrms->resetPipeLine = resetPipeline;
     strcpy_s(sharedPrms->prms, tchar_to_string(prm.genCmd()).c_str());
-    m_log->write(RGY_LOG_TRACE, RGY_LOGT_CORE, "currentFrameId: %d, frameIn: %d, frameInFin: %d, frameProc %d, frameOut %d, reset %d, %s\n",
+    m_log->write(RGY_LOG_TRACE, RGY_LOGT_CORE, "auf: currentFrameId: %d, frameIn: %d, frameInFin: %d, frameProc %d, frameOut %d, reset %d, %s\n",
         sharedPrms->currentFrameId, sharedPrms->frameIn, sharedPrms->frameInFin, sharedPrms->frameProc, sharedPrms->frameOut, sharedPrms->resetPipeLine, prm.genCmd().c_str());
 
     // -- フレームの転送 -----------------------------------------------------------------
@@ -2599,6 +2599,8 @@ BOOL clcuFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_
         copyPrm.width = width;
         copyPrm.height = height;
         copyPrm.sizeOfPix = sizeof(PIXEL_YC);
+        m_log->write(RGY_LOG_TRACE, RGY_LOGT_CORE, "auf:   set frame In: srcFrame[%d]=%d - m_sharedFrames[%d]\n",
+            i, sharedPrms->srcFrame[i].frameId, sharedPrms->currentFrameId % m_sharedFrames.size());
 
         if (i > 0) {
             // 2フレーム目以降はプロセスのGPUへのフレーム転送完了を待つ
@@ -2652,5 +2654,7 @@ BOOL clcuFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_
     copyPrm.height = prm.outHeight;
     copyPrm.sizeOfPix = sizeof(PIXEL_YC);
     fp->exfunc->exec_multi_thread_func(multi_thread_copy, (void *)&copyPrm, nullptr);
+    m_log->write(RGY_LOG_TRACE, RGY_LOGT_CORE, "auf:   get frame Out: m_sharedFrames[%d] -> %d\n",
+        (sharedPrms->currentFrameId + 1) % m_sharedFrames.size(), sharedPrms->currentFrameId);
     return TRUE;
 }

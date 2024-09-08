@@ -157,6 +157,7 @@ int clcuFiltersExe::funcProc() {
         || m_filter->getNextOutFrameId() != current_frame) { // 出てくる予定のフレームがずれていたらリセット
         m_filter->resetPipeline();
     }
+    m_log->write(RGY_LOG_TRACE, RGY_LOGT_CORE, "exe:   start get frame In: %d -> %d\n", frameIn, frameInFin);
 
     // -- フレームの転送 -----------------------------------------------------------------
     // frameIn の終了フレーム
@@ -179,6 +180,7 @@ int clcuFiltersExe::funcProc() {
         if (sts == RGY_ERR_NONE) {
             // 成功していた場合のみGPUに転送する
             sts = m_filter->sendInFrame(&in);
+            m_log->write(RGY_LOG_TRACE, RGY_LOGT_CORE, "exe:   get frame In: srcFrame[%d]=%d - m_sharedFrames[%d]\n", i, srcFrame.frameId, current_frame % m_sharedFrames.size());
         }
         if (frameIn < frameInFin) {
             // まだ受け取るフレームがあるなら、GPUへの転送完了を通知
@@ -199,6 +201,7 @@ int clcuFiltersExe::funcProc() {
     const int frameProcFin = (is_saving) ? std::min(current_frame + frameProcOffset, frame_n - 1) : current_frame;
     // フレーム処理の実行
     for (; frameProc <= frameProcFin; frameProc++) {
+        m_log->write(RGY_LOG_TRACE, RGY_LOGT_CORE, "exe:   filter proc: %d\n", frameProc);
         if (m_filter->proc(frameProc, prm) != RGY_ERR_NONE) {
             return FALSE;
         }
@@ -208,6 +211,7 @@ int clcuFiltersExe::funcProc() {
     if (m_filter->getOutFrame(&out) != RGY_ERR_NONE) {
         return FALSE;
     }
+    m_log->write(RGY_LOG_TRACE, RGY_LOGT_CORE, "exe:   set frame out: m_sharedFrames[%d] -> %d, NextOutFrameId %d\n", (current_frame + 1) % m_sharedFrames.size(), current_frame, m_filter->getNextOutFrameId());
     // 本体が必要なデータをセット
     sharedPrms = (clfitersSharedPrms *)m_sharedPrms->ptr();
     sharedPrms->is_saving = is_saving;
