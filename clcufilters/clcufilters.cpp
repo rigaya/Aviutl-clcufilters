@@ -458,7 +458,7 @@ int track_s[] = {
 #endif //#if ENABLE_HDR2SDR_DESAT
     0, //denoise-dct
     1, //smooth
-    0,0,0, //knn
+    1,0,0, //knn
     0,1,//nlmeans
     1,0,0, //pmd
     0,0, //unsharp
