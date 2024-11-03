@@ -346,7 +346,7 @@ void DX11AdapterManager::EnumerateAdapters() {
         DXGI_ADAPTER_DESC desc;
         pAdapter->GetDesc(&desc);
 
-        if (desc.VendorId != ENCODER_VENDOR_ID) {
+        if (ENCODER_VENDOR_ID != 0 && desc.VendorId != ENCODER_VENDOR_ID) {
             //AddMessage(RGY_LOG_DEBUG, _T("Non Target Adaptor %d: VendorId: 0x%08x.\n"), count, desc.VendorId);
             count++;
             continue;
