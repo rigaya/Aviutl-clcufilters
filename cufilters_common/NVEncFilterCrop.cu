@@ -149,8 +149,8 @@ union RGY_CSP_2 {
 
     };
     RGY_CSP_2(RGY_CSP _from, RGY_CSP _to) {
-        csp.a = _from;
-        csp.b = _to;
+        csp.a = rgy_csp_no_alpha(_from);
+        csp.b = rgy_csp_no_alpha(_to);
     };
 };
 
@@ -360,7 +360,7 @@ void crop_uv(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame, const 
         (const uint8_t *)inPlaneC.ptr[0], inPlaneC.pitch[0], pCrop->e.left, pCrop->e.up >> 1);
 }
 
-RGY_ERR NVEncFilterCspCrop::convertYBitDepth(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame, cudaStream_t stream) {
+RGY_ERR convertPlaneBitDepth(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame, const sInputCrop *pCrop, cudaStream_t stream) {
 #define CONV_DEPTH_TO_FROM(to, from) ((to) << 8 | (from))
     static const std::map<int, void (*)(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame, const sInputCrop *pCrop, cudaStream_t stream)> crop_y_list = {
         { CONV_DEPTH_TO_FROM(16,  8), crop_y<uint16_t, 16, uint8_t,   8> },
@@ -382,19 +382,44 @@ RGY_ERR NVEncFilterCspCrop::convertYBitDepth(RGYFrameInfo *pOutputFrame, const R
     };
     const auto bit_depth_conv = CONV_DEPTH_TO_FROM(RGY_CSP_BIT_DEPTH[pOutputFrame->csp], RGY_CSP_BIT_DEPTH[pInputFrame->csp]);
     if (crop_y_list.count(bit_depth_conv) == 0) {
-        AddMessage(RGY_LOG_ERROR, _T("unsupported bit depth conversion: %s -> %s.\n"), RGY_CSP_NAMES[pInputFrame->csp], RGY_CSP_NAMES[pOutputFrame->csp]);
         return RGY_ERR_UNSUPPORTED;
     }
 #undef CONV_DEPTH_TO_FROM
+    crop_y_list.at(bit_depth_conv)(pOutputFrame, pInputFrame, pCrop, stream);
+    return err_to_rgy(cudaGetLastError());
+}
+
+RGY_ERR copyPlaneAlphaAsync(RGYFrameInfo *dst, const RGYFrameInfo *src, cudaStream_t stream) {
+    if (rgy_csp_has_alpha(dst->csp) && rgy_csp_has_alpha(src->csp)) {
+        const auto planeInputA = getPlane(src, RGY_PLANE_A);
+        auto planeOutputA = getPlane(dst, RGY_PLANE_A);
+        if (RGY_CSP_BIT_DEPTH[planeInputA.csp] == RGY_CSP_BIT_DEPTH[planeOutputA.csp]) {
+            auto sts = copyPlaneAsync(&planeOutputA, &planeInputA, stream);
+            if (sts != RGY_ERR_NONE) {
+                return sts;
+            }
+        } else {
+            const sInputCrop crop = initCrop();
+            auto sts = convertPlaneBitDepth(&planeOutputA, &planeInputA, &crop, stream);
+            if (sts != RGY_ERR_NONE) {
+                return sts;
+            }
+        }
+    }
+    return RGY_ERR_NONE;
+}
+
+RGY_ERR NVEncFilterCspCrop::convertYBitDepth(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame, cudaStream_t stream) {
     auto pCropParam = std::dynamic_pointer_cast<NVEncFilterParamCrop>(m_param);
     if (!pCropParam) {
         AddMessage(RGY_LOG_ERROR, _T("Invalid parameter type.\n"));
         return RGY_ERR_INVALID_PARAM;
     }
-    crop_y_list.at(bit_depth_conv)(pOutputFrame, pInputFrame, &pCropParam->crop, stream);
-    auto cudaerr = cudaGetLastError();
-    if (cudaerr != cudaSuccess) {
-        auto sts = err_to_rgy(cudaerr);
+    auto sts = convertPlaneBitDepth(pOutputFrame, pInputFrame, &pCropParam->crop, stream);
+    if (sts == RGY_ERR_UNSUPPORTED) {
+        AddMessage(RGY_LOG_ERROR, _T("unsupported bit depth conversion: %s -> %s.\n"), RGY_CSP_NAMES[pInputFrame->csp], RGY_CSP_NAMES[pOutputFrame->csp]);
+        return sts;
+    } else if (sts != RGY_ERR_NONE) {
         AddMessage(RGY_LOG_ERROR, _T("error at convertYBitDepth(%s -> %s): %s.\n"),
             RGY_CSP_NAMES[pInputFrame->csp], RGY_CSP_NAMES[pOutputFrame->csp], get_err_mes(sts));
         return sts;
@@ -885,7 +910,7 @@ template<typename TypeOut, int out_bit_depth, typename TypeIn, int in_bit_depth>
 void crop_uv_yuv444_nv12(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame, const sInputCrop *pCrop, cudaStream_t stream) {
     const auto planeInputU = getPlane(pInputFrame, RGY_PLANE_U);
     const auto planeInputV = getPlane(pInputFrame, RGY_PLANE_V);
-    auto planeOutputC = getPlane(pOutputFrame, RGY_PLANE_U);
+    auto planeOutputC = getPlane(pOutputFrame, RGY_PLANE_C);
     dim3 blockSize(32, 4);
     if (interlaced(*pInputFrame)) {
         dim3 gridSize(divCeil(pOutputFrame->width, blockSize.x * 2), divCeil(pOutputFrame->height, blockSize.y * 4));
@@ -1985,6 +2010,102 @@ void crop_yv12_rgb_packed(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInput
 }
 
 template<typename TypeOut, int out_bit_depth, typename TypeIn, int in_bit_depth, bool aligned, CspMatrix matrix>
+__global__ void kernel_crop_nv12_rgb(
+    uint8_t *__restrict__ pDstR, uint8_t *__restrict__ pDstG, uint8_t *__restrict__ pDstB,
+    const int dstPitch, const int dstWidth, const int dstHeight,
+    const uint8_t *__restrict__ pSrcY, const uint8_t *__restrict__ pSrcC,
+    const int srcPitchY, const int srcPitchC, const int offsetX, const int offsetY) {
+    int x = (blockIdx.x * blockDim.x + threadIdx.x) * 2; //2pixel分ロードする
+    int y = (blockIdx.y * blockDim.y + threadIdx.y) * 2; //2pixel分ロードする
+    struct __align__(sizeof(TypeIn) * 2) TypeIn2 {
+        TypeIn x, y;
+    };
+    struct __align__(sizeof(TypeOut) * 2) TypeOut2 {
+        TypeOut x, y;
+    };
+    if (x < dstWidth && y < dstHeight) {
+        TypeIn2 srcY0 = kernel_crop_load2<TypeIn, TypeIn2, aligned>(pSrcY + (y+0) * srcPitchY +  x     * sizeof(TypeIn));
+        TypeIn2 srcY1 = kernel_crop_load2<TypeIn, TypeIn2, aligned>(pSrcY + (y+1) * srcPitchY +  x     * sizeof(TypeIn));
+        TypeIn2 srcC0 = kernel_crop_load2<TypeIn, TypeIn2, aligned>(pSrcC + (y>>1) * srcPitchC + x * sizeof(TypeIn));
+
+        TypeIn srcY00 = srcY0.x;
+        TypeIn srcY01 = srcY0.y;
+        TypeIn srcY10 = srcY1.x;
+        TypeIn srcY11 = srcY1.y;
+
+        TypeIn2 srcC1 = (x + 2 < dstWidth) ? kernel_crop_load2<TypeIn, TypeIn2, aligned>(pSrcC + (y>>1) * srcPitchC + (x + 2) * sizeof(TypeIn)) : srcC0;
+        TypeIn srcU00 = srcC0.x;
+        TypeIn srcV00 = srcC0.y;
+        TypeIn srcU01 = srcC1.x;
+        TypeIn srcV01 = srcC1.y;
+        TypeIn srcU001 = (srcU00 + srcU01 + 1) >> 1;
+        TypeIn srcV001 = (srcV00 + srcV01 + 1) >> 1;
+
+        float3 pix00 = yuv_2_rgb<matrix>(make_float_yuv3<TypeIn, in_bit_depth>(srcY00, srcU00,  srcV00));
+        float3 pix01 = yuv_2_rgb<matrix>(make_float_yuv3<TypeIn, in_bit_depth>(srcY01, srcU001, srcV001));
+        float3 pix10 = yuv_2_rgb<matrix>(make_float_yuv3<TypeIn, in_bit_depth>(srcY10, srcU00,  srcV00));
+        float3 pix11 = yuv_2_rgb<matrix>(make_float_yuv3<TypeIn, in_bit_depth>(srcY11, srcU001, srcV001));
+
+        TypeOut2 dstR0, dstR1, dstG0, dstG1, dstB0, dstB1;
+        dstR0.x = scaleRGBFloatToPix<TypeOut, out_bit_depth>(pix00.x); dstG0.x = scaleRGBFloatToPix<TypeOut, out_bit_depth>(pix00.y); dstB0.x = scaleRGBFloatToPix<TypeOut, out_bit_depth>(pix00.z);
+        dstR0.y = scaleRGBFloatToPix<TypeOut, out_bit_depth>(pix01.x); dstG0.y = scaleRGBFloatToPix<TypeOut, out_bit_depth>(pix01.y); dstB0.y = scaleRGBFloatToPix<TypeOut, out_bit_depth>(pix01.z);
+        dstR1.x = scaleRGBFloatToPix<TypeOut, out_bit_depth>(pix10.x); dstG1.x = scaleRGBFloatToPix<TypeOut, out_bit_depth>(pix10.y); dstB1.x = scaleRGBFloatToPix<TypeOut, out_bit_depth>(pix10.z);
+        dstR1.y = scaleRGBFloatToPix<TypeOut, out_bit_depth>(pix11.x); dstG1.y = scaleRGBFloatToPix<TypeOut, out_bit_depth>(pix11.y); dstB1.y = scaleRGBFloatToPix<TypeOut, out_bit_depth>(pix11.z);
+
+        TypeOut2 *ptrDstR = (TypeOut2 *)(pDstR + y * dstPitch + x * sizeof(TypeOut));
+        TypeOut2 *ptrDstG = (TypeOut2 *)(pDstG + y * dstPitch + x * sizeof(TypeOut));
+        TypeOut2 *ptrDstB = (TypeOut2 *)(pDstB + y * dstPitch + x * sizeof(TypeOut));
+
+        kernel_crop_store2<TypeOut, TypeOut2, aligned>(ptrDstR, dstR0);
+        kernel_crop_store2<TypeOut, TypeOut2, aligned>(ptrDstG, dstG0);
+        kernel_crop_store2<TypeOut, TypeOut2, aligned>(ptrDstB, dstB0);
+
+        ptrDstR = (TypeOut2 *)(pDstR + (y+1) * dstPitch + x * sizeof(TypeOut));
+        ptrDstG = (TypeOut2 *)(pDstG + (y+1) * dstPitch + x * sizeof(TypeOut));
+        ptrDstB = (TypeOut2 *)(pDstB + (y+1) * dstPitch + x * sizeof(TypeOut));
+
+        kernel_crop_store2<TypeOut, TypeOut2, aligned>(ptrDstR, dstR1);
+        kernel_crop_store2<TypeOut, TypeOut2, aligned>(ptrDstG, dstG1);
+        kernel_crop_store2<TypeOut, TypeOut2, aligned>(ptrDstB, dstB1);
+    }
+}
+
+template<typename TypeOut, int out_bit_depth, typename TypeIn, int in_bit_depth, bool aligned, CspMatrix matrix>
+void crop_nv12_rgb(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame, const sInputCrop *pCrop, cudaStream_t stream) {
+    const auto planeInputY = getPlane(pInputFrame, RGY_PLANE_Y);
+    const auto planeInputC = getPlane(pInputFrame, RGY_PLANE_C);
+    auto planeOutputR = getPlane(pOutputFrame, RGY_PLANE_R);
+    auto planeOutputG = getPlane(pOutputFrame, RGY_PLANE_G);
+    auto planeOutputB = getPlane(pOutputFrame, RGY_PLANE_B);
+
+    dim3 blockSize(32, 4);
+    dim3 gridSize(divCeil(pOutputFrame->width, blockSize.x * 2), divCeil(pOutputFrame->height, blockSize.y * 2));
+    kernel_crop_nv12_rgb<TypeOut, out_bit_depth, TypeIn, in_bit_depth, aligned, matrix> << <gridSize, blockSize, 0, stream >> > (
+        planeOutputR.ptr[0], planeOutputG.ptr[0], planeOutputB.ptr[0], planeOutputR.pitch[0], planeOutputR.width, planeOutputR.height,
+        planeInputY.ptr[0], planeInputC.ptr[0], planeInputY.pitch[0], planeInputC.pitch[0],
+        pCrop->e.left, pCrop->e.up);
+}
+
+template<typename TypeOut, int out_bit_depth, typename TypeIn, int in_bit_depth, CspMatrix matrix>
+void crop_nv12_rgb_a(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame, const sInputCrop *pCrop, cudaStream_t stream) {
+    const bool aligned = isAlignedRGB(pOutputFrame, sizeof(TypeOut)*2) && isAlignedYV12(pInputFrame, sizeof(TypeIn) * 2) && !cropEnabled(pCrop);
+    (aligned) ? crop_nv12_rgb<TypeOut, out_bit_depth, TypeIn, in_bit_depth, true, matrix>(pOutputFrame, pInputFrame, pCrop, stream)
+              : crop_nv12_rgb<TypeOut, out_bit_depth, TypeIn, in_bit_depth, false, matrix>(pOutputFrame, pInputFrame, pCrop, stream);
+}
+
+template<typename TypeOut, int out_bit_depth, typename TypeIn, int in_bit_depth>
+void crop_nv12_rgb(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame, const sInputCrop *pCrop, const CspMatrix matrix, cudaStream_t stream) {
+    switch (matrix) {
+    case RGY_MATRIX_BT709:     crop_nv12_rgb_a<TypeOut, out_bit_depth, TypeIn, in_bit_depth, RGY_MATRIX_BT709>(pOutputFrame, pInputFrame, pCrop, stream); break;
+    case RGY_MATRIX_BT2020_NCL:
+    case RGY_MATRIX_BT2020_CL: crop_nv12_rgb_a<TypeOut, out_bit_depth, TypeIn, in_bit_depth, RGY_MATRIX_BT2020_NCL>(pOutputFrame, pInputFrame, pCrop, stream); break;
+    case RGY_MATRIX_BT470_BG:
+    case RGY_MATRIX_ST170_M:
+    default:                   crop_nv12_rgb_a<TypeOut, out_bit_depth, TypeIn, in_bit_depth, RGY_MATRIX_ST170_M>(pOutputFrame, pInputFrame, pCrop, stream); break;
+    }
+}
+
+template<typename TypeOut, int out_bit_depth, typename TypeIn, int in_bit_depth, bool aligned, CspMatrix matrix>
 __global__ void kernel_crop_rgb_nv12(uint8_t *__restrict__ pDstY, uint8_t *__restrict__ pDstC,
     const int dstPitch, const int dstWidth, const int dstHeight,
     const uint8_t *__restrict__ pSrcR, const uint8_t *__restrict__ pSrcG, const uint8_t *__restrict__ pSrcB,
@@ -2079,7 +2200,7 @@ __global__ void kernel_crop_rgb_rgb(uint8_t *__restrict__ pDst, const int dstPit
         TypeOut x, y, z, w;
     };
     if (x < dstWidth && y < dstHeight) {
-        TypeIn4 src = kernel_crop_load4<TypeIn, TypeIn4, aligned>(pSrc + (y + offsetY) * srcPitch + (x * 4 + offsetX) * sizeof(TypeIn));
+        TypeIn4 src = kernel_crop_load4<TypeIn, TypeIn4, aligned>(pSrc + (y + offsetY) * srcPitch + (x + offsetX) * sizeof(TypeIn));
 
         TypeOut4 pix;
         pix.x = conv_data_type<TypeOut, out_bit_depth, TypeIn, in_bit_depth, 0>(src.x);
@@ -2087,7 +2208,7 @@ __global__ void kernel_crop_rgb_rgb(uint8_t *__restrict__ pDst, const int dstPit
         pix.z = conv_data_type<TypeOut, out_bit_depth, TypeIn, in_bit_depth, 0>(src.z);
         pix.w = conv_data_type<TypeOut, out_bit_depth, TypeIn, in_bit_depth, 0>(src.w);
 
-        TypeOut4 *ptr_dst = (TypeOut4 *)(pDst + (y * dstPitch) + x * 4 * sizeof(TypeOut));
+        TypeOut4 *ptr_dst = (TypeOut4 *)(pDst + (y * dstPitch) + x * sizeof(TypeOut));
         kernel_crop_store4<TypeOut, TypeOut4, aligned>(ptr_dst, pix);
     }
 }
@@ -2197,6 +2318,41 @@ RGY_ERR NVEncFilterCspCrop::convertCspFromNV12(RGYFrameInfo *pOutputFrame, const
         AddMessage(RGY_LOG_ERROR, _T("Invalid parameter type.\n"));
         return RGY_ERR_INVALID_PARAM;
     }
+    if (RGY_CSP_CHROMA_FORMAT[pOutputFrame->csp] == RGY_CHROMAFMT_RGB || RGY_CSP_CHROMA_FORMAT[pOutputFrame->csp] == RGY_CHROMAFMT_RGB_PACKED) {
+        static const std::map<uint64_t, decltype(&crop_yv12_rgb<uint8_t, 8, uint8_t, 8>)> convert_from_nv12_to_rgb_list = {
+            { RGY_CSP_2(RGY_CSP_NV12,    RGY_CSP_RGB    ).i, crop_nv12_rgb<uint8_t,   8, uint8_t,   8> },
+            { RGY_CSP_2(RGY_CSP_P010,    RGY_CSP_RGB    ).i, crop_nv12_rgb<uint8_t,   8, uint16_t, 16> },
+            { RGY_CSP_2(RGY_CSP_NV12,    RGY_CSP_GBR    ).i, crop_nv12_rgb<uint8_t,   8, uint8_t,   8> },
+            { RGY_CSP_2(RGY_CSP_P010,    RGY_CSP_GBR    ).i, crop_nv12_rgb<uint8_t,   8, uint16_t, 16> },
+            { RGY_CSP_2(RGY_CSP_NV12,    RGY_CSP_RGB_16 ).i, crop_nv12_rgb<uint16_t, 16, uint8_t,   8> },
+            { RGY_CSP_2(RGY_CSP_P010,    RGY_CSP_RGB_16 ).i, crop_nv12_rgb<uint16_t, 16, uint16_t, 16> },
+            { RGY_CSP_2(RGY_CSP_NV12,    RGY_CSP_BGR_16 ).i, crop_nv12_rgb<uint16_t, 16, uint8_t,   8> },
+            { RGY_CSP_2(RGY_CSP_P010,    RGY_CSP_BGR_16 ).i, crop_nv12_rgb<uint16_t, 16, uint16_t, 16> },
+            { RGY_CSP_2(RGY_CSP_NV12,    RGY_CSP_GBR_16 ).i, crop_nv12_rgb<uint16_t, 16, uint8_t,   8> },
+            { RGY_CSP_2(RGY_CSP_P010,    RGY_CSP_GBR_16 ).i, crop_nv12_rgb<uint16_t, 16, uint16_t, 16> },
+            { RGY_CSP_2(RGY_CSP_P010,    RGY_CSP_RGB_F32).i, crop_nv12_rgb<float,    32, uint16_t, 16> },
+            { RGY_CSP_2(RGY_CSP_NV12,    RGY_CSP_BGR_F32).i, crop_nv12_rgb<float,    32, uint8_t,   8> },
+            { RGY_CSP_2(RGY_CSP_P010,    RGY_CSP_BGR_F32).i, crop_nv12_rgb<float,    32, uint16_t, 16> }
+        };
+        if (interlaced(*pInputFrame)) {
+            AddMessage(RGY_LOG_ERROR, _T("unsupported interlaced csp conversion: %s -> %s.\n"), RGY_CSP_NAMES[pInputFrame->csp], RGY_CSP_NAMES[pOutputFrame->csp]);
+            return RGY_ERR_UNSUPPORTED;
+        }
+        const auto cspconv = RGY_CSP_2(pInputFrame->csp, pOutputFrame->csp);
+        if (convert_from_nv12_to_rgb_list.count(cspconv.i) == 0) {
+            AddMessage(RGY_LOG_ERROR, _T("unsupported csp conversion: %s -> %s.\n"), RGY_CSP_NAMES[pInputFrame->csp], RGY_CSP_NAMES[pOutputFrame->csp]);
+            return RGY_ERR_UNSUPPORTED;
+        }
+        convert_from_nv12_to_rgb_list.at(cspconv.i)(pOutputFrame, pInputFrame, &pCropParam->crop, pCropParam->matrix, stream);
+        auto cudaerr = cudaGetLastError();
+        if (cudaerr != cudaSuccess) {
+            auto sts = err_to_rgy(cudaerr);
+            AddMessage(RGY_LOG_ERROR, _T("error at convert_from_nv12_to_rgb_list(%s -> %s): %s.\n"),
+                RGY_CSP_NAMES[pInputFrame->csp], RGY_CSP_NAMES[pOutputFrame->csp], get_err_mes(sts));
+            return sts;
+        }
+        return RGY_ERR_NONE;
+    }
     //Y
     if (RGY_CSP_BIT_DEPTH[pInputFrame->csp] == RGY_CSP_BIT_DEPTH[pOutputFrame->csp]) {
         auto sts = copyPlaneAsyncWithCrop(pOutputFrame, pInputFrame, &pCropParam->crop, stream);
@@ -2216,32 +2372,33 @@ RGY_ERR NVEncFilterCspCrop::convertCspFromNV12(RGYFrameInfo *pOutputFrame, const
 
     //UV
     static const std::map<uint64_t, void (*)(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame, const sInputCrop *pCrop, cudaStream_t stream)> convert_from_nv12_list = {
-        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YV12   ).i,   crop_uv_nv12_yv12<uint8_t,   8, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YV12_16).i,   crop_uv_nv12_yv12<uint16_t, 16, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YV12_14).i,   crop_uv_nv12_yv12<uint16_t, 14, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YV12_12).i,   crop_uv_nv12_yv12<uint16_t, 12, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YV12_10).i,   crop_uv_nv12_yv12<uint16_t, 10, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YV12_09).i,   crop_uv_nv12_yv12<uint16_t,  9, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YV12   ).i,   crop_uv_nv12_yv12<uint8_t,   8, uint16_t, 16> },
-        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YV12_16).i,   crop_uv_nv12_yv12<uint16_t, 16, uint16_t, 16> },
-        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YV12_14).i,   crop_uv_nv12_yv12<uint16_t, 14, uint16_t, 16> },
-        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YV12_12).i,   crop_uv_nv12_yv12<uint16_t, 12, uint16_t, 16> },
-        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YV12_10).i,   crop_uv_nv12_yv12<uint16_t, 10, uint16_t, 16> },
-        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YV12_09).i,   crop_uv_nv12_yv12<uint16_t,  9, uint16_t, 16> },
-        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YUV444   ).i, crop_uv_nv12_yuv444<uint8_t,   8, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YUV444_16).i, crop_uv_nv12_yuv444<uint16_t, 16, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YUV444_14).i, crop_uv_nv12_yuv444<uint16_t, 14, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YUV444_12).i, crop_uv_nv12_yuv444<uint16_t, 12, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YUV444_10).i, crop_uv_nv12_yuv444<uint16_t, 10, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YUV444_09).i, crop_uv_nv12_yuv444<uint16_t,  9, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YUV444   ).i, crop_uv_nv12_yuv444<uint8_t,   8, uint16_t, 16> },
-        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YUV444_16).i, crop_uv_nv12_yuv444<uint16_t, 16, uint16_t, 16> },
-        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YUV444_14).i, crop_uv_nv12_yuv444<uint16_t, 14, uint16_t, 16> },
-        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YUV444_12).i, crop_uv_nv12_yuv444<uint16_t, 12, uint16_t, 16> },
-        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YUV444_10).i, crop_uv_nv12_yuv444<uint16_t, 10, uint16_t, 16> },
-        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YUV444_09).i, crop_uv_nv12_yuv444<uint16_t,  9, uint16_t, 16> },
-        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_P010     ).i, crop_uv<uint16_t, 16, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_NV12     ).i, crop_uv<uint8_t,   8, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YV12   ).i,    crop_uv_nv12_yv12<uint8_t,   8, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YV12_16).i,    crop_uv_nv12_yv12<uint16_t, 16, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YV12_14).i,    crop_uv_nv12_yv12<uint16_t, 14, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YV12_12).i,    crop_uv_nv12_yv12<uint16_t, 12, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YV12_10).i,    crop_uv_nv12_yv12<uint16_t, 10, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YV12_09).i,    crop_uv_nv12_yv12<uint16_t,  9, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YV12   ).i,    crop_uv_nv12_yv12<uint8_t,   8, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YV12_16).i,    crop_uv_nv12_yv12<uint16_t, 16, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YV12_14).i,    crop_uv_nv12_yv12<uint16_t, 14, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YV12_12).i,    crop_uv_nv12_yv12<uint16_t, 12, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YV12_10).i,    crop_uv_nv12_yv12<uint16_t, 10, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YV12_09).i,    crop_uv_nv12_yv12<uint16_t,  9, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YUV444   ).i,  crop_uv_nv12_yuv444<uint8_t,   8, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YUV444_16).i,  crop_uv_nv12_yuv444<uint16_t, 16, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YUV444_14).i,  crop_uv_nv12_yuv444<uint16_t, 14, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YUV444_12).i,  crop_uv_nv12_yuv444<uint16_t, 12, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YUV444_10).i,  crop_uv_nv12_yuv444<uint16_t, 10, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_YUV444_09).i,  crop_uv_nv12_yuv444<uint16_t,  9, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YUV444   ).i,  crop_uv_nv12_yuv444<uint8_t,   8, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YUV444_16).i,  crop_uv_nv12_yuv444<uint16_t, 16, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YUV444_14).i,  crop_uv_nv12_yuv444<uint16_t, 14, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YUV444_12).i,  crop_uv_nv12_yuv444<uint16_t, 12, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YUV444_10).i,  crop_uv_nv12_yuv444<uint16_t, 10, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_YUV444_09).i,  crop_uv_nv12_yuv444<uint16_t,  9, uint16_t, 16> },
+
+        { RGY_CSP_2(RGY_CSP_NV12, RGY_CSP_P010     ).i,  crop_uv<uint16_t, 16, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_P010, RGY_CSP_NV12     ).i,  crop_uv<uint8_t,   8, uint16_t, 16> },
     };
     const auto cspconv = RGY_CSP_2(pInputFrame->csp, pOutputFrame->csp);
     if (convert_from_nv12_list.count(cspconv.i) == 0) {
@@ -2287,6 +2444,11 @@ RGY_ERR NVEncFilterCspCrop::convertCspFromYV12(RGYFrameInfo *pOutputFrame, const
             { RGY_CSP_2(RGY_CSP_YV12_14, RGY_CSP_BGR_16 ).i, crop_yv12_rgb<uint16_t, 16, uint16_t, 14> },
             { RGY_CSP_2(RGY_CSP_YV12_12, RGY_CSP_BGR_16 ).i, crop_yv12_rgb<uint16_t, 16, uint16_t, 12> },
             { RGY_CSP_2(RGY_CSP_YV12_10, RGY_CSP_BGR_16 ).i, crop_yv12_rgb<uint16_t, 16, uint16_t, 10> },
+            { RGY_CSP_2(RGY_CSP_YV12,    RGY_CSP_GBR_16 ).i, crop_yv12_rgb<uint16_t, 16, uint8_t,   8> },
+            { RGY_CSP_2(RGY_CSP_YV12_16, RGY_CSP_GBR_16 ).i, crop_yv12_rgb<uint16_t, 16, uint16_t, 16> },
+            { RGY_CSP_2(RGY_CSP_YV12_14, RGY_CSP_GBR_16 ).i, crop_yv12_rgb<uint16_t, 16, uint16_t, 14> },
+            { RGY_CSP_2(RGY_CSP_YV12_12, RGY_CSP_GBR_16 ).i, crop_yv12_rgb<uint16_t, 16, uint16_t, 12> },
+            { RGY_CSP_2(RGY_CSP_YV12_10, RGY_CSP_GBR_16 ).i, crop_yv12_rgb<uint16_t, 16, uint16_t, 10> },
             { RGY_CSP_2(RGY_CSP_YV12,    RGY_CSP_RGB_F32).i, crop_yv12_rgb<float,    32, uint8_t,   8> },
             { RGY_CSP_2(RGY_CSP_YV12_16, RGY_CSP_RGB_F32).i, crop_yv12_rgb<float,    32, uint16_t, 16> },
             { RGY_CSP_2(RGY_CSP_YV12_14, RGY_CSP_RGB_F32).i, crop_yv12_rgb<float,    32, uint16_t, 14> },
@@ -2377,11 +2539,6 @@ RGY_ERR NVEncFilterCspCrop::convertCspFromYV12(RGYFrameInfo *pOutputFrame, const
         { RGY_CSP_2(RGY_CSP_YV12_16, RGY_CSP_YUV444_12).i, crop_uv_yv12_yuv444<uint16_t, 12, uint16_t, 16> },
         { RGY_CSP_2(RGY_CSP_YV12_16, RGY_CSP_YUV444_10).i, crop_uv_yv12_yuv444<uint16_t, 10, uint16_t, 16> },
         { RGY_CSP_2(RGY_CSP_YV12_16, RGY_CSP_YUV444_09).i, crop_uv_yv12_yuv444<uint16_t,  9, uint16_t, 16> },
-
-        { RGY_CSP_2(RGY_CSP_YV12,    RGY_CSP_YUVA444).i,    crop_uv_yv12_yuv444<uint8_t,   8, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_YV12,    RGY_CSP_YUVA444_16).i, crop_uv_yv12_yuv444<uint16_t, 16, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_YV12_16, RGY_CSP_YUVA444   ).i, crop_uv_yv12_yuv444<uint8_t,   8, uint16_t, 16> },
-        { RGY_CSP_2(RGY_CSP_YV12_16, RGY_CSP_YUVA444_16).i, crop_uv_yv12_yuv444<uint16_t, 16, uint16_t, 16> },
     };
     const auto cspconv = RGY_CSP_2(pInputFrame->csp, pOutputFrame->csp);
     if (crop_uv_from_yv12_list.count(cspconv.i) == 0) {
@@ -2397,13 +2554,6 @@ RGY_ERR NVEncFilterCspCrop::convertCspFromYV12(RGYFrameInfo *pOutputFrame, const
         return sts;
     }
     CUDA_DEBUG_SYNC_ERR;
-    if (RGY_CSP_CHROMA_FORMAT[pOutputFrame->csp] == RGY_CHROMAFMT_YUVA444) {
-        auto planeOutputA = getPlane(pOutputFrame, RGY_PLANE_A);
-        auto sts = setPlaneAsync(&planeOutputA, 255 << (RGY_CSP_BIT_DEPTH[pOutputFrame->csp] - 8), stream);
-        if (sts != RGY_ERR_NONE) {
-            return sts;
-        }
-    }
     return RGY_ERR_NONE;
 
 }
@@ -2511,6 +2661,11 @@ RGY_ERR NVEncFilterCspCrop::convertCspFromYUV444(RGYFrameInfo *pOutputFrame, con
             { RGY_CSP_2(RGY_CSP_YUV444_14, RGY_CSP_BGR_16 ).i, crop_yuv444_rgb<uint16_t, 16, uint16_t, 14> },
             { RGY_CSP_2(RGY_CSP_YUV444_12, RGY_CSP_BGR_16 ).i, crop_yuv444_rgb<uint16_t, 16, uint16_t, 12> },
             { RGY_CSP_2(RGY_CSP_YUV444_10, RGY_CSP_BGR_16 ).i, crop_yuv444_rgb<uint16_t, 16, uint16_t, 10> },
+            { RGY_CSP_2(RGY_CSP_YUV444,    RGY_CSP_GBR_16 ).i, crop_yuv444_rgb<uint16_t, 16, uint8_t,   8> },
+            { RGY_CSP_2(RGY_CSP_YUV444_16, RGY_CSP_GBR_16 ).i, crop_yuv444_rgb<uint16_t, 16, uint16_t, 16> },
+            { RGY_CSP_2(RGY_CSP_YUV444_14, RGY_CSP_GBR_16 ).i, crop_yuv444_rgb<uint16_t, 16, uint16_t, 14> },
+            { RGY_CSP_2(RGY_CSP_YUV444_12, RGY_CSP_GBR_16 ).i, crop_yuv444_rgb<uint16_t, 16, uint16_t, 12> },
+            { RGY_CSP_2(RGY_CSP_YUV444_10, RGY_CSP_GBR_16 ).i, crop_yuv444_rgb<uint16_t, 16, uint16_t, 10> },
             { RGY_CSP_2(RGY_CSP_YUV444,    RGY_CSP_RGB_F32).i, crop_yuv444_rgb<float,    32, uint8_t,   8> },
             { RGY_CSP_2(RGY_CSP_YUV444_16, RGY_CSP_RGB_F32).i, crop_yuv444_rgb<float,    32, uint16_t, 16> },
             { RGY_CSP_2(RGY_CSP_YUV444_14, RGY_CSP_RGB_F32).i, crop_yuv444_rgb<float,    32, uint16_t, 14> },
@@ -2520,7 +2675,7 @@ RGY_ERR NVEncFilterCspCrop::convertCspFromYUV444(RGYFrameInfo *pOutputFrame, con
             { RGY_CSP_2(RGY_CSP_YUV444_16, RGY_CSP_BGR_F32).i, crop_yuv444_rgb<float,    32, uint16_t, 16> },
             { RGY_CSP_2(RGY_CSP_YUV444_14, RGY_CSP_BGR_F32).i, crop_yuv444_rgb<float,    32, uint16_t, 14> },
             { RGY_CSP_2(RGY_CSP_YUV444_12, RGY_CSP_BGR_F32).i, crop_yuv444_rgb<float,    32, uint16_t, 12> },
-            { RGY_CSP_2(RGY_CSP_YUV444_10, RGY_CSP_BGR_F32).i, crop_yuv444_rgb<float,    32, uint16_t, 10> }
+            { RGY_CSP_2(RGY_CSP_YUV444_10, RGY_CSP_BGR_F32).i, crop_yuv444_rgb<float,    32, uint16_t, 10> },
         };
         const auto cspconv = RGY_CSP_2(pInputFrame->csp, pOutputFrame->csp);
         if (convert_from_yuv444_to_rgb_list.count(cspconv.i) == 0) {
@@ -2592,20 +2747,10 @@ RGY_ERR NVEncFilterCspCrop::convertCspFromYUV444(RGYFrameInfo *pOutputFrame, con
         { RGY_CSP_2(RGY_CSP_YUV444_16,  RGY_CSP_NV12).i, crop_uv_yuv444_nv12<uint8_t,   8, uint16_t, 16> },
         { RGY_CSP_2(RGY_CSP_YUV444_16,  RGY_CSP_P010).i, crop_uv_yuv444_nv12<uint16_t, 16, uint16_t, 16> },
 
-        { RGY_CSP_2(RGY_CSP_YUVA444,    RGY_CSP_NV12).i, crop_uv_yuv444_nv12<uint8_t,   8, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_YUVA444,    RGY_CSP_P010).i, crop_uv_yuv444_nv12<uint16_t, 16, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_YUVA444_16, RGY_CSP_NV12).i, crop_uv_yuv444_nv12<uint8_t,   8, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_YUVA444_16, RGY_CSP_P010).i, crop_uv_yuv444_nv12<uint16_t, 16, uint8_t,   8> },
-
         { RGY_CSP_2(RGY_CSP_YUV444,     RGY_CSP_YV12).i,    crop_uv_yuv444_yv12<uint8_t,   8, uint8_t,   8> },
         { RGY_CSP_2(RGY_CSP_YUV444,     RGY_CSP_YV12_16).i, crop_uv_yuv444_yv12<uint16_t, 16, uint8_t,   8> },
         { RGY_CSP_2(RGY_CSP_YUV444_16,  RGY_CSP_YV12).i,    crop_uv_yuv444_yv12<uint8_t,   8, uint16_t, 16> },
-        { RGY_CSP_2(RGY_CSP_YUV444_16,  RGY_CSP_YV12_16).i, crop_uv_yuv444_yv12<uint16_t, 16, uint16_t, 16> },
-
-        { RGY_CSP_2(RGY_CSP_YUVA444,    RGY_CSP_YV12).i,    crop_uv_yuv444_yv12<uint8_t,   8, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_YUVA444,    RGY_CSP_YV12_16).i, crop_uv_yuv444_yv12<uint16_t, 16, uint8_t,   8> },
-        { RGY_CSP_2(RGY_CSP_YUVA444_16, RGY_CSP_YV12).i,    crop_uv_yuv444_yv12<uint8_t,   8, uint16_t, 16> },
-        { RGY_CSP_2(RGY_CSP_YUVA444_16, RGY_CSP_YV12_16).i, crop_uv_yuv444_yv12<uint16_t, 16, uint16_t, 16> }
+        { RGY_CSP_2(RGY_CSP_YUV444_16,  RGY_CSP_YV12_16).i, crop_uv_yuv444_yv12<uint16_t, 16, uint16_t, 16> }
     };
     const auto cspconv = RGY_CSP_2(pInputFrame->csp, pOutputFrame->csp);
     if (convert_from_yuv444_list.count(cspconv.i) != 0) {
@@ -2853,19 +2998,72 @@ RGY_ERR NVEncFilterCspCrop::convertCspFromRGB(RGYFrameInfo *pOutputFrame, const 
         { RGY_CSP_2(RGY_CSP_RGB_F32, RGY_CSP_RGB).i,      crop_rgb_rgb<uint8_t,   8, float,    32> },
         { RGY_CSP_2(RGY_CSP_RGB_F32, RGY_CSP_RGB_16).i,   crop_rgb_rgb<uint16_t, 16, float,    32> },
 
+        { RGY_CSP_2(RGY_CSP_RGB,     RGY_CSP_GBR).i,      crop_rgb_rgb<uint8_t,   8, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_RGB,     RGY_CSP_GBR_16).i,   crop_rgb_rgb<uint16_t, 16, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_RGB_16,  RGY_CSP_GBR).i,      crop_rgb_rgb<uint8_t,   8, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_RGB_16,  RGY_CSP_GBR_16).i,   crop_rgb_rgb<uint16_t, 16, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_RGB_F32, RGY_CSP_GBR).i,      crop_rgb_rgb<uint8_t,   8, float,    32> },
+        { RGY_CSP_2(RGY_CSP_RGB_F32, RGY_CSP_GBR_16).i,   crop_rgb_rgb<uint16_t, 16, float,    32> },
+
         { RGY_CSP_2(RGY_CSP_RGB,     RGY_CSP_RGB32).i,       crop_rgb_rgb_packed<uint8_t, 8, uint8_t,   8> },
         { RGY_CSP_2(RGY_CSP_RGB,     RGY_CSP_RGBA_FP16_P).i, crop_rgb_rgb_packed<__half, 16, uint8_t,   8> },
         { RGY_CSP_2(RGY_CSP_RGB_16,  RGY_CSP_RGB32).i,       crop_rgb_rgb_packed<uint8_t, 8, uint16_t, 16> },
         { RGY_CSP_2(RGY_CSP_RGB_16,  RGY_CSP_RGBA_FP16_P).i, crop_rgb_rgb_packed<__half, 16, uint16_t, 16> },
         { RGY_CSP_2(RGY_CSP_RGB_F32, RGY_CSP_RGB32).i,       crop_rgb_rgb_packed<uint8_t, 8, float,    32> },
         { RGY_CSP_2(RGY_CSP_RGB_F32, RGY_CSP_RGBA_FP16_P).i, crop_rgb_rgb_packed<__half, 16, float,    32> },
+
+        { RGY_CSP_2(RGY_CSP_GBR,     RGY_CSP_RGB).i,      crop_rgb_rgb<uint8_t,   8, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_GBR,     RGY_CSP_RGB_16).i,   crop_rgb_rgb<uint16_t, 16, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_GBR,     RGY_CSP_RGB_F32).i,  crop_rgb_rgb<float,    32, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_GBR_16,  RGY_CSP_RGB).i,      crop_rgb_rgb<uint8_t,   8, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_GBR_16,  RGY_CSP_RGB_16).i,   crop_rgb_rgb<uint16_t, 16, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_GBR_16,  RGY_CSP_RGB_F32).i,  crop_rgb_rgb<float,    32, uint16_t, 16> },
+
+        { RGY_CSP_2(RGY_CSP_GBR,     RGY_CSP_BGR_16).i,   crop_rgb_rgb<uint16_t, 16, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_GBR,     RGY_CSP_BGR_F32).i,  crop_rgb_rgb<float,    32, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_GBR_16,  RGY_CSP_BGR_16).i,   crop_rgb_rgb<uint16_t, 16, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_GBR_16,  RGY_CSP_BGR_F32).i,  crop_rgb_rgb<float,    32, uint16_t, 16> },
+
+        { RGY_CSP_2(RGY_CSP_GBR,     RGY_CSP_RGB32).i,       crop_rgb_rgb_packed<uint8_t, 8, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_GBR,     RGY_CSP_RGBA_FP16_P).i, crop_rgb_rgb_packed<__half, 16, uint8_t,   8> },
+        { RGY_CSP_2(RGY_CSP_GBR_16,  RGY_CSP_RGB32).i,       crop_rgb_rgb_packed<uint8_t, 8, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_GBR_16,  RGY_CSP_RGBA_FP16_P).i, crop_rgb_rgb_packed<__half, 16, uint16_t, 16> },
+
+        { RGY_CSP_2(RGY_CSP_BGR_16,  RGY_CSP_RGB).i,      crop_rgb_rgb<uint8_t,   8, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_BGR_16,  RGY_CSP_RGB_16).i,   crop_rgb_rgb<uint16_t, 16, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_BGR_16,  RGY_CSP_RGB_F32).i,  crop_rgb_rgb<float,    32, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_BGR_16,  RGY_CSP_GBR).i,      crop_rgb_rgb<uint8_t,   8, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_BGR_16,  RGY_CSP_GBR_16).i,   crop_rgb_rgb<uint16_t, 16, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_BGR_16,  RGY_CSP_BGR_F32).i,  crop_rgb_rgb<float,    32, uint16_t, 16> },
+
+        { RGY_CSP_2(RGY_CSP_BGR_F32, RGY_CSP_RGB).i,      crop_rgb_rgb<uint8_t,   8, float,    32> },
+        { RGY_CSP_2(RGY_CSP_BGR_F32, RGY_CSP_RGB_16).i,   crop_rgb_rgb<uint16_t, 16, float,    32> },
+        { RGY_CSP_2(RGY_CSP_BGR_F32, RGY_CSP_RGB_F32).i,  crop_rgb_rgb<float,    32, float,    32> },
+        { RGY_CSP_2(RGY_CSP_BGR_F32, RGY_CSP_GBR).i,      crop_rgb_rgb<uint8_t,   8, float,    32> },
+        { RGY_CSP_2(RGY_CSP_BGR_F32, RGY_CSP_GBR_16).i,   crop_rgb_rgb<uint16_t, 16, float,    32> },
+        { RGY_CSP_2(RGY_CSP_BGR_F32, RGY_CSP_BGR_16).i,   crop_rgb_rgb<uint16_t, 16, float,    32> },
+
+        { RGY_CSP_2(RGY_CSP_BGR_16,  RGY_CSP_RGB32).i,       crop_rgb_rgb_packed<uint8_t, 8, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_BGR_16,  RGY_CSP_RGBA_FP16_P).i, crop_rgb_rgb_packed<__half, 16, uint16_t, 16> },
+        { RGY_CSP_2(RGY_CSP_BGR_F32, RGY_CSP_RGB32).i,       crop_rgb_rgb_packed<uint8_t, 8, float,    32> },
+        { RGY_CSP_2(RGY_CSP_BGR_F32, RGY_CSP_RGBA_FP16_P).i, crop_rgb_rgb_packed<__half, 16, float,    32> },
         
         { RGY_CSP_2(RGY_CSP_RGB32,       RGY_CSP_RGB).i,     crop_rgb_packed_rgb<uint8_t,   8, uint8_t, 8> },
         { RGY_CSP_2(RGY_CSP_RGB32,       RGY_CSP_RGB_16).i,  crop_rgb_packed_rgb<uint16_t, 16, uint8_t, 8> },
         { RGY_CSP_2(RGY_CSP_RGB32,       RGY_CSP_RGB_F32).i, crop_rgb_packed_rgb<float,    32, uint8_t, 8> },
         { RGY_CSP_2(RGY_CSP_RGBA_FP16_P, RGY_CSP_RGB).i,     crop_rgb_packed_rgb<uint8_t,   8, __half, 16> },
         { RGY_CSP_2(RGY_CSP_RGBA_FP16_P, RGY_CSP_RGB_16).i,  crop_rgb_packed_rgb<uint16_t, 16, __half, 16> },
-        { RGY_CSP_2(RGY_CSP_RGBA_FP16_P, RGY_CSP_RGB_F32).i, crop_rgb_packed_rgb<float,    32, __half, 16> }
+        { RGY_CSP_2(RGY_CSP_RGBA_FP16_P, RGY_CSP_RGB_F32).i, crop_rgb_packed_rgb<float,    32, __half, 16> },
+
+        { RGY_CSP_2(RGY_CSP_RGB32,       RGY_CSP_GBR).i,     crop_rgb_packed_rgb<uint8_t,   8, uint8_t, 8> },
+        { RGY_CSP_2(RGY_CSP_RGB32,       RGY_CSP_GBR_16).i,  crop_rgb_packed_rgb<uint16_t, 16, uint8_t, 8> },
+        { RGY_CSP_2(RGY_CSP_RGBA_FP16_P, RGY_CSP_GBR).i,     crop_rgb_packed_rgb<uint8_t,   8, __half, 16> },
+        { RGY_CSP_2(RGY_CSP_RGBA_FP16_P, RGY_CSP_GBR_16).i,  crop_rgb_packed_rgb<uint16_t, 16, __half, 16> },
+
+        { RGY_CSP_2(RGY_CSP_RGB32,       RGY_CSP_BGR_16).i,  crop_rgb_packed_rgb<uint16_t, 16, uint8_t, 8> },
+        { RGY_CSP_2(RGY_CSP_RGB32,       RGY_CSP_BGR_F32).i, crop_rgb_packed_rgb<float,    32, uint8_t, 8> },
+        { RGY_CSP_2(RGY_CSP_RGBA_FP16_P, RGY_CSP_BGR_16).i,  crop_rgb_packed_rgb<uint16_t, 16, __half, 16> },
+        { RGY_CSP_2(RGY_CSP_RGBA_FP16_P, RGY_CSP_BGR_F32).i, crop_rgb_packed_rgb<float,    32, __half, 16> }
     };
     const auto cspconv = RGY_CSP_2(pInputFrame->csp, pOutputFrame->csp);
     if (convert_from_rgb_list.count(cspconv.i) == 0) {
@@ -3053,24 +3251,25 @@ RGY_ERR NVEncFilterCspCrop::run_filter(const RGYFrameInfo *pInputFrame, RGYFrame
         return RGY_ERR_UNSUPPORTED;
     } else {
         //色空間変換
-        static const auto supportedCspNV12   = make_array<RGY_CSP>(RGY_CSP_NV12, RGY_CSP_P010);
-        static const auto supportedCspYV12   = make_array<RGY_CSP>(RGY_CSP_YV12, RGY_CSP_YV12_09, RGY_CSP_YV12_10, RGY_CSP_YV12_12, RGY_CSP_YV12_14, RGY_CSP_YV12_16);
-        static const auto supportedCspNV16   = make_array<RGY_CSP>(RGY_CSP_NV16, RGY_CSP_P210);
-        static const auto supportedCspYUV444 = make_array<RGY_CSP>(RGY_CSP_YUV444, RGY_CSP_YUV444_09, RGY_CSP_YUV444_10, RGY_CSP_YUV444_12, RGY_CSP_YUV444_14, RGY_CSP_YUV444_16);
-        static const auto supportedCspRGB    = make_array<RGY_CSP>(RGY_CSP_RGB24, RGY_CSP_RGB32, RGY_CSP_RGB, RGY_CSP_GBR, RGY_CSP_RGB_16, RGY_CSP_BGR_16, RGY_CSP_RGB_F32, RGY_CSP_BGR_F32, RGY_CSP_RGBA_FP16_P);
+        static const auto supportedCspNV12   = make_array<RGY_CSP>(RGY_CSP_NV12, RGY_CSP_P010, RGY_CSP_NV12A, RGY_CSP_P010A);
         if (std::find(supportedCspNV12.begin(), supportedCspNV12.end(), pCropParam->frameIn.csp) != supportedCspNV12.end()) {
             sts = convertCspFromNV12(ppOutputFrames[0], pInputFrame, stream);
-        } else if (std::find(supportedCspYV12.begin(), supportedCspYV12.end(), pCropParam->frameIn.csp) != supportedCspYV12.end()) {
+        } else if (RGY_CSP_CHROMA_FORMAT[pCropParam->frameIn.csp] == RGY_CHROMAFMT_YUV420) {
             sts = convertCspFromYV12(ppOutputFrames[0], pInputFrame, stream);
-        } else if (std::find(supportedCspNV16.begin(), supportedCspNV16.end(), pCropParam->frameIn.csp) != supportedCspNV16.end()) {
+        } else if (RGY_CSP_CHROMA_FORMAT[pCropParam->frameIn.csp] == RGY_CHROMAFMT_YUV422) {
             sts = convertCspFromNV16(ppOutputFrames[0], pInputFrame, stream);
-        } else if (std::find(supportedCspYUV444.begin(), supportedCspYUV444.end(), pCropParam->frameIn.csp) != supportedCspYUV444.end()) {
+        } else if (RGY_CSP_CHROMA_FORMAT[pCropParam->frameIn.csp] == RGY_CHROMAFMT_YUV444) {
             sts = convertCspFromYUV444(ppOutputFrames[0], pInputFrame, stream);
-        } else if (std::find(supportedCspRGB.begin(), supportedCspRGB.end(), pCropParam->frameIn.csp) != supportedCspRGB.end()) {
+        } else if (RGY_CSP_CHROMA_FORMAT[pCropParam->frameIn.csp] == RGY_CHROMAFMT_RGB || RGY_CSP_CHROMA_FORMAT[pCropParam->frameIn.csp] == RGY_CHROMAFMT_RGB_PACKED) {
             sts = convertCspFromRGB(ppOutputFrames[0], pInputFrame, stream);
         } else {
             AddMessage(RGY_LOG_ERROR, _T("converting csp from %s is not supported.\n"), RGY_CSP_NAMES[pCropParam->frameIn.csp]);
             sts = RGY_ERR_UNSUPPORTED;
+        }
+        sts = copyPlaneAlphaAsync(ppOutputFrames[0], pInputFrame, stream);
+        if (sts != RGY_ERR_NONE) {
+            AddMessage(RGY_LOG_ERROR, _T("Failed to copy alpha plane: %s.\n"), get_err_mes(sts));
+            return sts;
         }
     }
     return sts;

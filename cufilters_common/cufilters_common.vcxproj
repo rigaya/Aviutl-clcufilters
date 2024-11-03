@@ -38,6 +38,8 @@
     <ClCompile Include="NVEncFilter.cpp" />
     <ClCompile Include="NVEncFilterColorspace.cpp" />
     <ClCompile Include="NVEncFilterCustom.cpp" />
+    <ClCompile Include="NVEncFilterD3D11.cpp" />
+    <ClCompile Include="NVEncFilterLibplacebo.cpp" />
     <ClCompile Include="NVEncFilterNGX.cpp" />
     <ClCompile Include="NVEncFilterNvvfx.cpp" />
     <ClCompile Include="rgy_nvrtc.cpp" />
@@ -48,12 +50,14 @@
     <ClInclude Include="NVEncFilterColorspaceFunc.h" />
     <ClInclude Include="NVEncFilterConvolution3d.h" />
     <ClInclude Include="NVEncFilterCustom.h" />
+    <ClInclude Include="NVEncFilterD3D11.h" />
     <ClInclude Include="NVEncFilterDeband.h" />
     <ClInclude Include="NVEncFilterDenoiseDct.h" />
     <ClInclude Include="NVEncFilterDenoiseKnn.h" />
     <ClInclude Include="NVEncFilterDenoiseNLMeans.h" />
     <ClInclude Include="NVEncFilterDenoisePmd.h" />
     <ClInclude Include="NVEncFilterEdgelevel.h" />
+    <ClInclude Include="NVEncFilterLibplacebo.h" />
     <ClInclude Include="NVEncFilterNGX.h" />
     <ClInclude Include="NVEncFilterNnedi.h" />
     <ClInclude Include="NVEncFilterNvvfx.h" />
@@ -214,7 +218,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>..\filter_core;..\clcufilters_common;..\jitify;..\MAXINE-VFX-SDK\nvvfx\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\filter_core;..\clcufilters_common;..\jitify;..\MAXINE-VFX-SDK\nvvfx\include;$(CUDA_PATH)\include;$(SolutionDir)ffmpeg_lgpl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/execution-charset:shift_jis /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -238,7 +242,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>..\filter_core;..\clcufilters_common;..\jitify;..\MAXINE-VFX-SDK\nvvfx\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\filter_core;..\clcufilters_common;..\jitify;..\MAXINE-VFX-SDK\nvvfx\include;$(CUDA_PATH)\include;$(SolutionDir)ffmpeg_lgpl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/execution-charset:shift_jis /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
@@ -272,7 +276,7 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>..\filter_core;..\clcufilters_common;..\jitify;..\MAXINE-VFX-SDK\nvvfx\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\filter_core;..\clcufilters_common;..\jitify;..\MAXINE-VFX-SDK\nvvfx\include;$(CUDA_PATH)\include;$(SolutionDir)ffmpeg_lgpl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/execution-charset:shift_jis /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -305,7 +309,7 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>..\filter_core;..\clcufilters_common;..\jitify;..\MAXINE-VFX-SDK\nvvfx\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\filter_core;..\clcufilters_common;..\jitify;..\MAXINE-VFX-SDK\nvvfx\include;$(CUDA_PATH)\include;$(SolutionDir)ffmpeg_lgpl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/execution-charset:shift_jis /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -332,7 +336,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>..\filter_core;..\clcufilters_common;..\jitify;..\MAXINE-VFX-SDK\nvvfx\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\filter_core;..\clcufilters_common;..\jitify;..\MAXINE-VFX-SDK\nvvfx\include;$(CUDA_PATH)\include;$(SolutionDir)ffmpeg_lgpl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/execution-charset:shift_jis /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -357,7 +361,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>..\filter_core;..\clcufilters_common;..\jitify;..\MAXINE-VFX-SDK\nvvfx\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\filter_core;..\clcufilters_common;..\jitify;..\MAXINE-VFX-SDK\nvvfx\include;$(CUDA_PATH)\include;$(SolutionDir)ffmpeg_lgpl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/execution-charset:shift_jis /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
@@ -391,7 +395,7 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>..\filter_core;..\clcufilters_common;..\jitify;..\MAXINE-VFX-SDK\nvvfx\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\filter_core;..\clcufilters_common;..\jitify;..\MAXINE-VFX-SDK\nvvfx\include;$(CUDA_PATH)\include;$(SolutionDir)ffmpeg_lgpl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/execution-charset:shift_jis /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -424,7 +428,7 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>..\filter_core;..\clcufilters_common;..\jitify;..\MAXINE-VFX-SDK\nvvfx\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\filter_core;..\clcufilters_common;..\jitify;..\MAXINE-VFX-SDK\nvvfx\include;$(CUDA_PATH)\include;$(SolutionDir)ffmpeg_lgpl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/execution-charset:shift_jis /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>

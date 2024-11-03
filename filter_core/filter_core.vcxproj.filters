@@ -36,6 +36,15 @@
     <ClCompile Include="rgy_filter.cpp" />
     <ClCompile Include="NVEncFilterParam.cpp" />
     <ClCompile Include="rgy_device.cpp" />
+    <ClCompile Include="rgy_libdovi.cpp" />
+    <ClCompile Include="rgy_libplacebo.cpp" />
+    <ClCompile Include="rgy_device_vulkan.cpp" />
+    <ClCompile Include="rgy_memmem.cpp" />
+    <ClCompile Include="rgy_memmem_avx2.cpp" />
+    <ClCompile Include="rgy_memmem_avx512bw.cpp" />
+    <ClCompile Include="rgy_bitstream.cpp" />
+    <ClCompile Include="rgy_bitstream_avx2.cpp" />
+    <ClCompile Include="rgy_bitstream_avx512bw.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="rgy_prm.h" />
@@ -77,5 +86,10 @@
     <ClInclude Include="rgy_filter.h" />
     <ClInclude Include="NVEncFilterParam.h" />
     <ClInclude Include="rgy_device.h" />
+    <ClInclude Include="rgy_libdovi.h" />
+    <ClInclude Include="rgy_libplacebo.h" />
+    <ClInclude Include="rgy_device_vulkan.h" />
+    <ClInclude Include="rgy_memmem.h" />
+    <ClInclude Include="rgy_bitstream.h" />
   </ItemGroup>
 </Project>

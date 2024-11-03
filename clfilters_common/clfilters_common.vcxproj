@@ -74,6 +74,7 @@
     <ClCompile Include="rgy_filter_denoise_nlmeans.cpp" />
     <ClCompile Include="rgy_filter_denoise_pmd.cpp" />
     <ClCompile Include="rgy_filter_edgelevel.cpp" />
+    <ClCompile Include="rgy_filter_libplacebo.cpp" />
     <ClCompile Include="rgy_filter_nnedi.cpp" />
     <ClCompile Include="rgy_filter_pad.cpp" />
     <ClCompile Include="rgy_filter_resize.cpp" />
@@ -95,7 +96,9 @@
     <ClInclude Include="rgy_filter_denoise_nlmeans.h" />
     <ClInclude Include="rgy_filter_denoise_pmd.h" />
     <ClInclude Include="rgy_filter_edgelevel.h" />
+    <ClInclude Include="rgy_filter_libplacebo.h" />
     <ClInclude Include="rgy_filter_nnedi.h" />
+    <ClInclude Include="rgy_filter_resize.h" />
     <ClInclude Include="rgy_filter_smooth.h" />
     <ClInclude Include="rgy_filter_transform.h" />
     <ClInclude Include="rgy_filter_tweak.h" />
@@ -262,7 +265,7 @@
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include;$(SolutionDir)ffmpeg_lgpl\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <AdditionalOptions>/execution-charset:shift_jis /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
@@ -303,7 +306,7 @@
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include;$(SolutionDir)ffmpeg_lgpl\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -382,7 +385,7 @@
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include;$(SolutionDir)ffmpeg_lgpl\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <AdditionalOptions>/execution-charset:shift_jis /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
@@ -401,7 +404,7 @@
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include;$(SolutionDir)ffmpeg_lgpl\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <AdditionalOptions>/execution-charset:shift_jis /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -423,7 +426,7 @@
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include;$(SolutionDir)ffmpeg_lgpl\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -449,7 +452,7 @@
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include;$(SolutionDir)ffmpeg_lgpl\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -475,7 +478,7 @@
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters;..\clfilters_common;..\filter_core;$(OPENCL_HEADERS);..\clRNG\src\include;$(SolutionDir)ffmpeg_lgpl\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>

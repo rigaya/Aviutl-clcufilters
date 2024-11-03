@@ -144,6 +144,7 @@ protected:
 
 class NVEncFilterParamNvvfxSuperRes;
 class NVEncFilterParamNGXVSR;
+class NVEncFilterParamLibplaceboResample;
 class DeviceDX11;
 
 class NVEncFilterParamResize : public NVEncFilterParam {
@@ -152,6 +153,7 @@ public:
     RGY_VPP_RESIZE_ALGO nvvfxSubAlgo;
     std::shared_ptr<NVEncFilterParamNvvfxSuperRes> nvvfxSuperRes;
     std::shared_ptr<NVEncFilterParamNGXVSR> ngxvsr;
+    std::shared_ptr<NVEncFilterParamLibplaceboResample> libplaceboResample;
     NVEncFilterParamResize();
     virtual ~NVEncFilterParamResize();
     virtual tstring print() const override;
@@ -159,6 +161,7 @@ public:
 
 class NVEncFilterNvvfxSuperRes;
 class NVEncFilterNGXVSR;
+class NVEncFilterLibplaceboResample;
 
 class NVEncFilterResize : public NVEncFilter {
 public:
@@ -167,7 +170,7 @@ public:
     virtual RGY_ERR init(shared_ptr<NVEncFilterParam> pParam, shared_ptr<RGYLog> pPrintMes) override;
 protected:
     virtual RGY_ERR run_filter(const RGYFrameInfo *pInputFrame, RGYFrameInfo **ppOutputFrames, int *pOutputFrameNum, cudaStream_t stream) override;
-    RGY_ERR resizeNppiYV12(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame);
+    RGY_ERR resizeNppi(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame);
     RGY_ERR resizeNppiYUV444(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame);
     RGY_ERR initNvvfxFilter(NVEncFilterParamResize *param);
     RGY_ERR resizeNvvfxSuperRes(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame);
@@ -178,6 +181,7 @@ protected:
     RGY_VPP_RESIZE_ALGO m_weightSplineAlgo;
     std::unique_ptr<NVEncFilterNvvfxSuperRes> m_nvvfxSuperRes;
     std::unique_ptr<NVEncFilterNGXVSR> m_ngxVSR;
+    std::unique_ptr<NVEncFilterLibplaceboResample> m_libplaceboResample;
 };
 
 

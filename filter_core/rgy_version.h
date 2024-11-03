@@ -65,7 +65,7 @@ const char *get_encoder_version();
 #define ENABLE_NVVFX 0
 #define ENABLE_NVSDKNGX 0
 #define ENABLE_D3D9 0
-#define ENABLE_D3D11 0
+#define ENABLE_D3D11 1
 #define ENABLE_D3D11_DEVINFO_WMI 0
 #endif
 
@@ -88,6 +88,15 @@ const char *get_encoder_version();
 #define ENABLE_AUTO_PICSTRUCT 0
 
 #define ENABLE_LIBASS_SUBBURN 0
+#if defined(_WIN64)
+#define ENABLE_LIBPLACEBO 1
+#define ENABLE_LIBDOVI 0
+#define ENABLE_LIBHDR10PLUS 0
+#else
+#define ENABLE_LIBPLACEBO 0
+#define ENABLE_LIBDOVI 0
+#define ENABLE_LIBHDR10PLUS 0
+#endif
 
 #define ENCODER_NAME  "clfilters"
 #define FOR_AUO                   1

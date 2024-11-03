@@ -2233,7 +2233,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
 
     //バンディング
     move_group(y_pos, col, col_width, CLFILTER_CHECK_DEBAND_ENABLE, CLFILTER_CHECK_DEBAND_MAX, CLFILTER_TRACK_DEBAND_FIRST, CLFILTER_TRACK_DEBAND_MAX, track_bar_delta_y, ADD_CX_AFTER_TRACK, 1, cx_y_pos, checkbox_idx, dialog_rc);
-    add_combobox(cx_deband_sample, ID_CX_DEBAND_SAMPLE, lb_deband_sample, ID_LB_DEBAND_SAMPLE, LB_CX_DEBAND_SAMPLE, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_deband);
+    add_combobox(cx_deband_sample, ID_CX_DEBAND_SAMPLE, lb_deband_sample, ID_LB_DEBAND_SAMPLE, LB_CX_DEBAND_SAMPLE, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_deband_sample);
 
     //TrueHDR
     move_group(y_pos, col, col_width, CLFILTER_CHECK_TRUEHDR_ENABLE, CLFILTER_CHECK_TRUEHDR_MAX, CLFILTER_TRACK_NGX_TRUEHDR_FIRST, CLFILTER_TRACK_NGX_TRUEHDR_MAX, track_bar_delta_y, ADD_CX_AFTER_TRACK, 5, cx_y_pos, checkbox_idx, dialog_rc);

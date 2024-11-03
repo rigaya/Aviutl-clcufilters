@@ -121,6 +121,7 @@ enum RGY_CODEC {
     RGY_CODEC_VP9,
     RGY_CODEC_VC1,
     RGY_CODEC_AV1,
+    RGY_CODEC_VVC,
     RGY_CODEC_RAW,
 
     RGY_CODEC_NUM,
@@ -137,6 +138,7 @@ static tstring CodecToStr(RGY_CODEC codec) {
     case RGY_CODEC_VP8:   return _T("VP8");
     case RGY_CODEC_VP9:   return _T("VP9");
     case RGY_CODEC_AV1:   return _T("AV1");
+    case RGY_CODEC_VVC:   return _T("VVC");
     case RGY_CODEC_RAW:   return _T("RAW");
     default: return _T("unknown");
     }
@@ -270,6 +272,7 @@ static const CX_DESC list_rgy_codec[] = {
     { _T("vp8"),   RGY_CODEC_VP8 },
     { _T("vp9"),   RGY_CODEC_VP9 },
     { _T("av1"),   RGY_CODEC_AV1 },
+    { _T("vvc"),   RGY_CODEC_VVC },
     { NULL, 0 }
 };
 
@@ -474,12 +477,24 @@ const CX_DESC list_videoformat[] = {
     { NULL, 0 }
 };
 
+
+enum RGYDOVIProfile {
+    RGY_DOVI_PROFILE_UNSET = 0,
+    RGY_DOVI_PROFILE_COPY  = -1,
+    RGY_DOVI_PROFILE_50    = 50,
+    RGY_DOVI_PROFILE_81    = 81,
+    RGY_DOVI_PROFILE_82    = 82,
+    RGY_DOVI_PROFILE_84    = 84,
+    RGY_DOVI_PROFILE_OTHER = 100,
+};
+
 const CX_DESC list_dovi_profile[] = {
-    { _T("unset"), 0 },
-    { _T("5.0"),  50 },
-    { _T("8.1"),  81 },
-    { _T("8.2"),  82 },
-    { _T("8.4"),  84 },
+    { _T("unset"), RGY_DOVI_PROFILE_UNSET },
+    { _T("copy"),  RGY_DOVI_PROFILE_COPY },
+    { _T("5.0"),   RGY_DOVI_PROFILE_50 },
+    { _T("8.1"),   RGY_DOVI_PROFILE_81 },
+    { _T("8.2"),   RGY_DOVI_PROFILE_82 },
+    { _T("8.4"),   RGY_DOVI_PROFILE_84 },
     { NULL, 0 }
 };
 
@@ -623,6 +638,34 @@ struct VideoVUIInfo {
             matrix = x.matrix;
         }
         if (transfer == defaultVUI.transfer) {
+            transfer = x.transfer;
+        }
+        if (format == defaultVUI.format) {
+            format = x.format;
+        }
+        if (colorrange == defaultVUI.colorrange) {
+            colorrange = x.colorrange;
+        }
+        if (chromaloc == defaultVUI.chromaloc) {
+            chromaloc = x.chromaloc;
+        }
+        setDescriptPreset();
+    }
+
+    void setIfUnsetUnknwonAuto(const VideoVUIInfo &x) {
+        const auto defaultVUI = VideoVUIInfo();
+        if (   colorprim == RGY_PRIM_UNSPECIFIED
+            || colorprim == RGY_PRIM_UNKNOWN
+            || colorprim == RGY_PRIM_AUTO) {
+            colorprim = x.colorprim;
+        }
+        if (   matrix == RGY_MATRIX_UNSPECIFIED
+            || matrix == RGY_MATRIX_AUTO) {
+            matrix = x.matrix;
+        }
+        if (   transfer == RGY_TRANSFER_UNKNOWN
+            || transfer == RGY_TRANSFER_UNSPECIFIED
+            || transfer == RGY_TRANSFER_AUTO) {
             transfer = x.transfer;
         }
         if (format == defaultVUI.format) {

@@ -38,6 +38,7 @@
 #include "rgy_filter_denoise_dct.h"
 #include "rgy_filter_smooth.h"
 #include "rgy_filter_unsharp.h"
+#include "rgy_filter_resize.h"
 #include "rgy_filter_edgelevel.h"
 #include "rgy_filter_warpsharp.h"
 #include "rgy_filter_deband.h"

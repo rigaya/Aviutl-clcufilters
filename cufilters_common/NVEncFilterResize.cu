@@ -34,6 +34,7 @@
 #include "NVEncFilter.h"
 #include "NVEncFilterNvvfx.h"
 #include "NVEncFilterNGX.h"
+#include "NVEncFilterLibplacebo.h"
 #include "rgy_prm.h"
 #pragma warning (push)
 #pragma warning (disable: 4819)
@@ -469,34 +470,16 @@ static RGY_ERR resize_plane(RGYFrameInfo *pOutputPlane, const RGYFrameInfo *pInp
 
 template<typename Type, int bit_depth, RESIZE_WEIGHT_TYPE algo, int radius>
 static RGY_ERR resize_frame(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame, const float *pgFactor, cudaStream_t stream) {
-    const auto planeSrcY = getPlane(pInputFrame, RGY_PLANE_Y);
-    const auto planeSrcU = getPlane(pInputFrame, RGY_PLANE_U);
-    const auto planeSrcV = getPlane(pInputFrame, RGY_PLANE_V);
-    const auto planeSrcA = getPlane(pInputFrame, RGY_PLANE_A);
-    auto planeOutputY = getPlane(pOutputFrame, RGY_PLANE_Y);
-    auto planeOutputU = getPlane(pOutputFrame, RGY_PLANE_U);
-    auto planeOutputV = getPlane(pOutputFrame, RGY_PLANE_V);
-    auto planeOutputA = getPlane(pOutputFrame, RGY_PLANE_A);
-
-    auto sts = resize_plane<Type, bit_depth, algo, radius>(&planeOutputY, &planeSrcY, pgFactor, stream);
-    if (sts != RGY_ERR_NONE) {
-        return sts;
-    }
-    sts = resize_plane<Type, bit_depth, algo, radius>(&planeOutputU, &planeSrcU, pgFactor, stream);
-    if (sts != RGY_ERR_NONE) {
-        return sts;
-    }
-    sts = resize_plane<Type, bit_depth, algo, radius>(&planeOutputV, &planeSrcV, pgFactor, stream);
-    if (sts != RGY_ERR_NONE) {
-        return sts;
-    }
-    if (RGY_CSP_PLANES[pOutputFrame->csp] == 4) {
-        sts = resize_plane<Type, bit_depth, algo, radius>(&planeOutputA, &planeSrcA, pgFactor, stream);
+    for (int iplane = 0; iplane < RGY_CSP_PLANES[pInputFrame->csp]; iplane++) {
+        const auto plane = (RGY_PLANE)iplane;
+        const auto planeSrc = getPlane(pInputFrame, plane);
+        auto planeOutput = getPlane(pOutputFrame, plane);
+        auto sts = resize_plane<Type, bit_depth, algo, radius>(&planeOutput, &planeSrc, pgFactor, stream);
         if (sts != RGY_ERR_NONE) {
             return sts;
         }
     }
-    return sts;
+    return RGY_ERR_NONE;
 }
 
 static bool useTextureBilinear(const RGY_VPP_RESIZE_ALGO interp, const RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame) {
@@ -525,55 +508,50 @@ static RGY_ERR resize_frame(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInp
 }
 
 template<typename T, typename Tfunc>
-static RGY_ERR resize_nppi_yv12(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame, Tfunc funcResize, NppiInterpolationMode interpMode) {
-    const double factorX = pOutputFrame->width / (double)pInputFrame->width;
-    const double factorY = pOutputFrame->height / (double)pInputFrame->height;
-    auto srcSize = nppisize(pInputFrame);
-    auto srcRect = nppiroi(pInputFrame);
-    auto dstRect = nppiroi(pOutputFrame);
-    const auto planeSrcY = getPlane(pInputFrame, RGY_PLANE_Y);
-    const auto planeSrcU = getPlane(pInputFrame, RGY_PLANE_U);
-    const auto planeSrcV = getPlane(pInputFrame, RGY_PLANE_V);
-    auto planeOutputY = getPlane(pOutputFrame, RGY_PLANE_Y);
-    auto planeOutputU = getPlane(pOutputFrame, RGY_PLANE_U);
-    auto planeOutputV = getPlane(pOutputFrame, RGY_PLANE_V);
-    //Y
+static RGY_ERR resize_nppi_plane_call_func(RGYFrameInfo *pOutputPlane, const RGYFrameInfo *pInputPlane, const Tfunc funcResize, const NppiInterpolationMode interpMode) {
+    const double factorX = pOutputPlane->width / (double)pInputPlane->width;
+    const double factorY = pOutputPlane->height / (double)pInputPlane->height;
+    auto srcSize = nppisize(pInputPlane);
+    auto srcRect = nppiroi(pInputPlane);
+    auto dstRect = nppiroi(pOutputPlane);
     NppStatus sts = funcResize(
-        (const T *)planeSrcY.ptr[0],
-        srcSize, planeSrcY.pitch[0], srcRect,
-        (T *)planeOutputY.ptr[0],
-        planeOutputY.pitch[0], dstRect,
+        (const T *)pInputPlane->ptr[0],
+        srcSize, pInputPlane->pitch[0], srcRect,
+        (T *)pOutputPlane->ptr[0],
+        pOutputPlane->pitch[0], dstRect,
         factorX, factorY, 0.0, 0.0, interpMode);
     if (sts != NPP_SUCCESS) {
         return err_to_rgy(sts);
     }
-    //U
-    srcSize.width  >>= 1;
-    srcSize.height >>= 1;
-    srcRect.width  >>= 1;
-    srcRect.height >>= 1;
-    dstRect.width  >>= 1;
-    dstRect.height >>= 1;
-    sts = funcResize(
-        (const T *)planeSrcU.ptr[0],
-        srcSize, planeSrcU.pitch[0], srcRect,
-        (T *)planeOutputU.ptr[0],
-        planeOutputU.pitch[0], dstRect,
-        factorX, factorY, 0.0, 0.0, interpMode);
-    if (sts != NPP_SUCCESS) {
-        return err_to_rgy(sts);
-    }
-    //V
-    sts = funcResize(
-        (const T *)planeSrcV.ptr[0],
-        srcSize, planeSrcV.pitch[0], srcRect,
-        (T *)planeOutputV.ptr[0],
-        planeOutputV.pitch[0], dstRect,
-        factorX, factorY, 0.0, 0.0, interpMode);
-    return err_to_rgy(sts);
+    return RGY_ERR_NONE;
 }
 
-RGY_ERR NVEncFilterResize::resizeNppiYV12(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame) {
+static RGY_ERR resize_nppi_plane(RGYFrameInfo *pOutputPlane, const RGYFrameInfo *pInputPlane, const NppiInterpolationMode interpMode) {
+    auto sts = RGY_ERR_NONE;
+    if (RGY_CSP_DATA_TYPE[pInputPlane->csp] == RGY_DATA_TYPE_U8) {
+        sts = resize_nppi_plane_call_func<Npp8u>(pOutputPlane, pInputPlane, nppiResizeSqrPixel_8u_C1R, interpMode);
+    } else if (RGY_CSP_DATA_TYPE[pInputPlane->csp] == RGY_DATA_TYPE_U16) {
+        sts = resize_nppi_plane_call_func<Npp16u>(pOutputPlane, pInputPlane, nppiResizeSqrPixel_16u_C1R, interpMode);
+    } else {
+        sts = RGY_ERR_UNSUPPORTED;
+    }
+    return sts;
+}
+
+static RGY_ERR resize_nppi_frame(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame, const NppiInterpolationMode interpMode) {
+    for (int iplane = 0; iplane < RGY_CSP_PLANES[pInputFrame->csp]; iplane++) {
+        const auto plane = (RGY_PLANE)iplane;
+        const auto planeInput = getPlane(pInputFrame, plane);
+        auto planeOutput = getPlane(pOutputFrame, plane);
+        auto sts = resize_nppi_plane(&planeOutput, &planeInput, interpMode);
+        if (sts != RGY_ERR_NONE) {
+            return sts;
+        }
+    }
+    return RGY_ERR_NONE;
+}
+
+RGY_ERR NVEncFilterResize::resizeNppi(RGYFrameInfo *pOutputFrame, const RGYFrameInfo *pInputFrame) {
 #if _M_IX86
     AddMessage(RGY_LOG_ERROR, _T("npp filter not supported on x86.\n"));
     return RGY_ERR_UNSUPPORTED;
@@ -593,22 +571,10 @@ RGY_ERR NVEncFilterResize::resizeNppiYV12(RGYFrameInfo *pOutputFrame, const RGYF
         AddMessage(RGY_LOG_ERROR, _T("Unknown nppi interp mode: %d.\n"), (int)pResizeParam->interp);
         return RGY_ERR_UNSUPPORTED;
     }
-    static const auto supportedCspYV12High = make_array<RGY_CSP>(RGY_CSP_YV12_09, RGY_CSP_YV12_10, RGY_CSP_YV12_12, RGY_CSP_YV12_14, RGY_CSP_YV12_16);
-    if (m_param->frameIn.csp == RGY_CSP_YV12) {
-        sts = resize_nppi_yv12<Npp8u>(pOutputFrame, pInputFrame, nppiResizeSqrPixel_8u_C1R, interp);
-        if (sts != RGY_ERR_NONE) {
-            AddMessage(RGY_LOG_ERROR, _T("failed to resize: %d, %s.\n"), sts, get_err_mes(sts));
-            return sts;
-        }
-    } else if (std::find(supportedCspYV12High.begin(), supportedCspYV12High.end(), m_param->frameIn.csp) != supportedCspYV12High.end()) {
-        sts = resize_nppi_yv12<Npp16u>(pOutputFrame, pInputFrame, nppiResizeSqrPixel_16u_C1R, interp);
-        if (sts != RGY_ERR_NONE) {
-            AddMessage(RGY_LOG_ERROR, _T("failed to resize: %d, %s.\n"), sts, get_err_mes(sts));
-            return sts;
-        }
-    } else {
-        AddMessage(RGY_LOG_ERROR, _T("unsupported csp.\n"));
-        sts = RGY_ERR_UNSUPPORTED;
+    sts = resize_nppi_frame(pOutputFrame, pInputFrame, interp);
+    if (sts != RGY_ERR_NONE) {
+        AddMessage(RGY_LOG_ERROR, _T("failed to resize: %d, %s.\n"), sts, get_err_mes(sts));
+        return sts;
     }
     return sts;
 #endif
@@ -659,6 +625,10 @@ RGY_ERR NVEncFilterResize::resizeNppiYUV444(RGYFrameInfo *pOutputFrame, const RG
         AddMessage(RGY_LOG_ERROR, _T("csp does not match.\n"));
         return RGY_ERR_INVALID_PARAM;
     }
+    if (rgy_csp_has_alpha(m_param->frameIn.csp)) {
+        AddMessage(RGY_LOG_ERROR, _T("unsupported, NVEncFilterResize::resizeNppi() should be called.\n"));
+        sts = RGY_ERR_UNSUPPORTED;
+    }
     auto pResizeParam = std::dynamic_pointer_cast<NVEncFilterParamResize>(m_param);
     if (!pResizeParam) {
         AddMessage(RGY_LOG_ERROR, _T("Invalid parameter type.\n"));
@@ -669,14 +639,13 @@ RGY_ERR NVEncFilterResize::resizeNppiYUV444(RGYFrameInfo *pOutputFrame, const RG
         AddMessage(RGY_LOG_ERROR, _T("Unknown nppi interp mode: %d.\n"), (int)pResizeParam->interp);
         return RGY_ERR_UNSUPPORTED;
     }
-    static const auto supportedCspYUV444High = make_array<RGY_CSP>(RGY_CSP_YUV444_09, RGY_CSP_YUV444_10, RGY_CSP_YUV444_12, RGY_CSP_YUV444_14, RGY_CSP_YUV444_16);
-    if (m_param->frameIn.csp == RGY_CSP_YUV444) {
+    if (RGY_CSP_DATA_TYPE[m_param->frameIn.csp] == RGY_DATA_TYPE_U8) {
         sts = resize_nppi_yuv444<Npp8u>(pOutputFrame, pInputFrame, nppiResizeSqrPixel_8u_P3R, interp);
         if (sts != RGY_ERR_NONE) {
             AddMessage(RGY_LOG_ERROR, _T("failed to resize: %d, %s.\n"), sts, get_err_mes(sts));
             return sts;
         }
-    } else if (std::find(supportedCspYUV444High.begin(), supportedCspYUV444High.end(), m_param->frameIn.csp) != supportedCspYUV444High.end()) {
+    } else if (RGY_CSP_DATA_TYPE[m_param->frameIn.csp] == RGY_DATA_TYPE_U16) {
         sts = resize_nppi_yuv444<Npp16u>(pOutputFrame, pInputFrame, nppiResizeSqrPixel_16u_P3R, interp);
         if (sts != RGY_ERR_NONE) {
             AddMessage(RGY_LOG_ERROR, _T("failed to resize: %d, %s.\n"), sts, get_err_mes(sts));
@@ -695,7 +664,8 @@ NVEncFilterResize::NVEncFilterResize() :
     m_weightSpline(),
     m_weightSplineAlgo(RGY_VPP_RESIZE_UNKNOWN),
     m_nvvfxSuperRes(),
-    m_ngxVSR() {
+    m_ngxVSR(),
+    m_libplaceboResample() {
     m_name = _T("resize");
 }
 
@@ -831,15 +801,6 @@ RGY_ERR NVEncFilterResize::init(shared_ptr<NVEncFilterParam> pParam, shared_ptr<
         return RGY_ERR_INVALID_PARAM;
     }
 
-    sts = AllocFrameBuf(pResizeParam->frameOut, 1);
-    if (sts != RGY_ERR_NONE) {
-        AddMessage(RGY_LOG_ERROR, _T("failed to allocate memory: %s.\n"), get_err_mes(sts));
-        return sts;
-    }
-    for (int i = 0; i < RGY_CSP_PLANES[pParam->frameOut.csp]; i++) {
-        pResizeParam->frameOut.pitch[i] = m_frameBuf[0]->frame.pitch[i];
-    }
-
     auto resizeInterp = pResizeParam->interp;
     if (isNvvfxResizeFiter(pResizeParam->interp)) {
         if (!pResizeParam->nvvfxSuperRes) {
@@ -848,7 +809,7 @@ RGY_ERR NVEncFilterResize::init(shared_ptr<NVEncFilterParam> pParam, shared_ptr<
         }
         sts = initNvvfxFilter(pResizeParam.get());
         if (sts != RGY_ERR_NONE) {
-            AddMessage(RGY_LOG_ERROR, _T("Failed to init nvvfx filter.\n"));
+            AddMessage(RGY_LOG_ERROR, _T("Failed to init nvvfx filter: %s.\n"), get_err_mes(sts));
             return sts;
         }
         resizeInterp = pResizeParam->nvvfxSubAlgo;
@@ -864,13 +825,37 @@ RGY_ERR NVEncFilterResize::init(shared_ptr<NVEncFilterParam> pParam, shared_ptr<
         pResizeParam->ngxvsr->frameOut = pResizeParam->frameOut;
         sts = m_ngxVSR->init(pResizeParam->ngxvsr, m_pLog);
         if (sts != RGY_ERR_NONE) {
-            AddMessage(RGY_LOG_ERROR, _T("Failed to init ngx vsr filter.\n"));
+            AddMessage(RGY_LOG_ERROR, _T("Failed to init ngx vsr filter: %s.\n"), get_err_mes(sts));
             return sts;
         }
         pResizeParam->frameOut = pResizeParam->ngxvsr->frameOut;
     } else {
         m_ngxVSR.reset(); // 不要になったら解放
         pResizeParam->ngxvsr.reset();
+    }
+    if (isLibplaceboResizeFiter(pResizeParam->interp)) {
+        if (!m_libplaceboResample) {
+            m_libplaceboResample = std::make_unique<NVEncFilterLibplaceboResample>();
+        }
+        pResizeParam->libplaceboResample->frameIn = pResizeParam->frameIn;
+        pResizeParam->libplaceboResample->frameOut = pResizeParam->frameOut;
+        sts = m_libplaceboResample->init(pResizeParam->libplaceboResample, m_pLog);
+        if (sts != RGY_ERR_NONE) {
+            AddMessage(RGY_LOG_ERROR, _T("Failed to init libplacebo resample filter: %s.\n"), get_err_mes(sts));
+            return sts;
+        }
+    } else {
+        m_libplaceboResample.reset(); // 不要になったら解放
+        pResizeParam->libplaceboResample.reset();
+    }
+
+    sts = AllocFrameBuf(pResizeParam->frameOut, 1);
+    if (sts != RGY_ERR_NONE) {
+        AddMessage(RGY_LOG_ERROR, _T("failed to allocate memory: %s.\n"), get_err_mes(sts));
+        return sts;
+    }
+    for (int i = 0; i < RGY_CSP_PLANES[pParam->frameOut.csp]; i++) {
+        pResizeParam->frameOut.pitch[i] = m_frameBuf[0]->frame.pitch[i];
     }
 
     if ((!m_weightSpline || m_weightSplineAlgo != resizeInterp)
@@ -969,7 +954,8 @@ NVEncFilterParamResize::NVEncFilterParamResize() :
     interp(RGY_VPP_RESIZE_SPLINE36),
     nvvfxSubAlgo(RGY_VPP_RESIZE_SPLINE36),
     nvvfxSuperRes(),
-    ngxvsr() {
+    ngxvsr(),
+    libplaceboResample() {
 }
 
 NVEncFilterParamResize::~NVEncFilterParamResize() {};
@@ -989,10 +975,15 @@ tstring NVEncFilterParamResize::print() const {
         }
         return str;
     }
-    return strsprintf(_T("resize(%s): %dx%d -> %dx%d"),
+    auto str = strsprintf(_T("resize(%s): %dx%d -> %dx%d"),
         get_chr_from_value(list_vpp_resize, interp),
         frameIn.width, frameIn.height,
         frameOut.width, frameOut.height);
+    if (libplaceboResample) {
+        str += _T("\n                 ");
+        str += libplaceboResample->print();
+    }
+    return str;
 }
 
 RGY_ERR NVEncFilterResize::run_filter(const RGYFrameInfo *pInputFrame, RGYFrameInfo **ppOutputFrames, int *pOutputFrameNum, cudaStream_t stream) {
@@ -1045,15 +1036,20 @@ RGY_ERR NVEncFilterResize::run_filter(const RGYFrameInfo *pInputFrame, RGYFrameI
             ppOutputFrames[0]->width = pResizeParam->nvvfxSuperRes->frameIn.width;
             ppOutputFrames[0]->height = pResizeParam->nvvfxSuperRes->frameIn.height;
         }
-    } else if (m_ngxVSR) {
+    } else if (m_ngxVSR || m_libplaceboResample) {
         RGYFrameInfo inputFrame = *pInputFrame;
-        auto sts_filter = m_ngxVSR->filter(&inputFrame, ppOutputFrames, pOutputFrameNum, stream);
+        NVEncFilter *filter = (m_ngxVSR) ? (NVEncFilter *)m_ngxVSR.get() : (NVEncFilter *)m_libplaceboResample.get();
+        if (filter == nullptr) {
+            AddMessage(RGY_LOG_ERROR, _T("Failed to get filter to be applied.\n"));
+            return RGY_ERR_UNKNOWN;
+        }
+        auto sts_filter = filter->filter(&inputFrame, ppOutputFrames, pOutputFrameNum, stream);
         if (ppOutputFrames[0] == nullptr || *pOutputFrameNum != 1) {
-            AddMessage(RGY_LOG_ERROR, _T("Unknown behavior \"%s\".\n"), m_ngxVSR->name().c_str());
+            AddMessage(RGY_LOG_ERROR, _T("Unknown behavior \"%s\".\n"), filter->name().c_str());
             return sts_filter;
         }
         if (sts_filter != RGY_ERR_NONE || *pOutputFrameNum != 1) {
-            AddMessage(RGY_LOG_ERROR, _T("Error while running filter \"%s\".\n"), m_ngxVSR->name().c_str());
+            AddMessage(RGY_LOG_ERROR, _T("Error while running filter \"%s\".\n"), filter->name().c_str());
             return sts_filter;
         }
         return RGY_ERR_NONE;
@@ -1064,34 +1060,25 @@ RGY_ERR NVEncFilterResize::run_filter(const RGYFrameInfo *pInputFrame, RGYFrameI
         return RGY_ERR_UNSUPPORTED;
     }
 
-    static const auto supportedCspYV12   = make_array<RGY_CSP>(RGY_CSP_YV12, RGY_CSP_YV12_09, RGY_CSP_YV12_10, RGY_CSP_YV12_12, RGY_CSP_YV12_14, RGY_CSP_YV12_16);
-    static const auto supportedCspYUV444 = make_array<RGY_CSP>(RGY_CSP_YUV444, RGY_CSP_YUV444_09, RGY_CSP_YUV444_10, RGY_CSP_YUV444_12, RGY_CSP_YUV444_14, RGY_CSP_YUV444_16);
-
     if (   pInputFrame->width != ppOutputFrames[0]->width
         || pInputFrame->height != ppOutputFrames[0]->height) {
         if (isNppResizeFiter(pResizeParam->interp)) {
-            if (std::find(supportedCspYV12.begin(), supportedCspYV12.end(), m_param->frameIn.csp) != supportedCspYV12.end()) {
-                sts = resizeNppiYV12(ppOutputFrames[0], pInputFrame);
-            } else if (std::find(supportedCspYUV444.begin(), supportedCspYUV444.end(), m_param->frameIn.csp) != supportedCspYUV444.end()) {
+            static const auto supportedCspYUV444 = make_array<RGY_CSP>(RGY_CSP_YUV444, RGY_CSP_YUV444_09, RGY_CSP_YUV444_10, RGY_CSP_YUV444_12, RGY_CSP_YUV444_14, RGY_CSP_YUV444_16);
+            if (std::find(supportedCspYUV444.begin(), supportedCspYUV444.end(), m_param->frameIn.csp) != supportedCspYUV444.end()) {
                 sts = resizeNppiYUV444(ppOutputFrames[0], pInputFrame);
             } else {
-                AddMessage(RGY_LOG_ERROR, _T("unsupported csp.\n"));
-                sts = RGY_ERR_UNSUPPORTED;
+                sts = resizeNppi(ppOutputFrames[0], pInputFrame);
             }
         } else {
-            static const std::map<RGY_CSP, decltype(resize_frame<uint8_t, 8>)*> resize_list = {
-                { RGY_CSP_YV12,       resize_frame<uint8_t,   8> },
-                { RGY_CSP_YV12_16,    resize_frame<uint16_t, 16> },
-                { RGY_CSP_YUV444,     resize_frame<uint8_t,   8> },
-                { RGY_CSP_YUV444_16,  resize_frame<uint16_t, 16> },
-                { RGY_CSP_YUVA444,    resize_frame<uint8_t,   8> },
-                { RGY_CSP_YUVA444_16, resize_frame<uint16_t, 16> },
+            static const std::map<RGY_DATA_TYPE, decltype(resize_frame<uint8_t, 8>)*> resize_list = {
+                { RGY_DATA_TYPE_U8,  resize_frame<uint8_t,   8> },
+                { RGY_DATA_TYPE_U16, resize_frame<uint16_t, 16> }
             };
-            if (resize_list.count(pInputFrame->csp) == 0) {
+            if (resize_list.count(RGY_CSP_DATA_TYPE[pInputFrame->csp]) == 0) {
                 AddMessage(RGY_LOG_ERROR, _T("unsupported csp %s.\n"), RGY_CSP_NAMES[pInputFrame->csp]);
                 return RGY_ERR_UNSUPPORTED;
             }
-            sts = resize_list.at(pInputFrame->csp)(ppOutputFrames[0], pInputFrame, resizeInterp, (m_weightSpline) ? (float *)m_weightSpline->ptr : nullptr, stream);
+            sts = resize_list.at(RGY_CSP_DATA_TYPE[pInputFrame->csp])(ppOutputFrames[0], pInputFrame, resizeInterp, (m_weightSpline) ? (float *)m_weightSpline->ptr : nullptr, stream);
             if (sts != RGY_ERR_NONE) {
                 AddMessage(RGY_LOG_ERROR, _T("error at resize(%s): %s.\n"),
                     RGY_CSP_NAMES[pInputFrame->csp],
@@ -1130,6 +1117,7 @@ void NVEncFilterResize::close() {
     m_frameBuf.clear();
     m_ngxVSR.reset();
     m_nvvfxSuperRes.reset();
+    m_libplaceboResample.reset();
     m_weightSpline.reset();
     m_weightSplineAlgo = RGY_VPP_RESIZE_UNKNOWN;
     m_bInterlacedWarn = false;

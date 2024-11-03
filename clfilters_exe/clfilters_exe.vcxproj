@@ -208,7 +208,7 @@
       <PreprocessorDefinitions>CLFILTERS=1;CUFILTERS=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(SolutionDir)ffmpeg_lgpl\include;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <AdditionalOptions>/execution-charset:shift_jis /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
@@ -233,7 +233,7 @@
       <PreprocessorDefinitions>CLFILTERS=0;CUFILTERS=1;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(SolutionDir)ffmpeg_lgpl\include;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <AdditionalOptions>/execution-charset:shift_jis /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
@@ -261,7 +261,7 @@
       <PreprocessorDefinitions>CLFILTERS=1;CUFILTERS=0;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(SolutionDir)ffmpeg_lgpl\include;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -294,7 +294,7 @@
       <PreprocessorDefinitions>CLFILTERS=0;CUFILTERS=1;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(SolutionDir)ffmpeg_lgpl\include;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -327,7 +327,7 @@
       <PreprocessorDefinitions>CLFILTERS=1;CUFILTERS=0;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(SolutionDir)ffmpeg_lgpl\include;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -358,7 +358,7 @@
       <PreprocessorDefinitions>CLFILTERS=1;CUFILTERS=0;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(SolutionDir)ffmpeg_lgpl\include;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <AdditionalOptions>/execution-charset:shift_jis /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
@@ -383,7 +383,7 @@
       <PreprocessorDefinitions>CLFILTERS=0;CUFILTERS=1;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(SolutionDir)ffmpeg_lgpl\include;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <AdditionalOptions>/execution-charset:shift_jis /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
@@ -411,7 +411,7 @@
       <PreprocessorDefinitions>CLFILTERS=1;CUFILTERS=0;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(SolutionDir)ffmpeg_lgpl\include;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -444,7 +444,7 @@
       <PreprocessorDefinitions>CLFILTERS=0;CUFILTERS=1;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(SolutionDir)ffmpeg_lgpl\include;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -477,7 +477,7 @@
       <PreprocessorDefinitions>CLFILTERS=1;CUFILTERS=0;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\clfilters_common;..\clcufilters_common;..\filter_core;$(SolutionDir)ffmpeg_lgpl\include;$(OPENCL_HEADERS)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4505;4091;4127</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>

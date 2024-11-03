@@ -88,6 +88,8 @@ jobs:
 
       - name: Checkout dependencies
         run: |
+          curl -s -o ffmpeg_lgpl.7z -L https://github.com/rigaya/ffmpeg_dlls_for_hwenc/releases/download/20241102/ffmpeg_dlls_for_hwenc_20241102.7z
+          7z x -offmpeg_lgpl -y ffmpeg_lgpl.7z
           git clone https://github.com/KhronosGroup/OpenCL-Headers.git ..\openclheaders
           if "${{ matrix.release_name }}" == "cufilters" curl -s -o NVEncNVSDKNGX_x64.7z -L https://github.com/rigaya/NVEnc/releases/download/7.55/NVEncNVSDKNGX_20240629_x64.7z
           if "${{ matrix.release_name }}" == "cufilters" 7z x -oNVEncNVSDKNGXBin -y NVEncNVSDKNGX_x64.7z
@@ -118,6 +120,7 @@ jobs:
           if "${{ matrix.release_name }}" == "cufilters" copy "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }}\bin\nvrtc64_*_0.dll" clcufilters_release
           if "${{ matrix.release_name }}" == "cufilters" copy "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v${{ matrix.cuda_ver_major }}.${{ matrix.cuda_ver_minor }}\bin\nvrtc-builtins64_*.dll" clcufilters_release
           if "${{ matrix.release_name }}" == "cufilters" copy NVEncNVSDKNGXBin\*.dll clcufilters_release
+          copy ffmpeg_lgpl\lib\${{ matrix.platform }}\libplacebo-*.dll clcufilters_release
           7z a -mx9 ${{ matrix.release_name }}_${{ matrix.configuration }}_${{ needs.get_version_name.outputs.version_name }}.7z .\clcufilters_release\*
 
       - name: Check Version
@@ -209,7 +212,7 @@ jobs:
 
       - name: Upload Release Asset
         id: upload-release-asset 
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

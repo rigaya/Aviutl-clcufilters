@@ -30,6 +30,18 @@
 #if !CLFILTERS_AUF
 #include "rgy_bitstream.h"
 #endif
+#include "rgy_libdovi.h"
+
+const TCHAR *RGYFrameDataTypeToStr(const RGYFrameDataType type) {
+    switch (type) {
+    case RGY_FRAME_DATA_NONE: return _T("none");
+    case RGY_FRAME_DATA_QP: return _T("qp");
+    case RGY_FRAME_DATA_METADATA: return _T("metadata");
+    case RGY_FRAME_DATA_HDR10PLUS: return _T("hdr10plus");
+    case RGY_FRAME_DATA_DOVIRPU: return _T("dovirpu");
+    default: return _T("Unknown");
+    }
+}
 
 RGYFrameDataQP::RGYFrameDataQP() :
     m_frameType(0),
@@ -158,7 +170,15 @@ std::vector<uint8_t> RGYFrameDataHDR10plus::gen_nal() const {
 }
 
 std::vector<uint8_t> RGYFrameDataHDR10plus::gen_obu() const {
-    return gen_av1_obu_metadata(AV1_METADATA_TYPE_ITUT_T35, m_data);
+    // https://aomediacodec.github.io/av1-hdr10plus/#hdr10-metadata
+    std::vector<uint8_t> buf;
+    if (m_data.size() > sizeof(av1_itut_t35_header_hdr10plus) && memcmp(m_data.data(), av1_itut_t35_header_hdr10plus, sizeof(av1_itut_t35_header_hdr10plus)) == 0) {
+        buf = m_data;
+    } else {
+        buf = make_vector<uint8_t>(av1_itut_t35_header_hdr10plus);
+        vector_cat(buf, m_data);
+    }
+    return gen_av1_obu_metadata(AV1_METADATA_TYPE_ITUT_T35, buf);
 }
 
 RGYFrameDataDOVIRpu::RGYFrameDataDOVIRpu() : RGYFrameDataMetadata() { m_dataType = RGY_FRAME_DATA_DOVIRPU; };
@@ -167,11 +187,68 @@ RGYFrameDataDOVIRpu::RGYFrameDataDOVIRpu(const uint8_t *data, size_t size, int64
 
 RGYFrameDataDOVIRpu::~RGYFrameDataDOVIRpu() { }
 
+RGY_ERR RGYFrameDataDOVIRpu::convert(const RGYFrameDataMetadataConvertParam *metadataprm) {
+#if ENABLE_LIBDOVI
+    auto prm = dynamic_cast<const RGYFrameDataDOVIRpuConvertParam*>(metadataprm);
+    if (!prm || !prm->enable) {
+        return RGY_ERR_NONE;
+    }
+    if (prm->doviProfileDst != RGY_DOVI_PROFILE_81 && prm->doviProfileDst != RGY_DOVI_PROFILE_COPY) {
+        return RGY_ERR_NONE;
+    }
+    if (m_data.size() == 0) {
+        return RGY_ERR_NONE;
+    }
+    std::unique_ptr<DoviRpuOpaque, decltype(&dovi_rpu_free)> rpu(dovi_parse_rpu(m_data.data(), m_data.size()), dovi_rpu_free);
+    if (!rpu) {
+        return RGY_ERR_INVALID_BINARY;
+    }
+    std::unique_ptr<const DoviRpuDataHeader, decltype(&dovi_rpu_free_header)> header(dovi_rpu_get_header(rpu.get()), dovi_rpu_free_header);
+    if (!header) {
+        return RGY_ERR_UNKNOWN;
+    }
+    const auto dovi_profile = header->guessed_profile;
+    if (dovi_profile != 7) {
+        return RGY_ERR_NONE;
+    }
+    const int ret = dovi_convert_rpu_with_mode(rpu.get(), 2);
+    if (ret != 0) {
+        return RGY_ERR_INVALID_OPERATION;
+    }
+    std::unique_ptr<const DoviData, decltype(&dovi_data_free)> rpu_data(dovi_write_rpu(rpu.get()), dovi_data_free);
+    if (!rpu_data) {
+        return RGY_ERR_NULL_PTR;
+    }
+    m_data.resize(rpu_data->len);
+    memcpy(m_data.data(), rpu_data->data, rpu_data->len);
+#endif // ENABLE_LIBDOVI
+    return RGY_ERR_NONE;
+}
+
 std::vector<uint8_t> RGYFrameDataDOVIRpu::gen_nal() const {
-    return m_data;
+    std::vector<uint8_t> buf;
+    uint16_t u16 = 0x00;
+    u16 |= (NALU_HEVC_UNSPECIFIED << 9) | 1;
+    add_u16(buf, u16);
+    vector_cat(buf, m_data);
+    if (buf.back() == 0x00) { // 最後が0x00の場合
+        buf.push_back(0x03);
+    }
+    to_nal(buf);
+
+    std::vector<uint8_t> ret = { 0x00, 0x00, 0x00, 0x01 }; // ヘッダ
+    vector_cat(ret, buf);
+    return ret;
 }
 std::vector<uint8_t> RGYFrameDataDOVIRpu::gen_obu() const {
-    return gen_av1_obu_metadata(AV1_METADATA_TYPE_ITUT_T35, m_data);
+    std::vector<uint8_t> buf;
+    if (m_data.size() > sizeof(av1_itut_t35_header_dovirpu) && memcmp(m_data.data(), av1_itut_t35_header_dovirpu, sizeof(av1_itut_t35_header_dovirpu)) == 0) {
+        buf = m_data;
+    } else {
+        buf = make_vector<uint8_t>(av1_itut_t35_header_dovirpu);
+        vector_cat(buf, m_data);
+    }
+    return gen_av1_obu_metadata(AV1_METADATA_TYPE_ITUT_T35, buf);
 }
 #endif
 
@@ -195,20 +272,26 @@ RGY_ERR RGYSysFrame::allocate(const RGYFrameInfo &info) {
 
     int pixsize = (RGY_CSP_BIT_DEPTH[frame.csp] + 7) / 8;
     switch (frame.csp) {
-    case RGY_CSP_RGB24R:
+    case RGY_CSP_BGR24R:
     case RGY_CSP_RGB24:
     case RGY_CSP_BGR24:
     case RGY_CSP_YC48:
         pixsize *= 3;
         break;
-    case RGY_CSP_RGB32R:
+    case RGY_CSP_BGR32R:
     case RGY_CSP_RGB32:
     case RGY_CSP_BGR32:
-    case RGY_CSP_RGBA_FP16_P:
+    case RGY_CSP_ARGB32:
+    case RGY_CSP_ABGR32:
+    case RGY_CSP_RBGA32:
         pixsize *= 4;
         break;
-    case RGY_CSP_AYUV:
-    case RGY_CSP_AYUV_16:
+    case RGY_CSP_RBGA64:
+    case RGY_CSP_RGBA_FP16_P:
+        pixsize *= 8;
+        break;
+    case RGY_CSP_VUYA:
+    case RGY_CSP_VUYA_16:
         pixsize *= 4;
         break;
     case RGY_CSP_YUY2:

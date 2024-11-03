@@ -333,9 +333,6 @@
     <ProjectReference Include="..\clcufilters_common\clcufilters_common.vcxproj">
       <Project>{234ee082-07a4-42b6-a478-1049f872d136}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\clfilters_common\clfilters_common.vcxproj">
-      <Project>{9a44dcf0-a6dd-466c-8340-7b3852b7a2fe}</Project>
-    </ProjectReference>
     <ProjectReference Include="..\filter_core\filter_core.vcxproj">
       <Project>{8148cac2-dcee-4849-ad50-6d5eab29dad0}</Project>
     </ProjectReference>
