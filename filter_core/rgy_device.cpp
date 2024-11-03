@@ -220,7 +220,7 @@ RGY_ERR DeviceDX9::EnumerateAdapters() {
         D3DADAPTER_IDENTIFIER9 adapterIdentifier ={ 0 };
         pD3DEx->GetAdapterIdentifier(count, 0, &adapterIdentifier);
 
-        if (adapterIdentifier.VendorId != ENCODER_VENDOR_ID) {
+        if (ENCODER_VENDOR_ID != 0 && adapterIdentifier.VendorId != ENCODER_VENDOR_ID) {
             count++;
             continue;
         }
@@ -269,7 +269,7 @@ int DeviceDX9::adapterCount() {
         D3DADAPTER_IDENTIFIER9 adapterIdentifier = { 0 };
         pD3DEx->GetAdapterIdentifier(count, 0, &adapterIdentifier);
 
-        if (adapterIdentifier.VendorId != ENCODER_VENDOR_ID) {
+        if (ENCODER_VENDOR_ID != 0 && adapterIdentifier.VendorId != ENCODER_VENDOR_ID) {
             count++;
             continue;
         }
