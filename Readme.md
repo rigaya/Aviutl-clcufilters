@@ -74,34 +74,106 @@ quiet以外を選択した場合、ログは[patch.aul](https://www.nicovideo.jp
 リサイズのアルゴリズムを指定できる。
 
 - **パラメータ**
-  | オプション名 | 説明 |
-  |:---|:---|
-  | spline16 | 4x4 Spline補間 |
-  | spline36 | 6x6 Spline補間 |
-  | spline64 | 8x8 Spline補間 |
-  | lanczos2 | 4x4 lanczos補間 |
-  | lanczos3 | 6x6 lanczos補間 |
-  | lanczos4 | 8x8 lanczos補間 |
-  | bilinear | 線形補間 |
-  | bicubic  |  双三次補間 |
-  | nvvfx-superres | NVIDIA Video EffectsによるSuper Resolution (拡大のみ)  |
-  | ngx-vsr       | NVIDIA VSR (Video Super Resolution)  |
+  - CUDA/OpenCLで実装したリサイズフィルタ
 
-- **追加パラメータ**
-  - nvvfx-superres選択時
-    - モード
-      nvvfx-superres のモードの選択。
-      - 0 ... 弱め (default)
-      - 1 ... 強め
+    | オプション名 | 説明 |
+    |:---|:---|
+    | spline16 | 4x4 Spline補間 |
+    | spline36 | 6x6 Spline補間 |
+    | spline64 | 8x8 Spline補間 |
+    | lanczos2 | 4x4 lanczos補間 |
+    | lanczos3 | 6x6 lanczos補間 |
+    | lanczos4 | 8x8 lanczos補間 |
+    | bilinear | 線形補間 |
+    | bicubic  |  双三次補間 |
 
-    - 強度
-      nvvfx-superresの強さの指定。
+  - [nvvfx](https://github.com/NVIDIA/MAXINE-VFX-SDK)ライブラリのリサイズフィルタ
 
-  - ngx-vsr選択時
-    - 品質
-      ngx-vsr使用時の品質の設定。 (デフォルト=1, 1 - 4)  
-      数字が大きいほど高品質。
+    | 名前 | 説明 |
+    |:---|:---|
+    | nvvfx-superres | NVIDIA Video EffectsによるSuper Resolution (拡大のみ)  |  |
 
+    このモードは、[NVIDIA MAXINE VideoEffects SDK](https://github.com/NVIDIA/MAXINE-VFX-SDK)によるAIによって拡大処理を行うので、
+    実行にはx64版の実行ファイルとTuring世代(RTX20xx)以降のGPUが必要。
+    また、あわせて[MAXINE VideoEffects 用のモデルと実行モジュール](https://www.nvidia.com/broadcast-sdk-resources)をダウンロード・インストールしてからお使いください。
+
+    2160p までの入力解像度に対応している。
+      
+    - 追加パラメータ
+      - superres-mode=&lt;int&gt;
+        nvvfx-superres のモードの選択。
+        - 0 ... 弱め (default)
+        - 1 ... 強め
+      
+      - superres-strength=&lt;float&gt;  
+        nvvfx-superresの強さの指定。 (0 - 100)
+
+  - [NGX](https://docs.nvidia.com/rtx/ngx/programming-guide/index.html)ライブラリのリサイズフィルタ
+  
+    実行にはx64版の実行ファイルとTuring世代(RTX20xx)以降のGPU、そして550.58以降のドライバが必要。
+ 
+    | 名前 | 説明 |
+    |:---|:---|
+    | ngx-vsr       | NVIDIA VSR (Video Super Resolution)  |  |
+
+    - 追加パラメータ
+      - vsr-quality=&lt;int&gt;  
+        ngx-vsr使用時の品質の設定。 (デフォルト=1, 1 - 4)  
+        数字が大きいほど高品質。
+
+  - [libplacebo](https://code.videolan.org/videolan/libplacebo)ライブラリのリサイズフィルタ
+  
+    | 名前 | 説明 |
+    |:---|:---|
+    | libplacebo-spline16      | 4x4 Spline補間                       |
+    | libplacebo-spline36      | 6x6 Spline補間                       |
+    | libplacebo-spline64      | 8x8 Spline補間                       |
+    | libplacebo-nearest       | 最近傍点選択                         |
+    | libplacebo-bilinear      | 線形補間                             |
+    | libplacebo-gaussian      | ガウス補間                           |
+    | libplacebo-sinc          | Sinc補間                             |
+    | libplacebo-lanczos       | Lanczos補間                          |
+    | libplacebo-ginseng       | Ginseng補間                          |
+    | libplacebo-ewa-jinc      | EWA Jinc補間                         |
+    | libplacebo-ewa-lanczos   | EWA Lanczos補間                      |
+    | libplacebo-ewa-lanczossharp | EWA Lanczos Sharp補間             |
+    | libplacebo-ewa-lanczos4sharpest | EWA Lanczos 4 Sharpest補間    |
+    | libplacebo-ewa-ginseng  | EWA Ginseng補間                       |
+    | libplacebo-ewa-hann     | EWA Hann補間                          |
+    | libplacebo-ewa-hanning  | EWA Hanning補間                       |
+    | libplacebo-bicubic      | 双3次補間                             |
+    | libplacebo-triangle     | 三角補間                              |
+    | libplacebo-hermite      | Hermite補間                           |
+    | libplacebo-catmull-rom  | Catmull-Rom補間                       |
+    | libplacebo-mitchell     | Mitchell補間                          |
+    | libplacebo-mitchell-clamp | Mitchell Clamp補間                  |
+    | libplacebo-robidoux     | Robidoux補間                          |
+    | libplacebo-robidouxsharp | Robidoux Sharp補間                   |
+    | libplacebo-ewa-robidoux | EWA Robidoux補間                      |
+    | libplacebo-ewa-robidouxsharp | EWA Robidoux Sharp補間           |
+
+    - 追加パラメータ
+
+      > [!NOTE]
+      > clamp, taper, antiringは、QSV/NV/VCEEncの100倍の値で指定します。
+      
+      - clamp=&lt;float&gt;
+
+        libplacebo-resampleで使用される負の重みに対するクランプ係数。100にすると負の重みが0になります。(0 - 100、デフォルト = 0)
+      
+      - taper=&lt;float&gt;
+
+        libplacebo-resampleの重み関数の中心部分を平坦化します。(0 - 100、デフォルト = 0)
+      
+      - blur=&lt;float&gt;
+
+        libplacebo-resampleの追加のぼかし係数。(0 - 100、デフォルト = 0)
+      
+      - antiring=&lt;float&gt;
+
+        libplacebo-resampleのアンチリンギング強度。(0 - 100、デフォルト = 0)
+
+---
 ### 色空間変換  
 指定の色空間変換を行う。
 
@@ -152,7 +224,7 @@ quiet以外を選択した場合、ログは[patch.aul](https://www.nicovideo.jp
   
   - 目標輝度  (デフォルト= 100)  
 
-
+---
 ### nnedi  
 nnediによるインタレ解除を行う。基本的には片方フィールドは捨てて、もう片方のフィールドから
 ニューラルネットを使って輪郭を補正しながらフレームを再構築することでインタレ解除するが、とても重い…。
@@ -203,7 +275,7 @@ nnediによるインタレ解除を行う。基本的には片方フィールド
     - square  
       二乗誤差を最小にするよう学習された重みを用いる。
 
-
+---
 ### ノイズ除去 (nvvfx-denoise)
 [NVIDIA MAXINE VideoEffects SDK](https://github.com/NVIDIA/MAXINE-VFX-SDK)による、元映像の詳細の保持しながらノイズの除去を行う。
 主にウェブカメラによるノイズの除去を主眼とする。
@@ -219,6 +291,7 @@ nnediによるインタレ解除を行う。基本的には片方フィールド
     - 1 - strong
       強めの効果でノイズ除去を重視する。
 
+---
 ### ノイズ除去 (nvvfx-artifact-reduction)
 [NVIDIA MAXINE VideoEffects SDK](https://github.com/NVIDIA/MAXINE-VFX-SDK)による映像の圧縮劣化を低減するフィルタ。
 オリジナルの動画の情報を保存しながら、入力ファイルのエンコード時の圧縮劣化を低減する。
@@ -234,7 +307,7 @@ nnediによるインタレ解除を行う。基本的には片方フィールド
     - 1 - strong
       より効果を強くし、圧縮劣化の低減する。もとのファイルが低ビットレートで劣化が激しい場合に適している。
 
-
+---
 ### ノイズ除去 (smooth)  
 
 - **パラメータ**
@@ -244,6 +317,7 @@ nnediによるインタレ解除を行う。基本的には片方フィールド
   - QP  (デフォルト=12, 1 - 63)    
     フィルタの強さ。
 
+---
 ### ノイズ除去 (denoise dct)
 
   もう一つのDCTベースのノイズ除去フィルタ。
@@ -266,6 +340,7 @@ nnediによるインタレ解除を行う。基本的には片方フィールド
     - 8
     - 16 (slow)
 
+---
 ### ノイズ除去 (knn)  
 強めのノイズ除去を行う。
 
@@ -284,6 +359,7 @@ nnediによるインタレ解除を行う。基本的には片方フィールド
   - ブレンド閾   (デフォルト=80, 0 - 100)  
     エッジ検出の閾値。
 
+---
 ### ノイズ除去 (nlmeans)  
 Non local meansを用いたノイズ除去フィルタ。
 
@@ -303,7 +379,7 @@ Non local meansを用いたノイズ除去フィルタ。
   - search (default=11, 3 - 21)  
     探索範囲。
 
-
+---
 ### ノイズ除去 (pmd)  
 正則化pmd法によるノイズ除去。弱めのノイズ除去を行いたいときに使用する。
 
@@ -317,6 +393,7 @@ Non local meansを用いたノイズ除去フィルタ。
   - 閾値  (デフォルト=100, 0-255)  
     フィルタの輪郭検出の閾値。小さいほど輪郭を保持するようになるが、フィルタの効果も弱まる。
 
+---
 ### unsharp  
 輪郭・ディテール強調用のフィルタ。
 
@@ -330,7 +407,7 @@ Non local meansを用いたノイズ除去フィルタ。
   - 閾値 (デフォルト=10, 0-255)  
     輪郭・ディテール検出の閾値。閾値以上の差異がある画素に対して、輪郭強調を行う。
 
-
+---
 ### エッジレベル調整  
 輪郭強調用のフィルタ。
 
@@ -347,7 +424,7 @@ Non local meansを用いたノイズ除去フィルタ。
   - 白 (デフォルト=0, 0-31)  
     輪郭の白い部分について、より白くシュートさせて輪郭を強調するようにする。
 
-
+---
 ### warpsharp  
 細線化フィルタ。輪郭調整用のフィルタ。
 
@@ -370,6 +447,7 @@ Non local meansを用いたノイズ除去フィルタ。
     - オフ ... 輝度ベースの輪郭検出を色差成分にも適用する。
     - オン ... 各色差成分についてそれぞれ輪郭検出を行う。
 
+---
 ### 色調補正  
 
 - **パラメータ**
@@ -383,6 +461,7 @@ Non local meansを用いたノイズ除去フィルタ。
   
   - 色相 (デフォルト=0, -180 - 180)  
 
+---
 ### バンディング低減  
 グラデーション等が階段状になってしまうバンディングを低減するフィルタ。
 
@@ -416,6 +495,7 @@ Non local meansを用いたノイズ除去フィルタ。
   - 毎フレーム乱数生成 (デフォルト=オフ)  
     毎フレーム使用する乱数を変更する。
 
+---
 ### NGX TrueHDR
 RTX Video SDKを使用したAIベースのSDR→HDR変換を行う。出力はcolormatrix BT.2020に変換される。使用時にはエンコーダ側で ```--colormatrix bt2020nc --colorprim bt2020 --transfer smpte2084``` の指定を推奨。
 
