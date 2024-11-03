@@ -44,6 +44,18 @@
 #include "rgy_filter_warpsharp.h"
 #include "rgy_filter_deband.h"
 #include "rgy_filter_tweak.h"
+#include "rgy_device.h"
+
+static tstring luidToString(const void *uuid) {
+    tstring str;
+    const uint8_t *buf = (const uint8_t *)uuid;
+    for (size_t i = 0; i < CL_LUID_SIZE_KHR; ++i) {
+        char tmp[4];
+        _stprintf_s(tmp, "%02x", buf[i]);
+        str += tmp;
+    }
+    return str;
+};
 
 clFilterFrameBuffer::clFilterFrameBuffer(std::shared_ptr<RGYOpenCLContext> cl) :
     clcuFilterFrameBuffer(),
@@ -68,6 +80,7 @@ void clFilterFrameBuffer::resetMappedFrame(RGYFrame *frame) {
 clFilterChain::clFilterChain() :
     clcuFilterChain(),
     m_cl(),
+    m_dx11(),
     m_platformID(-1),
     m_queueSendIn() {
 
@@ -136,14 +149,36 @@ RGY_ERR clFilterChain::initDevice(const clcuFilterDeviceParam *param) {
         return RGY_ERR_INVALID_DEVICE;
     }
 
-    platform->setDev(platform->devs()[std::max(deviceID, 0)]);
+    uint8_t devLUID[CL_LUID_SIZE_KHR];
+    memcpy(devLUID, platform->dev(std::max(deviceID, 0)).info().luid, sizeof(devLUID));
+    PrintMes(RGY_LOG_INFO, _T("created OpenCL context, selcted device %d, LUID=%s.\n"), deviceID, luidToString(devLUID).c_str());
+
+    const int dx11AdaptorCount = DeviceDX11::adapterCount();
+    for (int iadaptor = 0; iadaptor < dx11AdaptorCount; iadaptor++) {
+        auto dx11 = std::make_unique<DeviceDX11>();
+        err = dx11->Init(iadaptor, m_log);
+        if (err != RGY_ERR_NONE) {
+            PrintMes(RGY_LOG_DEBUG, _T("Failed to init DX11 device #%d: %s\n"), iadaptor, get_err_mes(err));
+            return err;
+        }
+        const auto dx11UUID = dx11->getLUID();
+        PrintMes(RGY_LOG_DEBUG, _T("Initialized DX11 device %d, LUID=%s.\n"), deviceID, luidToString(&dx11UUID).c_str());
+
+        if (memcmp(&dx11UUID, devLUID, sizeof(dx11UUID)) == 0) {
+            m_dx11 = std::move(dx11);
+            PrintMes(RGY_LOG_INFO, _T("Selected DX11 device %d.\n"), deviceID, luidToString(devLUID).c_str());
+            break;
+        }
+    }
+
+    platform->setDev(platform->devs()[std::max(deviceID, 0)], nullptr, m_dx11->GetDevice());
     m_cl = std::make_shared<RGYOpenCLContext>(platform, m_log);
     if (m_cl->createContext(0) != RGY_ERR_NONE) {
         PrintMes(RGY_LOG_ERROR, _T("Failed to create OpenCL context.\n"));
         return RGY_ERR_UNKNOWN;
     }
+    const auto& devInfo = platform->dev(0).info();
 
-    const auto devInfo = platform->dev(0).info();
     m_deviceName = (devInfo.board_name_amd.length() > 0) ? devInfo.board_name_amd : devInfo.name;
     m_platformID = platformID;
     m_deviceID = deviceID;

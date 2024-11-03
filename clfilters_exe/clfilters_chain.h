@@ -53,6 +53,8 @@ public:
     virtual ~clFilterDeviceParam() {};
 };
 
+class DeviceDX11;
+
 class clFilterChain : public clcuFilterChain {
 public:
     clFilterChain();
@@ -69,6 +71,7 @@ protected:
     virtual RGY_ERR configureOneFilter(std::unique_ptr<RGYFilterBase>& filter, RGYFrameInfo& inputFrame, const VppType filterType, const int resizeWidth, const int resizeHeight) override;
 
     std::shared_ptr<RGYOpenCLContext> m_cl;
+    std::unique_ptr<DeviceDX11> m_dx11;
     int m_platformID;
     RGYOpenCLQueue m_queueSendIn;
 };
