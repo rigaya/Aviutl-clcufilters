@@ -133,10 +133,16 @@ enum {
     ID_LB_DEBAND_SAMPLE,
     ID_CX_DEBAND_SAMPLE,
 
+    // custom trackbarはIDを5つ使用する
     ID_TB_NGX_TRUEHDR_CONTRAST,
     ID_TB_NGX_TRUEHDR_SATURATION = ID_TB_NGX_TRUEHDR_CONTRAST + 5,
     ID_TB_NGX_TRUEHDR_MIDDLEGRAY = ID_TB_NGX_TRUEHDR_SATURATION + 5,
     ID_TB_NGX_TRUEHDR_MAXLUMINANCE = ID_TB_NGX_TRUEHDR_MIDDLEGRAY + 5,
+
+    ID_TB_RESIZE_PL_CLAMP = ID_TB_NGX_TRUEHDR_MAXLUMINANCE + 5,
+    ID_TB_RESIZE_PL_TAPER = ID_TB_RESIZE_PL_CLAMP + 5,
+    ID_TB_RESIZE_PL_BLUR = ID_TB_RESIZE_PL_TAPER + 5,
+    ID_TB_RESIZE_PL_ANTIRING = ID_TB_RESIZE_PL_BLUR + 5,
 };
 
 #pragma pack(1)
@@ -205,7 +211,12 @@ struct CLFILTER_EXDATA {
     int ngx_truehdr_middlegray;
     int ngx_truehdr_maxluminance;
 
-    char reserved[592];
+    int resize_pl_clamp;
+    int resize_pl_taper;
+    int resize_pl_blur;
+    int resize_pl_antiring;
+
+    char reserved[576];
 };
 # pragma pack()
 static const int extra_track_data_offset = 32;
@@ -219,6 +230,7 @@ static std::unique_ptr<clcuFiltersAuf> g_clfiltersAuf;
 static int g_cuda_device_nvvfx_support = -1;
 static int g_resize_nvvfx_superres = -1;
 static int g_resize_ngx_vsr_quality = -1;
+static int g_resize_libplacebo = -1;
 static std::vector<CLFILTER_TRACKBAR_DATA> g_trackBars;
 static HBRUSH g_hbrBackground = NULL;
 
@@ -256,10 +268,14 @@ static const char *LB_CX_KNN_RADIUS = "適用半径";
 static const char *LB_CX_UNSHARP_RADIUS = "範囲";
 static const char *LB_CX_WARPSHARP_BLUR = "ブラー";
 static const char *LB_CX_DEBAND_SAMPLE = "sample";
-static const char *LB_CX_TRUEHDR_CONTRAST = "コントラスト";
-static const char *LB_CX_TRUEHDR_SATURATION = "彩度";
-static const char *LB_CX_TRUEHDR_MIDDLEGRAY = "目標輝度";
-static const char *LB_CX_TRUEHDR_MAXLUMINANCE = "最大輝度";
+static const char *LB_TB_TRUEHDR_CONTRAST = "コントラスト";
+static const char *LB_TB_TRUEHDR_SATURATION = "彩度";
+static const char *LB_TB_TRUEHDR_MIDDLEGRAY = "目標輝度";
+static const char *LB_TB_TRUEHDR_MAXLUMINANCE = "最大輝度";
+static const char *LB_TB_RESIZE_PL_CLAMP = "clamp";
+static const char *LB_TB_RESIZE_PL_TAPER = "taper";
+static const char *LB_TB_RESIZE_PL_BLUR = "blur";
+static const char *LB_TB_RESIZE_PL_ANTIRING = "antiring";
 #else
 static const char *LB_WND_OPENCL_UNAVAIL = "Filter disabled, OpenCL could not be used.";
 static const char *LB_WND_OPENCL_AVAIL = "OpenCL Enabled";
@@ -291,10 +307,14 @@ static const char *LB_CX_KNN_RADIUS = "radius";
 static const char *LB_CX_UNSHARP_RADIUS = "radius";
 static const char *LB_CX_WARPSHARP_BLUR = "blur";
 static const char *LB_CX_DEBAND_SAMPLE = "sample";
-static const char *LB_CX_TRUEHDR_CONTRAST = "contrast";
-static const char *LB_CX_TRUEHDR_SATURATION = "saturation";
-static const char *LB_CX_TRUEHDR_MIDDLEGRAY = "middlegray";
-static const char *LB_CX_TRUEHDR_MAXLUMINANCE = "maxluminance";
+static const char *LB_TB_TRUEHDR_CONTRAST = "contrast";
+static const char *LB_TB_TRUEHDR_SATURATION = "saturation";
+static const char *LB_TB_TRUEHDR_MIDDLEGRAY = "middlegray";
+static const char *LB_TB_TRUEHDR_MAXLUMINANCE = "maxluminance";
+static const char *LB_TB_RESIZE_PL_CLAMP = "clamp";
+static const char *LB_TB_RESIZE_PL_TAPER = "taper";
+static const char *LB_TB_RESIZE_PL_BLUR = "blur";
+static const char *LB_TB_RESIZE_PL_ANTIRING = "antiring";
 #endif
 
 //---------------------------------------------------------------------
@@ -771,6 +791,12 @@ static void cl_exdata_set_default() {
     cl_exdata.ngx_truehdr_saturation = ngxTrueHDR.saturation;
     cl_exdata.ngx_truehdr_middlegray = ngxTrueHDR.middleGray;
     cl_exdata.ngx_truehdr_maxluminance = ngxTrueHDR.maxLuminance;
+
+    VppLibplaceboResample resample;
+    cl_exdata.resize_pl_clamp = (int)(resample.clamp_ * 100.0f + 0.5f);
+    cl_exdata.resize_pl_taper = (int)(resample.taper * 100.0f + 0.5f);
+    cl_exdata.resize_pl_blur = (int)(resample.blur + 0.5f);
+    cl_exdata.resize_pl_antiring = (int)(resample.antiring * 100.0f + 0.5f);
 }
 
 //---------------------------------------------------------------------
@@ -858,6 +884,10 @@ static CLFILTER_TRACKBAR tb_ngx_truehdr_saturation;
 static CLFILTER_TRACKBAR tb_ngx_truehdr_middlegray;
 static CLFILTER_TRACKBAR tb_ngx_truehdr_maxluminance;
 
+static CLFILTER_TRACKBAR tb_resize_pl_clamp;
+static CLFILTER_TRACKBAR tb_resize_pl_taper;
+static CLFILTER_TRACKBAR tb_resize_pl_blur;
+static CLFILTER_TRACKBAR tb_resize_pl_antiring;
 
 static void set_cl_exdata(const HWND hwnd, const int value) {
     if (hwnd == cx_opencl_device) {
@@ -1249,6 +1279,11 @@ static void set_resize_algo_items(const bool isCUDADevice) {
         set_combo_item(cx_resize_algo, "nvvfx-superres", RGY_VPP_RESIZE_NVVFX_SUPER_RES);
         set_combo_item(cx_resize_algo, "ngx-vsr", RGY_VPP_RESIZE_NGX_VSR);
     }
+    for (int i = 0; list_vpp_resize[i].desc; i++) {
+        if (_tcsncmp(list_vpp_resize[i].desc, _T("libplacebo-"), _tcslen(_T("libplacebo-"))) == 0) {
+            set_combo_item(cx_resize_algo, tchar_to_string(list_vpp_resize[i].desc).c_str(), list_vpp_resize[i].value);
+        }
+    }
     if (ret != CB_ERR) {
         select_combo_item(cx_resize_algo, ret);
     }
@@ -1265,6 +1300,13 @@ void set_track_bar_ex_enable(const CLFILTER_TRACKBAR& tb, bool enable) {
     EnableWindow(tb.bt_left, enable);
     EnableWindow(tb.bt_right, enable);
     EnableWindow(tb.bt_text, enable);
+}
+void set_track_bar_show_hide(const CLFILTER_TRACKBAR& tb, bool show) {
+    ShowWindow(tb.label,    show ? SW_SHOW : SW_HIDE);
+    ShowWindow(tb.trackbar, show ? SW_SHOW : SW_HIDE);
+    ShowWindow(tb.bt_left,  show ? SW_SHOW : SW_HIDE);
+    ShowWindow(tb.bt_right, show ? SW_SHOW : SW_HIDE);
+    ShowWindow(tb.bt_text,  show ? SW_SHOW : SW_HIDE);
 }
 void set_check_box_enable(int check_box, bool enable) {
     const int checkbox_idx = 1 + 5 * CLFILTER_TRACK_MAX;
@@ -1403,10 +1445,11 @@ static void update_cuda_enable(FILTER *fp) {
     }
 }
 
-// nvvfx supreres関連の表示/非表示切り替え
-static void update_nvvfx_superres(FILTER *fp) {
+// リサイズ関連の表示/非表示切り替え
+static void update_resize_algo_params(FILTER *fp) {
     const int resize_nvvfx_superres = (RGY_VPP_RESIZE_ALGO)cl_exdata.resize_algo == RGY_VPP_RESIZE_NVVFX_SUPER_RES ? 1 : 0;
     const int resize_ngx_vsr_quality = (RGY_VPP_RESIZE_ALGO)cl_exdata.resize_algo == RGY_VPP_RESIZE_NGX_VSR ? 1 : 0;
+    const bool resize_libplacebo = isLibplaceboResizeFiter((RGY_VPP_RESIZE_ALGO)cl_exdata.resize_algo);
     if (g_resize_nvvfx_superres != resize_nvvfx_superres) {
         set_track_bar_show_hide(CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH, resize_nvvfx_superres);
         ShowWindow(lb_nvvfx_superres_mode, resize_nvvfx_superres ? SW_SHOW : SW_HIDE);
@@ -1417,6 +1460,12 @@ static void update_nvvfx_superres(FILTER *fp) {
         ShowWindow(lb_resize_ngx_vsr_quality, resize_ngx_vsr_quality ? SW_SHOW : SW_HIDE);
         ShowWindow(cx_resize_ngx_vsr_quality, resize_ngx_vsr_quality ? SW_SHOW : SW_HIDE);
         g_resize_ngx_vsr_quality = resize_ngx_vsr_quality;
+    }
+    if (g_resize_libplacebo != resize_libplacebo) {
+        set_track_bar_show_hide(tb_resize_pl_clamp, resize_libplacebo);
+        set_track_bar_show_hide(tb_resize_pl_taper, resize_libplacebo);
+        set_track_bar_show_hide(tb_resize_pl_blur, resize_libplacebo);
+        set_track_bar_show_hide(tb_resize_pl_antiring, resize_libplacebo);
     }
 }
 
@@ -1501,7 +1550,7 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
         update_cx(fp);
         init_filter_order_list(fp);
         update_cuda_enable(fp);
-        update_nvvfx_superres(fp);
+        update_resize_algo_params(fp);
         break;
     case WM_NOTIFY: {
         if (auto trackbar = get_trackbar_data(wparam); trackbar != nullptr) {
@@ -2120,7 +2169,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     bt_resize_res_del = CreateWindow("BUTTON", LB_BT_RESIZE_DELETE, WS_CHILD|WS_VISIBLE|WS_GROUP|WS_TABSTOP|BS_PUSHBUTTON|BS_VCENTER, col * col_width + 246, cb_resize_y+24, 32, 22, hwnd, (HMENU)ID_BT_RESIZE_RES_DEL, hinst, NULL);
     SendMessage(bt_resize_res_del, WM_SETFONT, (WPARAM)b_font, 0);
 
-    cx_resize_algo = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, col * col_width + 68, cb_resize_y+48, 145, 160, hwnd, (HMENU)ID_CX_RESIZE_ALGO, hinst, NULL);
+    cx_resize_algo = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, col * col_width + 68, cb_resize_y+48, 210, 160, hwnd, (HMENU)ID_CX_RESIZE_ALGO, hinst, NULL);
     SendMessage(cx_resize_algo, WM_SETFONT, (WPARAM)b_font, 0);
 
     update_cx_resize_res_items(fp);
@@ -2128,6 +2177,19 @@ void init_dialog(HWND hwnd, FILTER *fp) {
 
     int y_pos_max = 0;
     // --- 最初の列 -----------------------------------------
+    // NGXは1行
+    lb_resize_ngx_vsr_quality = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, col * col_width + 8 + AVIUTL_1_10_OFFSET, cb_resize_y + 72, 60, 24, hwnd, (HMENU)ID_LB_RESIZE_NGX_VSR_QUALITY, hinst, NULL);
+    SendMessage(lb_resize_ngx_vsr_quality, WM_SETFONT, (WPARAM)b_font, 0);
+    SendMessage(lb_resize_ngx_vsr_quality, WM_SETTEXT, 0, (LPARAM)LB_CX_RESIZE_NGX_VSR_QUALITY);
+
+    cx_resize_ngx_vsr_quality = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, col * col_width + 68, cb_resize_y + 72, 145, 160, hwnd, (HMENU)ID_CX_RESIZE_NGX_VSR_QUALITY, hinst, NULL);
+    SendMessage(cx_resize_ngx_vsr_quality, WM_SETFONT, (WPARAM)b_font, 0);
+    set_combo_item(cx_resize_ngx_vsr_quality, "1 - fast", 1);
+    set_combo_item(cx_resize_ngx_vsr_quality, "2", 2);
+    set_combo_item(cx_resize_ngx_vsr_quality, "3", 3);
+    set_combo_item(cx_resize_ngx_vsr_quality, "4 - slow", 4);
+
+    // NVVFXはNGXに重ねて同じ位置から2行
     lb_nvvfx_superres_mode = CreateWindow("static", "", SS_SIMPLE|WS_CHILD|WS_VISIBLE, col * col_width + 8 + AVIUTL_1_10_OFFSET, cb_resize_y + 72, 60, 24, hwnd, (HMENU)ID_LB_NVVFX_SUPRERES_MODE, hinst, NULL);
     SendMessage(lb_nvvfx_superres_mode, WM_SETFONT, (WPARAM)b_font, 0);
     SendMessage(lb_nvvfx_superres_mode, WM_SETTEXT, 0, (LPARAM)LB_CX_NVVFX_SUPRERES_MODE);
@@ -2137,23 +2199,27 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     set_combo_item(cx_nvvfx_superres_mode, "0 - light", 0);
     set_combo_item(cx_nvvfx_superres_mode, "1 - strong", 1);
 
-    lb_resize_ngx_vsr_quality = CreateWindow("static", "", SS_SIMPLE|WS_CHILD|WS_VISIBLE, col * col_width + 8 + AVIUTL_1_10_OFFSET, cb_resize_y + 72, 60, 24, hwnd, (HMENU)ID_LB_RESIZE_NGX_VSR_QUALITY, hinst, NULL);
-    SendMessage(lb_resize_ngx_vsr_quality, WM_SETFONT, (WPARAM)b_font, 0);
-    SendMessage(lb_resize_ngx_vsr_quality, WM_SETTEXT, 0, (LPARAM)LB_CX_RESIZE_NGX_VSR_QUALITY);
-
-    cx_resize_ngx_vsr_quality = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, col * col_width + 68, cb_resize_y + 72, 145, 160, hwnd, (HMENU)ID_CX_RESIZE_NGX_VSR_QUALITY, hinst, NULL);
-    SendMessage(cx_resize_ngx_vsr_quality, WM_SETFONT, (WPARAM)b_font, 0);
-    set_combo_item(cx_resize_ngx_vsr_quality, "1 - fast", 1);
-    set_combo_item(cx_resize_ngx_vsr_quality, "2",        2);
-    set_combo_item(cx_resize_ngx_vsr_quality, "3",        3);
-    set_combo_item(cx_resize_ngx_vsr_quality, "4 - slow", 4);
-
+    // NVVFXの2行目
     int y_pos = cb_resize_y + track_bar_delta_y * 4 + 8;
-    int cx_y_pos = 0;
 
     y_pos -= track_bar_delta_y / 4;
     move_track_bar(y_pos, col, col_width, CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH, CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH+1, track_bar_delta_y, dialog_rc);
     y_pos += track_bar_delta_y / 4;
+
+    // libplacebo(resize)もNGXに重ねて同じ位置から
+    int cx_y_pos = cb_resize_y + 72;
+    const CLFILTER_TRACKBAR_DATA tb_resize_pl[] = {
+    { &tb_resize_pl_clamp,    LB_TB_RESIZE_PL_CLAMP,    ID_TB_RESIZE_PL_CLAMP,      0,  100,  0, &cl_exdata.resize_pl_clamp    },
+    { &tb_resize_pl_taper,    LB_TB_RESIZE_PL_TAPER,    ID_TB_RESIZE_PL_TAPER,      0,  100,  0, &cl_exdata.resize_pl_taper    },
+    { &tb_resize_pl_blur,     LB_TB_RESIZE_PL_BLUR,     ID_TB_RESIZE_PL_BLUR,       0,  100,  0, &cl_exdata.resize_pl_blur     },
+    { &tb_resize_pl_antiring, LB_TB_RESIZE_PL_ANTIRING, ID_TB_RESIZE_PL_ANTIRING,   0,  100,  0, &cl_exdata.resize_pl_antiring },
+    { 0 }
+    };
+    create_trackbars_ex(hwnd, hinst, col * col_width + 8 + AVIUTL_1_10_OFFSET, cx_y_pos, track_bar_delta_y, tb_resize_pl);
+
+    // libplacebo(resize)とNVVFXの2行目の大きいほう
+    y_pos = std::max(y_pos, cx_y_pos + 8 + track_bar_delta_y / 4);
+    cx_y_pos = 0;
 
     //colorspace
     move_colorspace(y_pos, col, col_width, CLFILTER_CHECK_COLORSPACE_ENABLE, CLFILTER_CHECK_COLORSPACE_MAX, CLFILTER_TRACK_COLORSPACE_FIRST, CLFILTER_TRACK_COLORSPACE_MAX, track_bar_delta_y, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
@@ -2238,10 +2304,10 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     //TrueHDR
     move_group(y_pos, col, col_width, CLFILTER_CHECK_TRUEHDR_ENABLE, CLFILTER_CHECK_TRUEHDR_MAX, CLFILTER_TRACK_NGX_TRUEHDR_FIRST, CLFILTER_TRACK_NGX_TRUEHDR_MAX, track_bar_delta_y, ADD_CX_AFTER_TRACK, 5, cx_y_pos, checkbox_idx, dialog_rc);
     const CLFILTER_TRACKBAR_DATA tb_truehdr[] = {
-        { &tb_ngx_truehdr_contrast,     LB_CX_TRUEHDR_CONTRAST,     ID_TB_NGX_TRUEHDR_CONTRAST,       0,  200,  100, &cl_exdata.ngx_truehdr_contrast     },
-        { &tb_ngx_truehdr_saturation,   LB_CX_TRUEHDR_SATURATION,   ID_TB_NGX_TRUEHDR_SATURATION,     0,  200,  100, &cl_exdata.ngx_truehdr_saturation   },
-        { &tb_ngx_truehdr_middlegray,   LB_CX_TRUEHDR_MIDDLEGRAY,   ID_TB_NGX_TRUEHDR_MIDDLEGRAY,    10,  100,   50, &cl_exdata.ngx_truehdr_middlegray   },
-        { &tb_ngx_truehdr_maxluminance, LB_CX_TRUEHDR_MAXLUMINANCE, ID_TB_NGX_TRUEHDR_MAXLUMINANCE, 400, 2000, 1000, &cl_exdata.ngx_truehdr_maxluminance },
+        { &tb_ngx_truehdr_contrast,     LB_TB_TRUEHDR_CONTRAST,     ID_TB_NGX_TRUEHDR_CONTRAST,       0,  200,  100, &cl_exdata.ngx_truehdr_contrast     },
+        { &tb_ngx_truehdr_saturation,   LB_TB_TRUEHDR_SATURATION,   ID_TB_NGX_TRUEHDR_SATURATION,     0,  200,  100, &cl_exdata.ngx_truehdr_saturation   },
+        { &tb_ngx_truehdr_middlegray,   LB_TB_TRUEHDR_MIDDLEGRAY,   ID_TB_NGX_TRUEHDR_MIDDLEGRAY,    10,  100,   50, &cl_exdata.ngx_truehdr_middlegray   },
+        { &tb_ngx_truehdr_maxluminance, LB_TB_TRUEHDR_MAXLUMINANCE, ID_TB_NGX_TRUEHDR_MAXLUMINANCE, 400, 2000, 1000, &cl_exdata.ngx_truehdr_maxluminance },
         { 0 }
     };
     create_trackbars_ex(hwnd, hinst, col * col_width + 8 + AVIUTL_1_10_OFFSET, cx_y_pos, track_bar_delta_y, tb_truehdr);
@@ -2400,6 +2466,12 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp, const FILTER_PRO
     //nvvfx-artifact-reduction
     prm.vppnv.nvvfxArtifactReduction.enable = isCUDADevice && fp->check[CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE] != 0;
     prm.vppnv.nvvfxArtifactReduction.mode   = cl_exdata.nvvfx_artifact_reduction_mode;
+
+    //libplacebo(resize)
+    prm.vpp.resize_libplacebo.clamp_ = (float)cl_exdata.resize_pl_clamp * 0.01f;
+    prm.vpp.resize_libplacebo.taper = (float)cl_exdata.resize_pl_taper * 0.01f;
+    prm.vpp.resize_libplacebo.blur = (float)cl_exdata.resize_pl_blur;
+    prm.vpp.resize_libplacebo.antiring = (float)cl_exdata.resize_pl_antiring * 0.01f;
 
     //denoise-dct
     prm.vpp.dct.enable        = fp->check[CLFILTER_CHECK_DENOISE_DCT_ENABLE] != 0;
