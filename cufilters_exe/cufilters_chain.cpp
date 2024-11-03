@@ -35,6 +35,7 @@
 #include "NVEncFilterDenoiseNLMeans.h"
 #include "NVEncFilterDenoisePmd.h"
 #include "NVEncFilterDenoiseDct.h"
+#include "NVEncFilterLibplacebo.h"
 #include "NVEncFilterNGX.h"
 #include "NVEncFilterNvvfx.h"
 #include "NVEncFilterSmooth.h"
@@ -474,6 +475,13 @@ RGY_ERR cuFilterChain::configureOneFilter(std::unique_ptr<RGYFilterBase>& filter
             param->ngxvsr->compute_capability = m_cuDevice->getCUDAVer();
             param->ngxvsr->dx11 = m_cuDevice->dx11();
             //param->ngxvsr->vui = VuiFiltered;
+        } else if (isLibplaceboResizeFiter(m_prm.vpp.resize_algo)) {
+            param->libplaceboResample = std::make_shared<NVEncFilterParamLibplaceboResample>();
+            param->libplaceboResample->resample = m_prm.vpp.resize_libplacebo;
+            //param->libplaceboResample->vui = VuiFiltered;
+            param->libplaceboResample->dx11 = m_cuDevice->dx11();
+            //param->libplaceboResample->vk = m_dev->vulkan();
+            param->libplaceboResample->resize_algo = m_prm.vpp.resize_algo;
         }
         param->frameIn = inputFrame;
         param->frameOut = inputFrame;

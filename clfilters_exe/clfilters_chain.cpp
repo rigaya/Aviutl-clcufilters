@@ -36,6 +36,7 @@
 #include "rgy_filter_denoise_nlmeans.h"
 #include "rgy_filter_denoise_pmd.h"
 #include "rgy_filter_denoise_dct.h"
+#include "rgy_filter_libplacebo.h"
 #include "rgy_filter_smooth.h"
 #include "rgy_filter_unsharp.h"
 #include "rgy_filter_resize.h"
@@ -304,6 +305,14 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilterBase>& filter
         param->frameOut = inputFrame;
         param->frameOut.width = resizeWidth;
         param->frameOut.height = resizeHeight;
+        if (isLibplaceboResizeFiter(m_prm.vpp.resize_algo)) {
+            param->libplaceboResample = std::make_shared<RGYFilterParamLibplaceboResample>();
+            param->libplaceboResample->resample = m_prm.vpp.resize_libplacebo;
+            //param->libplaceboResample->vui = VuiFiltered;
+            //param->libplaceboResample->dx11 = m_dx11.get();
+            //param->libplaceboResample->vk = m_dev->vulkan();
+            param->libplaceboResample->resize_algo = m_prm.vpp.resize_algo;
+        }
         param->bOutOverwrite = false;
         auto sts = filter->init(param, m_log);
         if (sts != RGY_ERR_NONE) {
