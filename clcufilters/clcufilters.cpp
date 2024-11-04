@@ -44,6 +44,7 @@
 void init_device_list();
 void init_dialog(HWND hwnd, FILTER *fp);
 void update_cx(FILTER *fp);
+void update_filter_enable(HWND hwnd, const size_t icol);
 
 static_assert(sizeof(PIXEL_YC) == SIZE_PIXEL_YC);
 
@@ -240,6 +241,8 @@ static const size_t exdatasize = sizeof(CLFILTER_EXDATA);
 static_assert(exdatasize == 1024);
 static const int FILTER_ROW = 3;
 
+static int g_col_width = 235;
+static int g_min_height = 360;
 static CLFILTER_EXDATA cl_exdata;
 
 static std::unique_ptr<clcuFiltersAufDevices> g_clfiltersAufDevices;
@@ -1487,21 +1490,6 @@ static void update_resize_algo_params(FILTER *fp) {
     }
 }
 
-static void update_filter_enable(const size_t icol) {
-    const int cb_row_start_y_pos = 8 + 28;
-    int y_pos = cb_row_start_y_pos;
-    for (auto& filterControl : g_filterControls[icol]) {
-        // リサイズはややこしいイベントが多いので処理しない
-        if (filterControl->check_min == CLFILTER_CHECK_RESIZE_ENABLE) continue;
-        // フィルタの有効/無効を確認
-        const int enable = SendMessage(filterControl->controls[0].hwnd, BM_GETCHECK, 0, 0);
-        // 最初のチェックボックスを除いて表示/非表示を切り替え
-        for (size_t i = 1; i < filterControl->controls.size(); i++) {
-            ShowWindow(filterControl->controls[i].hwnd, enable ? SW_SHOW : SW_HIDE);
-        }
-    }
-}
-
 BOOL proc_trackbar_ex(const CLFILTER_TRACKBAR_DATA *trackbar, const int ctrlID, WPARAM wparam, LPARAM lparam) {
     if (ctrlID - trackbar->label_id == 2) { // 左ボタンの処理
         // トラックバーの現在の値を取得
@@ -1587,7 +1575,7 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
                 for (size_t icol = 0; !targetFound && icol < g_filterControls.size(); icol++) {
                     for (auto& filterControl : g_filterControls[icol]) {
                         if (filterControl->check_min == targetID) {
-                            update_filter_enable(icol);
+                            update_filter_enable(hwnd, icol);
                             targetFound = true;
                             break;
                         }
@@ -1603,7 +1591,7 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
         update_cuda_enable(fp);
         update_resize_algo_params(fp);
         for (size_t icol = 0; icol < g_filterControls.size(); icol++) {
-            update_filter_enable(icol);
+            update_filter_enable(hwnd, icol);
         }
         break;
     case WM_NOTIFY: {
@@ -2040,6 +2028,50 @@ void add_combobox(HWND& hwnd_cx, int id_cx, HWND& hwnd_lb, int id_lb, const char
     hwnd_cx = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 0, 0, 145, 100, hwnd, (HMENU)id_cx, hinst, NULL);
     SendMessage(hwnd_cx, WM_SETFONT, (WPARAM)b_font, 0);
     set_combobox_items(hwnd_cx, cx_items, cx_item_limit);
+}
+
+void update_filter_enable(HWND hwnd, const size_t icol_change) {
+    const int disabled_filter_y_size = 36; // チェックボックスだけの高さを加算
+    const int cb_row_start_y_pos = 8 + 28;
+    int y_pos = cb_row_start_y_pos;
+    // 変更対象の列のフィルタの高さ調整
+    for (auto& filterControl : g_filterControls[icol_change]) {
+        // リサイズはややこしいイベントが多いので処理しない
+        if (filterControl->check_min == CLFILTER_CHECK_RESIZE_ENABLE) {
+            y_pos += filterControl->y_size; // 常にこのサイズを取る
+        } else {
+            // フィルタの有効/無効を確認
+            const int enable = SendMessage(filterControl->controls[0].hwnd, BM_GETCHECK, 0, 0);
+            // 最初のチェックボックスを除いて表示/非表示を切り替え
+            for (size_t i = 1; i < filterControl->controls.size(); i++) {
+                ShowWindow(filterControl->controls[i].hwnd, enable ? SW_SHOW : SW_HIDE);
+            }
+            move_group(filterControl.get(), y_pos, icol_change, g_col_width);
+            if (!enable) {
+                // move_groupではy_posにfilterControl->y_sizeが加算されるため、ここで減算、その後チェックボックスだけの高さを加算
+                y_pos -= filterControl->y_size;
+                y_pos += disabled_filter_y_size;
+            }
+        }
+    }
+
+    // 変更対象意外の列の高さを計算
+    int y_pos_max = y_pos;
+    for (size_t icol = 0; icol < g_filterControls.size(); icol++) {
+        y_pos = cb_row_start_y_pos;
+        if (icol != icol_change) {
+            for (auto& filterControl : g_filterControls[icol]) {
+                const int enable = filterControl->check_min == CLFILTER_CHECK_RESIZE_ENABLE
+                    || SendMessage(filterControl->controls[0].hwnd, BM_GETCHECK, 0, 0);
+                y_pos += enable ? filterControl->y_size : disabled_filter_y_size;
+            }
+        }
+        y_pos_max = std::max(y_pos_max, y_pos);
+    }
+    // ダイアログの高さを計算、g_min_heightとも比較する
+    y_pos_max = std::max(y_pos_max, g_min_height);
+    const int columns = (int)g_filterControls.size() + 1;
+    SetWindowPos(hwnd, HWND_TOP, 0, 0, g_col_width * columns, y_pos_max + 36 /*狭くなりすぎるので調整*/, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOZORDER);
 }
 
 struct CLCX_COMBOBOX {
@@ -2506,12 +2538,14 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     RECT rc, dialog_rc;
     GetWindowRect(hwnd, &dialog_rc);
 
+    const int offset_width = -16; // ウィンドウの幅を少し狭くするためのoffset
     const int columns = 4;
-    const int col_width = dialog_rc.right - dialog_rc.left;
+    const int col_width = dialog_rc.right - dialog_rc.left + offset_width;
+    g_col_width = col_width;
 
     //clfilterのチェックボックス
     GetWindowRect(child_hwnd[0], &rc);
-    SetWindowPos(child_hwnd[0], HWND_TOP, rc.left - dialog_rc.left + (columns-1) * col_width - AVIUTL_1_10_OFFSET, 0, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
+    SetWindowPos(child_hwnd[0], HWND_TOP, rc.left - dialog_rc.left + offset_width + (columns-1) * col_width - AVIUTL_1_10_OFFSET, 0, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
 
     //最初のtrackbar
     GetWindowRect(child_hwnd[1], &rc);
@@ -2724,7 +2758,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     SendMessage(lb_log_level, WM_SETFONT, (WPARAM)b_font, 0);
     SendMessage(lb_log_level, WM_SETTEXT, 0, (LPARAM)LB_CX_LOG_LEVEL);
 
-    static const int CX_LOG_LEVEL_W = 145;
+    static const int CX_LOG_LEVEL_W = 120;
     cx_log_level = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, cb_log_level_x + LB_LOG_LEVEL_W, cb_log_level_y, CX_LOG_LEVEL_W, 100, hwnd, (HMENU)ID_CX_LOG_LEVEL, hinst, NULL);
     SendMessage(cx_log_level, WM_SETFONT, (WPARAM)b_font, 0);
 
@@ -2745,8 +2779,8 @@ void init_dialog(HWND hwnd, FILTER *fp) {
 
     static const int bt_filter_order_width = 40;
     static const int list_filter_oder_width = col_width - bt_filter_order_width - 48;
-    static const int list_filter_oder_height = 400;
-    y_pos = list_filter_order_y + list_filter_oder_height;
+    static const int list_filter_oder_height = 320;
+    y_pos = list_filter_order_y + 24 + list_filter_oder_height;
     ls_filter_order = CreateWindow("LISTBOX", "clinfo", WS_CHILD | WS_VISIBLE | WS_GROUP | WS_BORDER | WS_BORDER | WS_VSCROLL | LBS_NOTIFY, list_filter_oder_x, list_filter_order_y + 24, list_filter_oder_width, list_filter_oder_height, hwnd, (HMENU)ID_LS_FILTER_ORDER, hinst, NULL);
     SendMessage(ls_filter_order, WM_SETFONT, (WPARAM)b_font, 0);
     //ls_filter_orderの中身はexdataが転送されてから、init_filter_order_listで初期化する
@@ -2757,6 +2791,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     bt_filter_order_down = CreateWindow("BUTTON", "↓", WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, list_filter_oder_x + list_filter_oder_width + 8, list_filter_order_y + list_filter_oder_height / 2, bt_filter_order_width, 22, hwnd, (HMENU)ID_BT_FILTER_ORDER_DOWN, hinst, NULL);
     SendMessage(bt_filter_order_down, WM_SETFONT, (WPARAM)b_font, 0);
 
+    g_min_height = std::max(g_min_height, y_pos); // 最小の高さとしてこの列の高さを登録する
     y_pos_max = std::max(y_pos_max, y_pos);
     //---- 列追加終わり ------------------------------------------
 
