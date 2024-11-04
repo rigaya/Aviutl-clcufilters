@@ -50,6 +50,18 @@ static_assert(sizeof(PIXEL_YC) == SIZE_PIXEL_YC);
 #define ENABLE_FIELD (0)
 #define ENABLE_HDR2SDR_DESAT (0)
 
+struct CLCU_CONTROL {
+    int id;
+    HWND hwnd;
+    int offset_x;
+    int offset_y;
+};
+
+struct CLCU_FILTER_CONTROLS {
+    int y_size;
+    std::vector<CLCU_CONTROL> controls;
+};
+
 enum {
     ID_LB_RESIZE_RES = ID_TX_RESIZE_RES_ADD+1,
     ID_CX_RESIZE_RES,
@@ -233,6 +245,7 @@ static int g_resize_ngx_vsr_quality = -1;
 static int g_resize_libplacebo = -1;
 static std::vector<CLFILTER_TRACKBAR_DATA> g_trackBars;
 static HBRUSH g_hbrBackground = NULL;
+static std::vector<std::unique_ptr<CLCU_FILTER_CONTROLS>> g_filterControls;
 
 //---------------------------------------------------------------------
 //        ラベル
@@ -1956,6 +1969,12 @@ enum AddCXMode {
 static const int CX_HEIGHT = 24;
 static const int AVIUTL_1_10_OFFSET = 5;
 
+void set_combobox_items(HWND hwnd_cx, const CX_DESC *cx_items, int limit = INT_MAX) {
+    for (int i = 0; cx_items[i].desc && i < limit; i++) {
+        set_combo_item(hwnd_cx, (char *)cx_items[i].desc, cx_items[i].value);
+    }
+}
+
 void move_track_bar(int& y_pos, int col, int col_width, int track_min, int track_max, int track_bar_delta_y, const RECT& dialog_rc) {
     for (int i = track_min; i < track_max; i++, y_pos += track_bar_delta_y) {
         for (int j = 0; j < 5; j++) {
@@ -1964,6 +1983,137 @@ void move_track_bar(int& y_pos, int col, int col_width, int track_min, int track
             SetWindowPos(child_hwnd[i * 5 + j + 1], HWND_TOP, rc.left - dialog_rc.left + col * col_width, y_pos, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
         }
     }
+}
+
+void move_group(const CLCU_FILTER_CONTROLS *filter_controls, int& y_pos, const int col, const int col_width) {
+    for (auto& control : filter_controls->controls) {
+        SetWindowPos(control.hwnd, HWND_TOP, col * col_width + control.offset_x, y_pos + control.offset_y, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
+    }
+    y_pos += filter_controls->y_size;
+}
+
+void add_combobox(HWND& hwnd_cx, int id_cx, HWND& hwnd_lb, int id_lb, const char *lb_str, HFONT b_font, HWND hwnd, HINSTANCE hinst, const CX_DESC *cx_items, int cx_item_limit = INT_MAX) {
+    hwnd_lb = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, 0, 0, 58, 24, hwnd, (HMENU)id_lb, hinst, NULL);
+    SendMessage(hwnd_lb, WM_SETFONT, (WPARAM)b_font, 0);
+    SendMessage(hwnd_lb, WM_SETTEXT, 0, (LPARAM)lb_str);
+    hwnd_cx = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 0, 0, 145, 100, hwnd, (HMENU)id_cx, hinst, NULL);
+    SendMessage(hwnd_cx, WM_SETFONT, (WPARAM)b_font, 0);
+    set_combobox_items(hwnd_cx, cx_items, cx_item_limit);
+}
+
+struct CLCX_COMBOBOX {
+    HWND& hwnd_cx;
+    int id_cx;
+    HWND& hwnd_lb;
+    int id_lb;
+    const char *lb_str;
+    const CX_DESC *cx_items;
+    int cx_item_limit;
+
+    CLCX_COMBOBOX(HWND& hwnd_cx, int id_cx, HWND& hwnd_lb, int id_lb, const char *lb_str, const CX_DESC *cx_items, int cx_item_limit = INT_MAX)
+        : hwnd_cx(hwnd_cx), id_cx(id_cx), hwnd_lb(hwnd_lb), id_lb(id_lb), lb_str(lb_str), cx_items(cx_items), cx_item_limit(cx_item_limit) {
+    }
+};
+
+void add_combobox(CLCU_FILTER_CONTROLS *filter_controls, const std::vector<CLCX_COMBOBOX>& add_cx, int cx_y_pos, HFONT b_font, HWND hwnd, HINSTANCE hinst) {
+    for (auto& cx : add_cx) {
+        add_combobox(cx.hwnd_cx, cx.id_cx, cx.hwnd_lb, cx.id_lb, cx.lb_str, b_font, hwnd, hinst, cx.cx_items, cx.cx_item_limit);
+        CLCU_CONTROL control;
+        control.hwnd = cx.hwnd_lb;
+        control.id = 0;
+        control.offset_x = 10 + AVIUTL_1_10_OFFSET;
+        control.offset_y = cx_y_pos;
+        filter_controls->controls.push_back(control);
+
+        control.hwnd = cx.hwnd_cx;
+        control.id = 0;
+        control.offset_x = 68 + AVIUTL_1_10_OFFSET;
+        control.offset_y = cx_y_pos;
+        filter_controls->controls.push_back(control);
+
+        cx_y_pos += CX_HEIGHT;
+    }
+}
+
+void create_trackbars_ex(CLCU_FILTER_CONTROLS *filter_controls, const std::vector<CLFILTER_TRACKBAR_DATA>& list_track_bar_ex, HWND hwndParent, HINSTANCE hInstance, const int x, int& offset_y, const int track_bar_delta_y, const RECT& dialog_rc) {
+    for (auto& track_bar_ex : list_track_bar_ex) {
+        (*track_bar_ex.tb) = create_trackbar_ex(hwndParent, hInstance, track_bar_ex.labelText, x, offset_y, track_bar_ex.label_id, track_bar_ex.val_min, track_bar_ex.val_max, track_bar_ex.val_default);
+        g_trackBars.push_back(track_bar_ex);
+
+        for (auto hwnd : { track_bar_ex.tb->label, track_bar_ex.tb->trackbar, track_bar_ex.tb->bt_left, track_bar_ex.tb->bt_right, track_bar_ex.tb->bt_text }) {
+            RECT rc;
+            GetWindowRect(hwnd, &rc);
+            CLCU_CONTROL control;
+            control.hwnd = hwnd;
+            control.id = 8 + AVIUTL_1_10_OFFSET;
+            control.offset_x = rc.left - dialog_rc.left;
+            control.offset_y = offset_y;
+            filter_controls->controls.push_back(control);
+        }
+        offset_y += track_bar_delta_y;
+    }
+}
+
+std::unique_ptr<CLCU_FILTER_CONTROLS> create_group(int check_min, int check_max, int track_min, int track_max, const int track_bar_delta_y, const std::vector<CLFILTER_TRACKBAR_DATA>& list_track_bar_ex,
+    const AddCXMode add_cx_mode, const std::vector<CLCX_COMBOBOX>& add_cx, const int checkbox_idx, const RECT& dialog_rc, HFONT b_font, HWND hwnd, HINSTANCE hinst) {
+    auto filter_controls = std::make_unique<CLCU_FILTER_CONTROLS>();
+    int offset_y = 0;
+    int cx_y_pos = 0;
+
+    RECT rc;
+    GetWindowRect(child_hwnd[checkbox_idx + check_min], &rc);
+    // 有効無効のボックス
+    CLCU_CONTROL control;
+    control.hwnd = child_hwnd[checkbox_idx + check_min];
+    control.id = 0;
+    control.offset_x = rc.left - dialog_rc.left;
+    control.offset_y = offset_y;
+    filter_controls->controls.push_back(control);
+    offset_y += track_bar_delta_y;
+
+    if (add_cx.size() > 0 && add_cx_mode == ADD_CX_FIRST) {
+        cx_y_pos = offset_y + 2;                // すこし窮屈なので +2pix
+        offset_y += CX_HEIGHT * add_cx.size() + 4; // すこし窮屈なので +4pix
+        add_combobox(filter_controls.get(), add_cx, cx_y_pos, b_font, hwnd, hinst);
+    }
+
+    // trackbar
+    for (int i = track_min; i < track_max; i++, offset_y += track_bar_delta_y) {
+        for (int j = 0; j < 5; j++) {
+            GetWindowRect(child_hwnd[i * 5 + j + 1], &rc);
+            control.hwnd = child_hwnd[i * 5 + j + 1];
+            control.id = 0;
+            control.offset_x = rc.left - dialog_rc.left;
+            control.offset_y = offset_y;
+            filter_controls->controls.push_back(control);
+        }
+    }
+    create_trackbars_ex(filter_controls.get(), list_track_bar_ex, hwnd, hinst, 0, offset_y, track_bar_delta_y, dialog_rc);
+
+    if (add_cx.size() > 0 && add_cx_mode == ADD_CX_AFTER_TRACK) {
+        cx_y_pos = offset_y + 2;                // すこし窮屈なので +2pix
+        offset_y += CX_HEIGHT * add_cx.size() + 4; // すこし窮屈なので +4pix
+        add_combobox(filter_controls.get(), add_cx, cx_y_pos, b_font, hwnd, hinst);
+    }
+
+    // checkbox
+    for (int i = check_min + 1; i < check_max; i++, offset_y += track_bar_delta_y) {
+        GetWindowRect(child_hwnd[checkbox_idx + i], &rc);
+        control.hwnd = child_hwnd[checkbox_idx + i];
+        control.id = 0;
+        control.offset_x = rc.left - dialog_rc.left + 10;
+        control.offset_y = offset_y;
+        filter_controls->controls.push_back(control);
+    }
+
+    if (add_cx.size() > 0 && add_cx_mode == ADD_CX_AFTER_CHECK) {
+        cx_y_pos = offset_y + 2;                // すこし窮屈なので +2pix
+        offset_y += CX_HEIGHT * add_cx.size() + 4; // すこし窮屈なので +4pix
+        add_combobox(filter_controls.get(), add_cx, cx_y_pos, b_font, hwnd, hinst);
+    }
+    offset_y += track_bar_delta_y;
+    filter_controls->y_size = offset_y;
+    return filter_controls;
 }
 
 void move_group(int& y_pos, int col, int col_width, int check_min, int check_max, int track_min, int track_max, const int track_bar_delta_y,
@@ -1999,12 +2149,6 @@ void move_group(int& y_pos, int col, int col_width, int check_min, int check_max
     }
 
     y_pos += track_bar_delta_y;
-}
-
-void set_combobox_items(HWND hwnd_cx, const CX_DESC *cx_items, int limit = INT_MAX) {
-    for (int i = 0; cx_items[i].desc && i < limit; i++) {
-        set_combo_item(hwnd_cx, (char *)cx_items[i].desc, cx_items[i].value);
-    }
 }
 
 void add_combobox(HWND& hwnd_cx, int id_cx, HWND& hwnd_lb, int id_lb, const char *lb_str, int col, int col_width, int& y_pos, HFONT b_font, HWND hwnd, HINSTANCE hinst, const CX_DESC *cx_items, int cx_item_limit = INT_MAX) {
@@ -2225,15 +2369,17 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     move_colorspace(y_pos, col, col_width, CLFILTER_CHECK_COLORSPACE_ENABLE, CLFILTER_CHECK_COLORSPACE_MAX, CLFILTER_TRACK_COLORSPACE_FIRST, CLFILTER_TRACK_COLORSPACE_MAX, track_bar_delta_y, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
 
     //nnedi
-    move_group(y_pos, col, col_width, CLFILTER_CHECK_NNEDI_ENABLE, CLFILTER_CHECK_NNEDI_MAX, CLFILTER_TRACK_NNEDI_FIRST, CLFILTER_TRACK_NNEDI_MAX, track_bar_delta_y, ADD_CX_FIRST, 0, cx_y_pos, checkbox_idx, dialog_rc);
-    y_pos -= track_bar_delta_y / 2;
-    add_combobox(cx_nnedi_field,     ID_CX_NNEDI_FIELD,     lb_nnedi_field,     ID_LB_NNEDI_FIELD,     LB_CX_NNEDI_FIELD,     col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_field+2, 2);
-    add_combobox(cx_nnedi_nns,       ID_CX_NNEDI_NNS,       lb_nnedi_nns,       ID_LB_NNEDI_NNS,       LB_CX_NNEDI_NNS,       col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_nns);
-    add_combobox(cx_nnedi_nsize,     ID_CX_NNEDI_NSIZE,     lb_nnedi_nsize,     ID_LB_NNEDI_NSIZE,     LB_CX_NNEDI_NSIZE,     col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_nsize);
-    add_combobox(cx_nnedi_quality,   ID_CX_NNEDI_QUALITY,   lb_nnedi_quality,   ID_LB_NNEDI_QUALITY,   LB_CX_NNEDI_QUALITY,   col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_quality);
-    add_combobox(cx_nnedi_prescreen, ID_CX_NNEDI_PRESCREEN, lb_nnedi_prescreen, ID_LB_NNEDI_PRESCREEN, LB_CX_NNEDI_PRESCREEN, col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_pre_screen);
-    add_combobox(cx_nnedi_errortype, ID_CX_NNEDI_ERRORTYPE, lb_nnedi_errortype, ID_LB_NNEDI_ERRORTYPE, LB_CX_NNEDI_ERRORTYPE, col, col_width, y_pos, b_font, hwnd, hinst, list_vpp_nnedi_error_type);
-    y_pos += track_bar_delta_y / 2;
+    std::vector<CLCX_COMBOBOX> cx_list_nnedi = {
+        CLCX_COMBOBOX(cx_nnedi_field,     ID_CX_NNEDI_FIELD,     lb_nnedi_field,     ID_LB_NNEDI_FIELD,     LB_CX_NNEDI_FIELD,     list_vpp_nnedi_field+2, 2),
+        CLCX_COMBOBOX(cx_nnedi_nns,       ID_CX_NNEDI_NNS,       lb_nnedi_nns,       ID_LB_NNEDI_NNS,       LB_CX_NNEDI_NNS,       list_vpp_nnedi_nns),
+        CLCX_COMBOBOX(cx_nnedi_nsize,     ID_CX_NNEDI_NSIZE,     lb_nnedi_nsize,     ID_LB_NNEDI_NSIZE,     LB_CX_NNEDI_NSIZE,     list_vpp_nnedi_nsize),
+        CLCX_COMBOBOX(cx_nnedi_quality,   ID_CX_NNEDI_QUALITY,   lb_nnedi_quality,   ID_LB_NNEDI_QUALITY,   LB_CX_NNEDI_QUALITY,   list_vpp_nnedi_quality),
+        CLCX_COMBOBOX(cx_nnedi_prescreen, ID_CX_NNEDI_PRESCREEN, lb_nnedi_prescreen, ID_LB_NNEDI_PRESCREEN, LB_CX_NNEDI_PRESCREEN, list_vpp_nnedi_pre_screen),
+        CLCX_COMBOBOX(cx_nnedi_errortype, ID_CX_NNEDI_ERRORTYPE, lb_nnedi_errortype, ID_LB_NNEDI_ERRORTYPE, LB_CX_NNEDI_ERRORTYPE, list_vpp_nnedi_error_type)
+    };
+    auto filter_nnedi = create_group(CLFILTER_CHECK_NNEDI_ENABLE, CLFILTER_CHECK_NNEDI_MAX, CLFILTER_TRACK_NNEDI_FIRST, CLFILTER_TRACK_NNEDI_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_nnedi, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
+    move_group(filter_nnedi.get(), y_pos, col, col_width);
+    g_filterControls.push_back(std::move(filter_nnedi));
 
     y_pos_max = std::max(y_pos_max, y_pos);
     // --- 次の列 -----------------------------------------
@@ -2246,8 +2392,12 @@ void init_dialog(HWND hwnd, FILTER *fp) {
         { _T("1 - strong"), 1 },
         { NULL, 0 }
     };
-    move_group(y_pos, col, col_width, CLFILTER_CHECK_NVVFX_DENOISE_ENABLE, CLFILTER_CHECK_NVVFX_DENOISE_MAX, CLFILTER_TRACK_NVVFX_DENOISE_FIRST, CLFILTER_TRACK_NVVFX_DENOISE_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
-    add_combobox(cx_nvvfx_denoise_strength, ID_CX_NVVFX_DENOISE_STRENGTH, lb_nvvfx_denoise_strength, ID_LB_NVVFX_DENOISE_STRENGTH, LB_CX_NVVFX_DENOISE_STRENGTH, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_nvvfx_denoise_strength);
+    std::vector<CLCX_COMBOBOX> cx_list_nvvfx_denoise = {
+        CLCX_COMBOBOX(cx_nvvfx_denoise_strength, ID_CX_NVVFX_DENOISE_STRENGTH, lb_nvvfx_denoise_strength, ID_LB_NVVFX_DENOISE_STRENGTH, LB_CX_NVVFX_DENOISE_STRENGTH, list_vpp_nvvfx_denoise_strength)
+    };
+    auto filter_nvvfx_denoise = create_group(CLFILTER_CHECK_NVVFX_DENOISE_ENABLE, CLFILTER_CHECK_NVVFX_DENOISE_MAX, CLFILTER_TRACK_NVVFX_DENOISE_FIRST, CLFILTER_TRACK_NVVFX_DENOISE_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_nvvfx_denoise, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
+    move_group(filter_nvvfx_denoise.get(), y_pos, col, col_width);
+    g_filterControls.push_back(std::move(filter_nvvfx_denoise));
 
     //nvvfx-artifact-reduction
     const CX_DESC list_vpp_nvvfx_artifact_reduction_mode[] = {
@@ -2255,62 +2405,104 @@ void init_dialog(HWND hwnd, FILTER *fp) {
         { _T("1 - strong"), 1 },
         { NULL, 0 }
     };
-    move_group(y_pos, col, col_width, CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE, CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_MAX, CLFILTER_TRACK_NVVFX_ARTIFACT_REDUCTION_FIRST, CLFILTER_TRACK_NVVFX_ARTIFACT_REDUCTION_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
-    add_combobox(cx_nvvfx_artifact_reduction_mode, ID_CX_NVVFX_ARTIFACT_REDUCTION_MODE, lb_nvvfx_artifact_reduction_mode, ID_LB_NVVFX_ARTIFACT_REDUCTION_MODE, LB_CX_NVVFX_ARTIFACT_REDUCTION_MODE, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_nvvfx_artifact_reduction_mode);
+    std::vector<CLCX_COMBOBOX> cx_list_nvvfx_artifact_reduction = {
+        CLCX_COMBOBOX(cx_nvvfx_artifact_reduction_mode, ID_CX_NVVFX_ARTIFACT_REDUCTION_MODE, lb_nvvfx_artifact_reduction_mode, ID_LB_NVVFX_ARTIFACT_REDUCTION_MODE, LB_CX_NVVFX_ARTIFACT_REDUCTION_MODE, list_vpp_nvvfx_artifact_reduction_mode)
+    };
+    auto filter_nvvfx_artifact_reduction = create_group(CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE, CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_MAX, CLFILTER_TRACK_NVVFX_ARTIFACT_REDUCTION_FIRST, CLFILTER_TRACK_NVVFX_ARTIFACT_REDUCTION_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_nvvfx_artifact_reduction, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
+    move_group(filter_nvvfx_artifact_reduction.get(), y_pos, col, col_width);
+    g_filterControls.push_back(std::move(filter_nvvfx_artifact_reduction));
 
     //denoise-dct
-    move_group(y_pos, col, col_width, CLFILTER_CHECK_DENOISE_DCT_ENABLE, CLFILTER_CHECK_DENOISE_DCT_MAX, CLFILTER_TRACK_DENOISE_DCT_FIRST, CLFILTER_TRACK_DENOISE_DCT_MAX, track_bar_delta_y, ADD_CX_FIRST, 2, cx_y_pos, checkbox_idx, dialog_rc);
-    add_combobox(cx_denoise_dct_step,       ID_CX_DENOISE_DCT_STEP,       lb_denoise_dct_step,       ID_LB_DENOISE_DCT_STEP,       LB_CX_DENOISE_DCT_STEP,       col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_denoise_dct_step);
-    add_combobox(cx_denoise_dct_block_size, ID_CX_DENOISE_DCT_BLOCK_SIZE, lb_denoise_dct_block_size, ID_LB_DENOISE_DCT_BLOCK_SIZE, LB_CX_DENOISE_DCT_BLOCK_SIZE, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_denoise_dct_block_size);
+    std::vector<CLCX_COMBOBOX> cx_list_denoise_dct = {
+        CLCX_COMBOBOX(cx_denoise_dct_step,       ID_CX_DENOISE_DCT_STEP,       lb_denoise_dct_step,       ID_LB_DENOISE_DCT_STEP,       LB_CX_DENOISE_DCT_STEP,       list_vpp_denoise_dct_step),
+        CLCX_COMBOBOX(cx_denoise_dct_block_size, ID_CX_DENOISE_DCT_BLOCK_SIZE, lb_denoise_dct_block_size, ID_LB_DENOISE_DCT_BLOCK_SIZE, LB_CX_DENOISE_DCT_BLOCK_SIZE, list_vpp_denoise_dct_block_size)
+    };
+    auto filter_denoise_dct = create_group(CLFILTER_CHECK_DENOISE_DCT_ENABLE, CLFILTER_CHECK_DENOISE_DCT_MAX, CLFILTER_TRACK_DENOISE_DCT_FIRST, CLFILTER_TRACK_DENOISE_DCT_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_denoise_dct, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
+    move_group(filter_denoise_dct.get(), y_pos, col, col_width);
+    g_filterControls.push_back(std::move(filter_denoise_dct));
 
     //smooth
-    move_group(y_pos, col, col_width, CLFILTER_CHECK_SMOOTH_ENABLE, CLFILTER_CHECK_SMOOTH_MAX, CLFILTER_TRACK_SMOOTH_FIRST, CLFILTER_TRACK_SMOOTH_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
-    add_combobox(cx_smooth_quality, ID_CX_SMOOTH_QUALITY, lb_smooth_quality, ID_LB_SMOOTH_QUALITY, LB_CX_SMOOTH_QUALITY, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_smooth_quality);
+    std::vector<CLCX_COMBOBOX> cx_list_smooth = {
+        CLCX_COMBOBOX(cx_smooth_quality, ID_CX_SMOOTH_QUALITY, lb_smooth_quality, ID_LB_SMOOTH_QUALITY, LB_CX_SMOOTH_QUALITY, list_vpp_smooth_quality)
+    };
+    auto filter_smooth = create_group(CLFILTER_CHECK_SMOOTH_ENABLE, CLFILTER_CHECK_SMOOTH_MAX, CLFILTER_TRACK_SMOOTH_FIRST, CLFILTER_TRACK_SMOOTH_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_smooth, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
+    move_group(filter_smooth.get(), y_pos, col, col_width);
+    g_filterControls.push_back(std::move(filter_smooth));
 
     //knn
-    move_group(y_pos, col, col_width, CLFILTER_CHECK_KNN_ENABLE, CLFILTER_CHECK_KNN_MAX, CLFILTER_TRACK_KNN_FIRST, CLFILTER_TRACK_KNN_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
-    add_combobox(cx_knn_radius, ID_CX_KNN_RADIUS, lb_knn_radius, ID_LB_KNN_RADIUS, LB_CX_KNN_RADIUS, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_raduis);
+    std::vector<CLCX_COMBOBOX> cx_list_knn = {
+        CLCX_COMBOBOX(cx_knn_radius, ID_CX_KNN_RADIUS, lb_knn_radius, ID_LB_KNN_RADIUS, LB_CX_KNN_RADIUS, list_vpp_raduis)
+    };
+    auto filter_knn = create_group(CLFILTER_CHECK_KNN_ENABLE, CLFILTER_CHECK_KNN_MAX, CLFILTER_TRACK_KNN_FIRST, CLFILTER_TRACK_KNN_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_knn, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
+    move_group(filter_knn.get(), y_pos, col, col_width);
+    g_filterControls.push_back(std::move(filter_knn));
 
     //nlmeans
-    move_group(y_pos, col, col_width, CLFILTER_CHECK_NLMEANS_ENABLE, CLFILTER_CHECK_NLMEANS_MAX, CLFILTER_TRACK_NLMEANS_FIRST, CLFILTER_TRACK_NLMEANS_MAX, track_bar_delta_y, ADD_CX_FIRST, 2, cx_y_pos, checkbox_idx, dialog_rc);
-    add_combobox(cx_nlmeans_patch,  ID_CX_DENOISE_NLMEANS_PATCH,  lb_nlmeans_patch,  ID_LB_DENOISE_NLMEANS_PATCH,  LB_CX_DENOISE_NLMEANS_PATCH,  col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_nlmeans_block_size);
-    add_combobox(cx_nlmeans_search, ID_CX_DENOISE_NLMEANS_SEARCH, lb_nlmeans_search, ID_LB_DENOISE_NLMEANS_SEARCH, LB_CX_DENOISE_NLMEANS_SEARCH, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_nlmeans_block_size);
+    std::vector<CLCX_COMBOBOX> cx_list_nlmeans = {
+        CLCX_COMBOBOX(cx_nlmeans_patch,  ID_CX_DENOISE_NLMEANS_PATCH,  lb_nlmeans_patch,  ID_LB_DENOISE_NLMEANS_PATCH,  LB_CX_DENOISE_NLMEANS_PATCH,  list_vpp_nlmeans_block_size),
+        CLCX_COMBOBOX(cx_nlmeans_search, ID_CX_DENOISE_NLMEANS_SEARCH, lb_nlmeans_search, ID_LB_DENOISE_NLMEANS_SEARCH, LB_CX_DENOISE_NLMEANS_SEARCH, list_vpp_nlmeans_block_size)
+    };
+    auto filter_nlmeans = create_group(CLFILTER_CHECK_NLMEANS_ENABLE, CLFILTER_CHECK_NLMEANS_MAX, CLFILTER_TRACK_NLMEANS_FIRST, CLFILTER_TRACK_NLMEANS_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_nlmeans, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
+    move_group(filter_nlmeans.get(), y_pos, col, col_width);
+    g_filterControls.push_back(std::move(filter_nlmeans));
 
     //pmd
-    move_group(y_pos, col, col_width, CLFILTER_CHECK_PMD_ENABLE, CLFILTER_CHECK_PMD_MAX, CLFILTER_TRACK_PMD_FIRST, CLFILTER_TRACK_PMD_MAX, track_bar_delta_y, ADD_CX_FIRST, 0, cx_y_pos, checkbox_idx, dialog_rc);
+    std::vector<CLCX_COMBOBOX> cx_list_pmd = { };
+    auto filter_pmd = create_group(CLFILTER_CHECK_PMD_ENABLE, CLFILTER_CHECK_PMD_MAX, CLFILTER_TRACK_PMD_FIRST, CLFILTER_TRACK_PMD_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_pmd, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
+    move_group(filter_pmd.get(), y_pos, col, col_width);
+    g_filterControls.push_back(std::move(filter_pmd));
 
     y_pos_max = std::max(y_pos_max, y_pos);
     // --- 次の列 -----------------------------------------
     col = 2;
     y_pos = cb_row_start_y_pos;
     //unsharp
-    move_group(y_pos, col, col_width, CLFILTER_CHECK_UNSHARP_ENABLE, CLFILTER_CHECK_UNSHARP_MAX, CLFILTER_TRACK_UNSHARP_FIRST, CLFILTER_TRACK_UNSHARP_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
-    add_combobox(cx_unsharp_radius, ID_CX_UNSHARP_RADIUS, lb_unsharp_radius, ID_LB_UNSHARP_RADIUS, LB_CX_UNSHARP_RADIUS, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_raduis);
+    std::vector<CLCX_COMBOBOX> cx_list_unsharp = {
+        CLCX_COMBOBOX(cx_unsharp_radius, ID_CX_UNSHARP_RADIUS, lb_unsharp_radius, ID_LB_UNSHARP_RADIUS, LB_CX_UNSHARP_RADIUS, list_vpp_raduis)
+    };
+    auto filter_unsharp = create_group(CLFILTER_CHECK_UNSHARP_ENABLE, CLFILTER_CHECK_UNSHARP_MAX, CLFILTER_TRACK_UNSHARP_FIRST, CLFILTER_TRACK_UNSHARP_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_unsharp, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
+    move_group(filter_unsharp.get(), y_pos, col, col_width);
+    g_filterControls.push_back(std::move(filter_unsharp));
 
     //エッジレベル調整
-    move_group(y_pos, col, col_width, CLFILTER_CHECK_EDGELEVEL_ENABLE, CLFILTER_CHECK_EDGELEVEL_MAX, CLFILTER_TRACK_EDGELEVEL_FIRST, CLFILTER_TRACK_EDGELEVEL_MAX, track_bar_delta_y, ADD_CX_FIRST, 0, cx_y_pos, checkbox_idx, dialog_rc);
+    std::vector<CLCX_COMBOBOX> cx_list_edgelevel = { };
+    auto filter_edgelevel = create_group(CLFILTER_CHECK_EDGELEVEL_ENABLE, CLFILTER_CHECK_EDGELEVEL_MAX, CLFILTER_TRACK_EDGELEVEL_FIRST, CLFILTER_TRACK_EDGELEVEL_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_edgelevel, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
+    move_group(filter_edgelevel.get(), y_pos, col, col_width);
+    g_filterControls.push_back(std::move(filter_edgelevel));
 
     //warpsharp
-    move_group(y_pos, col, col_width, CLFILTER_CHECK_WARPSHARP_ENABLE, CLFILTER_CHECK_WARPSHARP_MAX, CLFILTER_TRACK_WARPSHARP_FIRST, CLFILTER_TRACK_WARPSHARP_MAX, track_bar_delta_y, ADD_CX_FIRST, 1, cx_y_pos, checkbox_idx, dialog_rc);
-    add_combobox(cx_warpsharp_blur, ID_CX_WARPSHARP_BLUR, lb_warpsharp_blur, ID_LB_WARPSHARP_BLUR, LB_CX_WARPSHARP_BLUR, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_1_to_10);
+    std::vector<CLCX_COMBOBOX> cx_list_warpsharp = {
+        CLCX_COMBOBOX(cx_warpsharp_blur, ID_CX_WARPSHARP_BLUR, lb_warpsharp_blur, ID_LB_WARPSHARP_BLUR, LB_CX_WARPSHARP_BLUR, list_vpp_1_to_10)
+    };
+    auto filter_warpsharp = create_group(CLFILTER_CHECK_WARPSHARP_ENABLE, CLFILTER_CHECK_WARPSHARP_MAX, CLFILTER_TRACK_WARPSHARP_FIRST, CLFILTER_TRACK_WARPSHARP_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_warpsharp, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
+    move_group(filter_warpsharp.get(), y_pos, col, col_width);
+    g_filterControls.push_back(std::move(filter_warpsharp));
 
     //tweak
-    move_group(y_pos, col, col_width, CLFILTER_CHECK_TWEAK_ENABLE, CLFILTER_CHECK_TWEAK_MAX, CLFILTER_TRACK_TWEAK_FIRST, CLFILTER_TRACK_TWEAK_MAX, track_bar_delta_y, ADD_CX_FIRST, 0, cx_y_pos, checkbox_idx, dialog_rc);
+    std::vector<CLCX_COMBOBOX> cx_list_tweak = { };
+    auto filter_tweak = create_group(CLFILTER_CHECK_TWEAK_ENABLE, CLFILTER_CHECK_TWEAK_MAX, CLFILTER_TRACK_TWEAK_FIRST, CLFILTER_TRACK_TWEAK_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_tweak, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
+    move_group(filter_tweak.get(), y_pos, col, col_width);
+    g_filterControls.push_back(std::move(filter_tweak));
 
     //バンディング
-    move_group(y_pos, col, col_width, CLFILTER_CHECK_DEBAND_ENABLE, CLFILTER_CHECK_DEBAND_MAX, CLFILTER_TRACK_DEBAND_FIRST, CLFILTER_TRACK_DEBAND_MAX, track_bar_delta_y, ADD_CX_AFTER_TRACK, 1, cx_y_pos, checkbox_idx, dialog_rc);
-    add_combobox(cx_deband_sample, ID_CX_DEBAND_SAMPLE, lb_deband_sample, ID_LB_DEBAND_SAMPLE, LB_CX_DEBAND_SAMPLE, col, col_width, cx_y_pos, b_font, hwnd, hinst, list_vpp_deband_sample);
+    std::vector<CLCX_COMBOBOX> cx_list_deband = {
+        CLCX_COMBOBOX(cx_deband_sample, ID_CX_DEBAND_SAMPLE, lb_deband_sample, ID_LB_DEBAND_SAMPLE, LB_CX_DEBAND_SAMPLE, list_vpp_deband_sample)
+    };
+    auto fitler_deband = create_group(CLFILTER_CHECK_DEBAND_ENABLE, CLFILTER_CHECK_DEBAND_MAX, CLFILTER_TRACK_DEBAND_FIRST, CLFILTER_TRACK_DEBAND_MAX, track_bar_delta_y, {}, ADD_CX_AFTER_TRACK, cx_list_deband, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
+    move_group(fitler_deband.get(), y_pos, col, col_width);
+    g_filterControls.push_back(std::move(fitler_deband));
 
     //TrueHDR
-    move_group(y_pos, col, col_width, CLFILTER_CHECK_TRUEHDR_ENABLE, CLFILTER_CHECK_TRUEHDR_MAX, CLFILTER_TRACK_NGX_TRUEHDR_FIRST, CLFILTER_TRACK_NGX_TRUEHDR_MAX, track_bar_delta_y, ADD_CX_AFTER_TRACK, 5, cx_y_pos, checkbox_idx, dialog_rc);
-    const CLFILTER_TRACKBAR_DATA tb_truehdr[] = {
+    std::vector<CLCX_COMBOBOX> cx_list_ngx_truehdr = { };
+    const std::vector<CLFILTER_TRACKBAR_DATA> tb_truehdr = {
         { &tb_ngx_truehdr_contrast,     LB_TB_TRUEHDR_CONTRAST,     ID_TB_NGX_TRUEHDR_CONTRAST,       0,  200,  100, &cl_exdata.ngx_truehdr_contrast     },
         { &tb_ngx_truehdr_saturation,   LB_TB_TRUEHDR_SATURATION,   ID_TB_NGX_TRUEHDR_SATURATION,     0,  200,  100, &cl_exdata.ngx_truehdr_saturation   },
         { &tb_ngx_truehdr_middlegray,   LB_TB_TRUEHDR_MIDDLEGRAY,   ID_TB_NGX_TRUEHDR_MIDDLEGRAY,    10,  100,   50, &cl_exdata.ngx_truehdr_middlegray   },
-        { &tb_ngx_truehdr_maxluminance, LB_TB_TRUEHDR_MAXLUMINANCE, ID_TB_NGX_TRUEHDR_MAXLUMINANCE, 400, 2000, 1000, &cl_exdata.ngx_truehdr_maxluminance },
-        { 0 }
+        { &tb_ngx_truehdr_maxluminance, LB_TB_TRUEHDR_MAXLUMINANCE, ID_TB_NGX_TRUEHDR_MAXLUMINANCE, 400, 2000, 1000, &cl_exdata.ngx_truehdr_maxluminance }
     };
-    create_trackbars_ex(hwnd, hinst, col * col_width + 8 + AVIUTL_1_10_OFFSET, cx_y_pos, track_bar_delta_y, tb_truehdr);
+    auto filter_ngx_truhdr = create_group(CLFILTER_CHECK_TRUEHDR_ENABLE, CLFILTER_CHECK_TRUEHDR_MAX, CLFILTER_TRACK_NGX_TRUEHDR_FIRST, CLFILTER_TRACK_NGX_TRUEHDR_MAX, track_bar_delta_y, tb_truehdr, ADD_CX_AFTER_TRACK, cx_list_ngx_truehdr, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
+    move_group(filter_ngx_truhdr.get(), y_pos, col, col_width);
+    g_filterControls.push_back(std::move(filter_ngx_truhdr));
     
     y_pos_max = std::max(y_pos_max, y_pos);
 
