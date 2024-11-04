@@ -2035,17 +2035,46 @@ void add_combobox(CLCU_FILTER_CONTROLS *filter_controls, const std::vector<CLCX_
     }
 }
 
+void add_checkboxs_excpet_key(CLCU_FILTER_CONTROLS *filter_controls, int& offset_y, const int checkbox_idx, int check_min, int check_max, const int track_bar_delta_y, const RECT& dialog_rc) {
+    for (int i = check_min + 1; i < check_max; i++, offset_y += track_bar_delta_y) {
+        RECT rc;
+        GetWindowRect(child_hwnd[checkbox_idx + i], &rc);
+        CLCU_CONTROL control;
+        control.hwnd = child_hwnd[checkbox_idx + i];
+        control.id = 0;
+        control.offset_x = rc.left - dialog_rc.left + 10;
+        control.offset_y = offset_y;
+        filter_controls->controls.push_back(control);
+    }
+}
+
+void add_trackbars(CLCU_FILTER_CONTROLS *filter_controls, int& offset_y, int track_min, int track_max, const int track_bar_delta_y, const RECT& dialog_rc) {
+    for (int i = track_min; i < track_max; i++, offset_y += track_bar_delta_y) {
+        for (int j = 0; j < 5; j++) {
+            RECT rc;
+            GetWindowRect(child_hwnd[i * 5 + j + 1], &rc);
+            CLCU_CONTROL control;
+            control.hwnd = child_hwnd[i * 5 + j + 1];
+            control.id = 0;
+            control.offset_x = rc.left - dialog_rc.left;
+            control.offset_y = offset_y;
+            filter_controls->controls.push_back(control);
+        }
+    }
+}
+
 void create_trackbars_ex(CLCU_FILTER_CONTROLS *filter_controls, const std::vector<CLFILTER_TRACKBAR_DATA>& list_track_bar_ex, HWND hwndParent, HINSTANCE hInstance, const int x, int& offset_y, const int track_bar_delta_y, const RECT& dialog_rc) {
     for (auto& track_bar_ex : list_track_bar_ex) {
         (*track_bar_ex.tb) = create_trackbar_ex(hwndParent, hInstance, track_bar_ex.labelText, x, offset_y, track_bar_ex.label_id, track_bar_ex.val_min, track_bar_ex.val_max, track_bar_ex.val_default);
         g_trackBars.push_back(track_bar_ex);
 
+        int control_id = track_bar_ex.label_id;
         for (auto hwnd : { track_bar_ex.tb->label, track_bar_ex.tb->trackbar, track_bar_ex.tb->bt_left, track_bar_ex.tb->bt_right, track_bar_ex.tb->bt_text }) {
             RECT rc;
             GetWindowRect(hwnd, &rc);
             CLCU_CONTROL control;
             control.hwnd = hwnd;
-            control.id = 8 + AVIUTL_1_10_OFFSET;
+            control.id = control_id++;
             control.offset_x = rc.left - dialog_rc.left;
             control.offset_y = offset_y;
             filter_controls->controls.push_back(control);
@@ -2078,16 +2107,7 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_group(int check_min, int check_max,
     }
 
     // trackbar
-    for (int i = track_min; i < track_max; i++, offset_y += track_bar_delta_y) {
-        for (int j = 0; j < 5; j++) {
-            GetWindowRect(child_hwnd[i * 5 + j + 1], &rc);
-            control.hwnd = child_hwnd[i * 5 + j + 1];
-            control.id = 0;
-            control.offset_x = rc.left - dialog_rc.left;
-            control.offset_y = offset_y;
-            filter_controls->controls.push_back(control);
-        }
-    }
+    add_trackbars(filter_controls.get(), offset_y, track_min, track_max, track_bar_delta_y, dialog_rc);
     create_trackbars_ex(filter_controls.get(), list_track_bar_ex, hwnd, hinst, 0, offset_y, track_bar_delta_y, dialog_rc);
 
     if (add_cx.size() > 0 && add_cx_mode == ADD_CX_AFTER_TRACK) {
@@ -2097,14 +2117,7 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_group(int check_min, int check_max,
     }
 
     // checkbox
-    for (int i = check_min + 1; i < check_max; i++, offset_y += track_bar_delta_y) {
-        GetWindowRect(child_hwnd[checkbox_idx + i], &rc);
-        control.hwnd = child_hwnd[checkbox_idx + i];
-        control.id = 0;
-        control.offset_x = rc.left - dialog_rc.left + 10;
-        control.offset_y = offset_y;
-        filter_controls->controls.push_back(control);
-    }
+    add_checkboxs_excpet_key(filter_controls.get(), offset_y, checkbox_idx, check_min, check_max, track_bar_delta_y, dialog_rc);
 
     if (add_cx.size() > 0 && add_cx_mode == ADD_CX_AFTER_CHECK) {
         cx_y_pos = offset_y + 2;                // すこし窮屈なので +2pix
@@ -2217,6 +2230,207 @@ void move_colorspace(int& y_pos, int col, int col_width, int check_min, int chec
     y_pos += track_bar_delta_y;
 }
 
+void add_combobox_from_to(
+    CLCU_FILTER_CONTROLS *filter_controls,
+    HWND& hwnd_cx_from, int id_cx_from, HWND& hwnd_cx_to, int id_cx_to,
+    HWND& hwnd_lb_from_to, int id_lb_from_to,
+    const char *lb_str, int& offset_y, HFONT b_font, HWND hwnd, HINSTANCE hinst, const CX_DESC *cx_items, int cx_item_limit = INT_MAX) {
+    CLCU_CONTROL control;
+    control.offset_y = offset_y;
+
+    // from
+    hwnd_cx_from = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 98 + AVIUTL_1_10_OFFSET, offset_y, 90, 100, hwnd, (HMENU)id_cx_from, hinst, NULL);
+    SendMessage(hwnd_cx_from, WM_SETFONT, (WPARAM)b_font, 0);
+    set_combobox_items(hwnd_cx_from, cx_items, cx_item_limit);
+    control.hwnd = hwnd_cx_from;
+    control.id = id_cx_from;
+    control.offset_x = 98 + AVIUTL_1_10_OFFSET;
+    filter_controls->controls.push_back(control);
+    // label (from->to)
+    hwnd_lb_from_to = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, 192 + AVIUTL_1_10_OFFSET, offset_y, 10, 24, hwnd, (HMENU)id_lb_from_to, hinst, NULL);
+    SendMessage(hwnd_lb_from_to, WM_SETFONT, (WPARAM)b_font, 0);
+    SendMessage(hwnd_lb_from_to, WM_SETTEXT, 0, (LPARAM)"→");
+    control.hwnd = hwnd_lb_from_to;
+    control.id = id_lb_from_to;
+    control.offset_x = 192 + AVIUTL_1_10_OFFSET;
+    filter_controls->controls.push_back(control);
+    // to
+    hwnd_cx_to = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 208 + AVIUTL_1_10_OFFSET, offset_y, 90, 100, hwnd, (HMENU)id_cx_to, hinst, NULL);
+    SendMessage(hwnd_cx_to, WM_SETFONT, (WPARAM)b_font, 0);
+    set_combobox_items(hwnd_cx_to, cx_items, cx_item_limit);
+    control.hwnd = hwnd_cx_to;
+    control.id = id_cx_to;
+    control.offset_x = 208 + AVIUTL_1_10_OFFSET;
+    filter_controls->controls.push_back(control);
+
+    offset_y += CX_HEIGHT;
+}
+
+std::unique_ptr<CLCU_FILTER_CONTROLS> create_colorspace(int check_min, int check_max, int track_min, int track_max, const int track_bar_delta_y, const int checkbox_idx, const RECT& dialog_rc, HFONT b_font, HWND hwnd, HINSTANCE hinst) {
+    auto filter_controls = std::make_unique<CLCU_FILTER_CONTROLS>();
+    int offset_y = 0;
+    RECT rc;
+    GetWindowRect(child_hwnd[checkbox_idx + check_min], &rc);
+    // 有効無効のボックス
+    CLCU_CONTROL control;
+    control.hwnd = child_hwnd[checkbox_idx + check_min];
+    control.id = 0;
+    control.offset_x = rc.left - dialog_rc.left;
+    control.offset_y = offset_y;
+    filter_controls->controls.push_back(control);
+    offset_y += track_bar_delta_y;
+
+    int cx_y_pos = offset_y;
+
+    // checkbox
+    add_checkboxs_excpet_key(filter_controls.get(), offset_y, checkbox_idx, check_min, check_max, track_bar_delta_y, dialog_rc);
+
+    add_combobox_from_to(filter_controls.get(), cx_colorspace_colormatrix_from, ID_CX_COLORSPACE_COLORMATRIX_FROM, cx_colorspace_colormatrix_to, ID_CX_COLORSPACE_COLORMATRIX_TO,
+        lb_colorspace_colormatrix_from_to, ID_LB_COLORSPACE_COLORMATRIX_FROM_TO,
+        "matrix", cx_y_pos, b_font, hwnd, hinst, list_colormatrix + 3);
+    add_combobox_from_to(filter_controls.get(), cx_colorspace_colorprim_from, ID_CX_COLORSPACE_COLORPRIM_FROM, cx_colorspace_colorprim_to, ID_CX_COLORSPACE_COLORPRIM_TO,
+        lb_colorspace_colorprim_from_to, ID_LB_COLORSPACE_COLORPRIM_FROM_TO,
+        "prim", cx_y_pos, b_font, hwnd, hinst, list_colorprim + 4);
+    add_combobox_from_to(filter_controls.get(), cx_colorspace_transfer_from, ID_CX_COLORSPACE_TRANSFER_FROM, cx_colorspace_transfer_to, ID_CX_COLORSPACE_TRANSFER_TO,
+        lb_colorspace_transfer_from_to, ID_LB_COLORSPACE_TRANSFER_FROM_TO,
+        "transfer", cx_y_pos, b_font, hwnd, hinst, list_transfer + 4);
+    add_combobox_from_to(filter_controls.get(), cx_colorspace_colorrange_from, ID_CX_COLORSPACE_COLORRANGE_FROM, cx_colorspace_colorrange_to, ID_CX_COLORSPACE_COLORRANGE_TO,
+        lb_colorspace_colorrange_from_to, ID_LB_COLORSPACE_COLORRANGE_FROM_TO,
+        "range", cx_y_pos, b_font, hwnd, hinst, list_colorrange + 2, 2);
+
+    offset_y = std::max(offset_y, cx_y_pos);
+
+    const std::vector<CLCX_COMBOBOX> add_cx = { CLCX_COMBOBOX(cx_colorspace_hdr2sdr, ID_CX_COLORSPACE_HDR2SDR, lb_colorspace_hdr2sdr, ID_LB_COLORSPACE_HDR2SDR, "hdr2sdr", list_vpp_hdr2sdr) };
+    cx_y_pos = offset_y + 2;                // すこし窮屈なので +2pix
+    offset_y += CX_HEIGHT * add_cx.size() + 4; // すこし窮屈なので +4pix
+    add_combobox(filter_controls.get(), add_cx, cx_y_pos, b_font, hwnd, hinst);
+
+    // trackbar
+    add_trackbars(filter_controls.get(), offset_y, track_min, track_max, track_bar_delta_y, dialog_rc);
+
+    offset_y += track_bar_delta_y;
+    filter_controls->y_size = offset_y;
+    return filter_controls;
+}
+
+std::unique_ptr<CLCU_FILTER_CONTROLS> create_resize(const int track_bar_delta_y, const int checkbox_idx, const RECT& dialog_rc, HFONT b_font, HWND hwnd, HINSTANCE hinst, FILTER *fp) {
+    auto filter_controls = std::make_unique<CLCU_FILTER_CONTROLS>();
+    int offset_y = 0;
+
+    RECT rc;
+    GetWindowRect(child_hwnd[checkbox_idx + CLFILTER_CHECK_RESIZE_ENABLE], &rc);
+    // 有効無効のボックス
+    CLCU_CONTROL control;
+    control.hwnd = child_hwnd[checkbox_idx + CLFILTER_CHECK_RESIZE_ENABLE];
+    control.id = 0;
+    control.offset_x = rc.left - dialog_rc.left;
+    control.offset_y = offset_y;
+    filter_controls->controls.push_back(control);
+    offset_y += track_bar_delta_y;
+
+    control.id = ID_LB_RESIZE_RES;
+    control.offset_x = 8 + AVIUTL_1_10_OFFSET;
+    control.offset_y = 24;
+    lb_proc_mode = CreateWindow("static", "", SS_SIMPLE|WS_CHILD|WS_VISIBLE, control.offset_x, control.offset_y, 60, 24, hwnd, (HMENU)ID_LB_RESIZE_RES, hinst, NULL);
+    SendMessage(lb_proc_mode, WM_SETFONT, (WPARAM)b_font, 0);
+    SendMessage(lb_proc_mode, WM_SETTEXT, 0, (LPARAM)LB_CX_RESIZE_SIZE);
+    control.hwnd = lb_proc_mode;
+    filter_controls->controls.push_back(control);
+
+    control.id = ID_CX_RESIZE_RES;
+    control.offset_x = 68;
+    cx_resize_res = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, control.offset_x, control.offset_y, 145, 100, hwnd, (HMENU)ID_CX_RESIZE_RES, hinst, NULL);
+    SendMessage(cx_resize_res, WM_SETFONT, (WPARAM)b_font, 0);
+    control.hwnd = cx_resize_res;
+    filter_controls->controls.push_back(control);
+
+    control.id = ID_BT_RESIZE_RES_ADD;
+    control.offset_x = 214;
+    bt_resize_res_add = CreateWindow("BUTTON", LB_BT_RESIZE_ADD, WS_CHILD|WS_VISIBLE|WS_GROUP|WS_TABSTOP|BS_PUSHBUTTON|BS_VCENTER, control.offset_x, control.offset_y, 32, 22, hwnd, (HMENU)ID_BT_RESIZE_RES_ADD, hinst, NULL);
+    SendMessage(bt_resize_res_add, WM_SETFONT, (WPARAM)b_font, 0);
+    control.hwnd = bt_resize_res_add;
+    filter_controls->controls.push_back(control);
+
+    control.id = ID_BT_RESIZE_RES_DEL;
+    control.offset_x = 246;
+    bt_resize_res_del = CreateWindow("BUTTON", LB_BT_RESIZE_DELETE, WS_CHILD|WS_VISIBLE|WS_GROUP|WS_TABSTOP|BS_PUSHBUTTON|BS_VCENTER, control.offset_x, control.offset_y, 32, 22, hwnd, (HMENU)ID_BT_RESIZE_RES_DEL, hinst, NULL);
+    SendMessage(bt_resize_res_del, WM_SETFONT, (WPARAM)b_font, 0);
+    control.hwnd = bt_resize_res_del;
+    filter_controls->controls.push_back(control);
+
+    control.id = ID_CX_RESIZE_ALGO;
+    control.offset_x = 68;
+    control.offset_y = 48;
+    cx_resize_algo = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, control.offset_x, control.offset_y, 210, 160, hwnd, (HMENU)ID_CX_RESIZE_ALGO, hinst, NULL);
+    SendMessage(cx_resize_algo, WM_SETFONT, (WPARAM)b_font, 0);
+    control.hwnd = cx_resize_algo;
+    filter_controls->controls.push_back(control);
+
+    update_cx_resize_res_items(fp);
+    set_resize_algo_items(cl_exdata.cl_dev_id.s.platform == CLCU_PLATFORM_CUDA);
+
+    // --- 最初の列 -----------------------------------------
+    // NGXは1行
+    control.id = ID_LB_RESIZE_NGX_VSR_QUALITY;
+    control.offset_x = 8 + AVIUTL_1_10_OFFSET;
+    control.offset_y = 72;
+    lb_resize_ngx_vsr_quality = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, control.offset_x, control.offset_y, 60, 24, hwnd, (HMENU)ID_LB_RESIZE_NGX_VSR_QUALITY, hinst, NULL);
+    SendMessage(lb_resize_ngx_vsr_quality, WM_SETFONT, (WPARAM)b_font, 0);
+    SendMessage(lb_resize_ngx_vsr_quality, WM_SETTEXT, 0, (LPARAM)LB_CX_RESIZE_NGX_VSR_QUALITY);
+    control.hwnd = lb_resize_ngx_vsr_quality;
+    filter_controls->controls.push_back(control);
+
+    control.id = ID_CX_RESIZE_NGX_VSR_QUALITY;
+    control.offset_x = 68;
+    cx_resize_ngx_vsr_quality = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, control.offset_x, control.offset_y, 145, 160, hwnd, (HMENU)ID_CX_RESIZE_NGX_VSR_QUALITY, hinst, NULL);
+    SendMessage(cx_resize_ngx_vsr_quality, WM_SETFONT, (WPARAM)b_font, 0);
+    set_combo_item(cx_resize_ngx_vsr_quality, "1 - fast", 1);
+    set_combo_item(cx_resize_ngx_vsr_quality, "2", 2);
+    set_combo_item(cx_resize_ngx_vsr_quality, "3", 3);
+    set_combo_item(cx_resize_ngx_vsr_quality, "4 - slow", 4);
+    control.hwnd = cx_resize_ngx_vsr_quality;
+    filter_controls->controls.push_back(control);
+
+    // NVVFXはNGXに重ねて同じ位置から2行
+    control.id = ID_LB_NVVFX_SUPRERES_MODE;
+    control.offset_x = 8 + AVIUTL_1_10_OFFSET;
+    lb_nvvfx_superres_mode = CreateWindow("static", "", SS_SIMPLE|WS_CHILD|WS_VISIBLE, control.offset_x, control.offset_y, 60, 24, hwnd, (HMENU)ID_LB_NVVFX_SUPRERES_MODE, hinst, NULL);
+    SendMessage(lb_nvvfx_superres_mode, WM_SETFONT, (WPARAM)b_font, 0);
+    SendMessage(lb_nvvfx_superres_mode, WM_SETTEXT, 0, (LPARAM)LB_CX_NVVFX_SUPRERES_MODE);
+    control.hwnd = lb_nvvfx_superres_mode;
+    filter_controls->controls.push_back(control);
+
+    control.id = ID_CX_NVVFX_SUPRERES_MODE;
+    control.offset_x = 68;
+    cx_nvvfx_superres_mode = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, control.offset_x, control.offset_y, 145, 100, hwnd, (HMENU)ID_CX_NVVFX_SUPRERES_MODE, hinst, NULL);
+    SendMessage(cx_nvvfx_superres_mode, WM_SETFONT, (WPARAM)b_font, 0);
+    set_combo_item(cx_nvvfx_superres_mode, "0 - light", 0);
+    set_combo_item(cx_nvvfx_superres_mode, "1 - strong", 1);
+    control.hwnd = cx_nvvfx_superres_mode;
+    filter_controls->controls.push_back(control);
+
+    // NVVFXの2行目
+    offset_y = track_bar_delta_y * 4 + 8;
+
+    offset_y -= track_bar_delta_y / 4;
+    add_trackbars(filter_controls.get(), offset_y, CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH, CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH + 1, track_bar_delta_y, dialog_rc);
+    offset_y += track_bar_delta_y / 4;
+
+    // libplacebo(resize)もNGXに重ねて同じ位置から
+    const std::vector<CLFILTER_TRACKBAR_DATA> list_track_bar_ex = {
+        { &tb_resize_pl_clamp,    LB_TB_RESIZE_PL_CLAMP,    ID_TB_RESIZE_PL_CLAMP,      0,  100,  0, &cl_exdata.resize_pl_clamp    },
+        { &tb_resize_pl_taper,    LB_TB_RESIZE_PL_TAPER,    ID_TB_RESIZE_PL_TAPER,      0,  100,  0, &cl_exdata.resize_pl_taper    },
+        { &tb_resize_pl_blur,     LB_TB_RESIZE_PL_BLUR,     ID_TB_RESIZE_PL_BLUR,       0,  100,  0, &cl_exdata.resize_pl_blur     },
+        { &tb_resize_pl_antiring, LB_TB_RESIZE_PL_ANTIRING, ID_TB_RESIZE_PL_ANTIRING,   0,  100,  0, &cl_exdata.resize_pl_antiring }
+    };
+    int cx_y_pos = 72;
+    create_trackbars_ex(filter_controls.get(), list_track_bar_ex, hwnd, hinst, 0, cx_y_pos, track_bar_delta_y, dialog_rc);
+
+    // libplacebo(resize)とNVVFXの2行目の大きいほう
+    filter_controls->y_size = std::max(offset_y, cx_y_pos);
+    return filter_controls;
+}
+
 static void init_clfilter_exe(const FILTER *fp) {
     SYS_INFO sys_info = { 0 };
     fp->exfunc->get_sys_info(nullptr, &sys_info);
@@ -2293,80 +2507,19 @@ void init_dialog(HWND hwnd, FILTER *fp) {
 #endif //#if ENABLE_FIELD
 
     const int cb_row_start_y_pos = cb_field_y + 28;
+    int y_pos_max = 0;
 
     //リサイズ
     int col = 0;
-    const int cb_resize_y = cb_row_start_y_pos;
-    GetWindowRect(child_hwnd[checkbox_idx + CLFILTER_CHECK_RESIZE_ENABLE], &rc);
-    SetWindowPos(child_hwnd[checkbox_idx + CLFILTER_CHECK_RESIZE_ENABLE], HWND_TOP, col * col_width + rc.left - dialog_rc.left, cb_resize_y, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
-
-    lb_proc_mode = CreateWindow("static", "", SS_SIMPLE|WS_CHILD|WS_VISIBLE, col * col_width + 8 + AVIUTL_1_10_OFFSET, cb_resize_y+24, 60, 24, hwnd, (HMENU)ID_LB_RESIZE_RES, hinst, NULL);
-    SendMessage(lb_proc_mode, WM_SETFONT, (WPARAM)b_font, 0);
-    SendMessage(lb_proc_mode, WM_SETTEXT, 0, (LPARAM)LB_CX_RESIZE_SIZE);
-
-    cx_resize_res = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, col * col_width + 68, cb_resize_y+24, 145, 100, hwnd, (HMENU)ID_CX_RESIZE_RES, hinst, NULL);
-    SendMessage(cx_resize_res, WM_SETFONT, (WPARAM)b_font, 0);
-
-    bt_resize_res_add = CreateWindow("BUTTON", LB_BT_RESIZE_ADD, WS_CHILD|WS_VISIBLE|WS_GROUP|WS_TABSTOP|BS_PUSHBUTTON|BS_VCENTER, col * col_width + 214, cb_resize_y+24, 32, 22, hwnd, (HMENU)ID_BT_RESIZE_RES_ADD, hinst, NULL);
-    SendMessage(bt_resize_res_add, WM_SETFONT, (WPARAM)b_font, 0);
-
-    bt_resize_res_del = CreateWindow("BUTTON", LB_BT_RESIZE_DELETE, WS_CHILD|WS_VISIBLE|WS_GROUP|WS_TABSTOP|BS_PUSHBUTTON|BS_VCENTER, col * col_width + 246, cb_resize_y+24, 32, 22, hwnd, (HMENU)ID_BT_RESIZE_RES_DEL, hinst, NULL);
-    SendMessage(bt_resize_res_del, WM_SETFONT, (WPARAM)b_font, 0);
-
-    cx_resize_algo = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, col * col_width + 68, cb_resize_y+48, 210, 160, hwnd, (HMENU)ID_CX_RESIZE_ALGO, hinst, NULL);
-    SendMessage(cx_resize_algo, WM_SETFONT, (WPARAM)b_font, 0);
-
-    update_cx_resize_res_items(fp);
-    set_resize_algo_items(cl_exdata.cl_dev_id.s.platform == CLCU_PLATFORM_CUDA);
-
-    int y_pos_max = 0;
-    // --- 最初の列 -----------------------------------------
-    // NGXは1行
-    lb_resize_ngx_vsr_quality = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, col * col_width + 8 + AVIUTL_1_10_OFFSET, cb_resize_y + 72, 60, 24, hwnd, (HMENU)ID_LB_RESIZE_NGX_VSR_QUALITY, hinst, NULL);
-    SendMessage(lb_resize_ngx_vsr_quality, WM_SETFONT, (WPARAM)b_font, 0);
-    SendMessage(lb_resize_ngx_vsr_quality, WM_SETTEXT, 0, (LPARAM)LB_CX_RESIZE_NGX_VSR_QUALITY);
-
-    cx_resize_ngx_vsr_quality = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, col * col_width + 68, cb_resize_y + 72, 145, 160, hwnd, (HMENU)ID_CX_RESIZE_NGX_VSR_QUALITY, hinst, NULL);
-    SendMessage(cx_resize_ngx_vsr_quality, WM_SETFONT, (WPARAM)b_font, 0);
-    set_combo_item(cx_resize_ngx_vsr_quality, "1 - fast", 1);
-    set_combo_item(cx_resize_ngx_vsr_quality, "2", 2);
-    set_combo_item(cx_resize_ngx_vsr_quality, "3", 3);
-    set_combo_item(cx_resize_ngx_vsr_quality, "4 - slow", 4);
-
-    // NVVFXはNGXに重ねて同じ位置から2行
-    lb_nvvfx_superres_mode = CreateWindow("static", "", SS_SIMPLE|WS_CHILD|WS_VISIBLE, col * col_width + 8 + AVIUTL_1_10_OFFSET, cb_resize_y + 72, 60, 24, hwnd, (HMENU)ID_LB_NVVFX_SUPRERES_MODE, hinst, NULL);
-    SendMessage(lb_nvvfx_superres_mode, WM_SETFONT, (WPARAM)b_font, 0);
-    SendMessage(lb_nvvfx_superres_mode, WM_SETTEXT, 0, (LPARAM)LB_CX_NVVFX_SUPRERES_MODE);
-
-    cx_nvvfx_superres_mode = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, col * col_width + 68, cb_resize_y + 72, 145, 100, hwnd, (HMENU)ID_CX_NVVFX_SUPRERES_MODE, hinst, NULL);
-    SendMessage(cx_nvvfx_superres_mode, WM_SETFONT, (WPARAM)b_font, 0);
-    set_combo_item(cx_nvvfx_superres_mode, "0 - light", 0);
-    set_combo_item(cx_nvvfx_superres_mode, "1 - strong", 1);
-
-    // NVVFXの2行目
-    int y_pos = cb_resize_y + track_bar_delta_y * 4 + 8;
-
-    y_pos -= track_bar_delta_y / 4;
-    move_track_bar(y_pos, col, col_width, CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH, CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH+1, track_bar_delta_y, dialog_rc);
-    y_pos += track_bar_delta_y / 4;
-
-    // libplacebo(resize)もNGXに重ねて同じ位置から
-    int cx_y_pos = cb_resize_y + 72;
-    const CLFILTER_TRACKBAR_DATA tb_resize_pl[] = {
-    { &tb_resize_pl_clamp,    LB_TB_RESIZE_PL_CLAMP,    ID_TB_RESIZE_PL_CLAMP,      0,  100,  0, &cl_exdata.resize_pl_clamp    },
-    { &tb_resize_pl_taper,    LB_TB_RESIZE_PL_TAPER,    ID_TB_RESIZE_PL_TAPER,      0,  100,  0, &cl_exdata.resize_pl_taper    },
-    { &tb_resize_pl_blur,     LB_TB_RESIZE_PL_BLUR,     ID_TB_RESIZE_PL_BLUR,       0,  100,  0, &cl_exdata.resize_pl_blur     },
-    { &tb_resize_pl_antiring, LB_TB_RESIZE_PL_ANTIRING, ID_TB_RESIZE_PL_ANTIRING,   0,  100,  0, &cl_exdata.resize_pl_antiring },
-    { 0 }
-    };
-    create_trackbars_ex(hwnd, hinst, col * col_width + 8 + AVIUTL_1_10_OFFSET, cx_y_pos, track_bar_delta_y, tb_resize_pl);
-
-    // libplacebo(resize)とNVVFXの2行目の大きいほう
-    y_pos = std::max(y_pos, cx_y_pos + 8 + track_bar_delta_y / 4);
-    cx_y_pos = 0;
+    int y_pos = cb_row_start_y_pos;
+    auto filter_resize = create_resize(track_bar_delta_y, checkbox_idx, dialog_rc, b_font, hwnd, hinst, fp);
+    move_group(filter_resize.get(), y_pos, col, col_width);
+    g_filterControls.push_back(std::move(filter_resize));
 
     //colorspace
-    move_colorspace(y_pos, col, col_width, CLFILTER_CHECK_COLORSPACE_ENABLE, CLFILTER_CHECK_COLORSPACE_MAX, CLFILTER_TRACK_COLORSPACE_FIRST, CLFILTER_TRACK_COLORSPACE_MAX, track_bar_delta_y, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
+    auto filter_colorspace = create_colorspace(CLFILTER_CHECK_COLORSPACE_ENABLE, CLFILTER_CHECK_COLORSPACE_MAX, CLFILTER_TRACK_COLORSPACE_FIRST, CLFILTER_TRACK_COLORSPACE_MAX, track_bar_delta_y, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
+    move_group(filter_colorspace.get(), y_pos, col, col_width);
+    g_filterControls.push_back(std::move(filter_colorspace));
 
     //nnedi
     std::vector<CLCX_COMBOBOX> cx_list_nnedi = {
