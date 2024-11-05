@@ -452,6 +452,26 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilterBase>& filter
         //入力フレーム情報を更新
         inputFrame = param->frameOut;
     }
+    //libplacebo-deband
+    if (filterType == VppType::CL_LIBPLACEBO_DEBAND) {
+        if (!filter) {
+            //フィルタチェーンに追加
+            filter.reset(new RGYFilterLibplaceboDeband(m_cl));
+        }
+        std::shared_ptr<RGYFilterParamLibplaceboDeband> param(new RGYFilterParamLibplaceboDeband());
+        param->deband = m_prm.vpp.libplacebo_deband;
+        param->frameIn = inputFrame;
+        param->frameOut = inputFrame;
+        param->bOutOverwrite = false;
+        auto sts = filter->init(param, m_log);
+        if (sts != RGY_ERR_NONE) {
+            PrintMes(RGY_LOG_ERROR, _T("failed to init libplacebo-deband.\n"));
+            return sts;
+        }
+        //入力フレーム情報を更新
+        inputFrame = param->frameOut;
+    }
+
     return RGY_ERR_NONE;
 }
 

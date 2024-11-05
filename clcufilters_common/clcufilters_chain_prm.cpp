@@ -213,22 +213,23 @@ std::vector<VppType> clFilterChainParam::getFilterChain(const bool resizeRequire
     // 有効なフィルタだけを抽出
     std::vector<VppType> enabledFilterOrder;
     for (const auto filterType : allFilterOrder) {
-        if (  (vpp.colorspace.enable && filterType == VppType::CL_COLORSPACE)
-           || (vpp.nnedi.enable      && filterType == VppType::CL_NNEDI)
+        if (  (vpp.colorspace.enable               && filterType == VppType::CL_COLORSPACE)
+           || (vpp.nnedi.enable                    && filterType == VppType::CL_NNEDI)
            || (vppnv.nvvfxDenoise.enable           && filterType == VppType::NVVFX_DENOISE)
            || (vppnv.nvvfxArtifactReduction.enable && filterType == VppType::NVVFX_ARTIFACT_REDUCTION)
-           || (vpp.smooth.enable     && filterType == VppType::CL_DENOISE_SMOOTH)
-           || (vpp.dct.enable        && filterType == VppType::CL_DENOISE_DCT)
-           || (vpp.knn.enable        && filterType == VppType::CL_DENOISE_KNN)
-           || (vpp.nlmeans.enable    && filterType == VppType::CL_DENOISE_NLMEANS)
-           || (vpp.pmd.enable        && filterType == VppType::CL_DENOISE_PMD)
-           || (resizeRequired        && filterType == VppType::CL_RESIZE)
-           || (vpp.unsharp.enable    && filterType == VppType::CL_UNSHARP)
-           || (vpp.edgelevel.enable  && filterType == VppType::CL_EDGELEVEL)
-           || (vpp.warpsharp.enable  && filterType == VppType::CL_WARPSHARP)
-           || (vpp.tweak.enable      && filterType == VppType::CL_TWEAK)
-           || (vpp.deband.enable     && filterType == VppType::CL_DEBAND)
-           || (vppnv.ngxTrueHDR.enable && filterType == VppType::NGX_TRUEHDR)) {
+           || (vpp.smooth.enable                   && filterType == VppType::CL_DENOISE_SMOOTH)
+           || (vpp.dct.enable                      && filterType == VppType::CL_DENOISE_DCT)
+           || (vpp.knn.enable                      && filterType == VppType::CL_DENOISE_KNN)
+           || (vpp.nlmeans.enable                  && filterType == VppType::CL_DENOISE_NLMEANS)
+           || (vpp.pmd.enable                      && filterType == VppType::CL_DENOISE_PMD)
+           || (resizeRequired                      && filterType == VppType::CL_RESIZE)
+           || (vpp.unsharp.enable                  && filterType == VppType::CL_UNSHARP)
+           || (vpp.edgelevel.enable                && filterType == VppType::CL_EDGELEVEL)
+           || (vpp.warpsharp.enable                && filterType == VppType::CL_WARPSHARP)
+           || (vpp.tweak.enable                    && filterType == VppType::CL_TWEAK)
+           || (vpp.deband.enable                   && filterType == VppType::CL_DEBAND)
+           || (vpp.libplacebo_deband.enable        && filterType == VppType::CL_LIBPLACEBO_DEBAND)
+           || (vppnv.ngxTrueHDR.enable             && filterType == VppType::NGX_TRUEHDR)) {
             enabledFilterOrder.push_back(filterType);
         }
     }

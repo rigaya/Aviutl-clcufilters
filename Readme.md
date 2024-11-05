@@ -496,6 +496,42 @@ Non local meansを用いたノイズ除去フィルタ。
     毎フレーム使用する乱数を変更する。
 
 ---
+### バンディング低減 (libplacebo)  
+
+  [libplacebo](https://code.videolan.org/videolan/libplacebo)を使用したバンディング低減フィルタ。
+
+> [!NOTE]
+> thresholdは、QSV/NV/VCEEncの10倍の値で指定します。
+
+- **パラメータ**
+  - iterations=&lt;int&gt;  
+    イテレーション数。 (デフォルト=1, 0-)
+
+  - threshold=&lt;int&gt;  
+    カットオフ閾値。 (デフォルト=40, 0-)
+
+  - radius=&lt;float&gt;  
+    半径 (デフォルト=16.0, 0-)
+
+  - grain_y=&lt;float&gt;  
+    輝度用の追加ノイズ。 (デフォルト=6.0, 0-)
+
+  - grain_c=&lt;float&gt;  
+    色差用の追加ノイズ。 (デフォルト=grain_y, 0-)
+
+  - dither=&lt;string&gt;  
+    ディザリングモード、8bitのみ。
+    - none
+    - blue_noise (default)
+    - ordered_lut
+    - ordered_fixed
+    - white_noise
+
+  - lut_size=&lt;int&gt;  
+    ディザリング用のLUTのサイズ。 (デフォルト=64)  
+    ```2, 4, 8, 16, 32, 64, 128, 256 ```
+
+---
 ### NGX TrueHDR
 RTX Video SDKを使用したAIベースのSDR→HDR変換を行う。出力はcolormatrix BT.2020に変換される。使用時にはエンコーダ側で ```--colormatrix bt2020nc --colorprim bt2020 --transfer smpte2084``` の指定を推奨。
 

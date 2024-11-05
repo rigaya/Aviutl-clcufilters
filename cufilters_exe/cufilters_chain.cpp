@@ -591,6 +591,26 @@ RGY_ERR cuFilterChain::configureOneFilter(std::unique_ptr<RGYFilterBase>& filter
         //入力フレーム情報を更新
         inputFrame = param->frameOut;
     }
+    //libplacebo-deband
+    if (filterType == VppType::CL_LIBPLACEBO_DEBAND) {
+        if (!filter) {
+            //フィルタチェーンに追加
+            filter.reset(new NVEncFilterLibplaceboDeband());
+        }
+        std::shared_ptr<NVEncFilterParamLibplaceboDeband> param(new NVEncFilterParamLibplaceboDeband());
+        param->deband = m_prm.vpp.libplacebo_deband;
+        param->frameIn = inputFrame;
+        param->frameOut = inputFrame;
+        param->bOutOverwrite = false;
+        param->dx11 = m_cuDevice->dx11();
+        auto sts = filter->init(param, m_log);
+        if (sts != RGY_ERR_NONE) {
+            PrintMes(RGY_LOG_ERROR, _T("failed to init libplacebo-deband.\n"));
+            return sts;
+        }
+        //入力フレーム情報を更新
+        inputFrame = param->frameOut;
+    }
     //truehdr
     if (filterType == VppType::NGX_TRUEHDR) {
         if (!filter) {

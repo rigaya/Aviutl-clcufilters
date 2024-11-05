@@ -57,6 +57,7 @@ static const char *FILTER_NAME_EDGELEVEL      = _T("エッジレベル調整");
 static const char *FILTER_NAME_WARPSHARP      = _T("warpsharp");
 static const char *FILTER_NAME_TWEAK          = _T("色調補正");
 static const char *FILTER_NAME_DEBAND         = _T("バンディング低減");
+static const char *FILTER_NAME_LIBPLACEBO_DEBAND = _T("バンディング低減 (libplacebo)");
 static const char *FILTER_NAME_NGX_TRUEHDR    = _T("NGX TrueHDR");
 #else
 static const char *FILTER_NAME_COLORSPACE     = _T("colorspace");
@@ -74,6 +75,7 @@ static const char *FILTER_NAME_EDGELEVEL      = _T("edgelevel");
 static const char *FILTER_NAME_WARPSHARP      = _T("warpsharp");
 static const char *FILTER_NAME_TWEAK          = _T("tweak");
 static const char *FILTER_NAME_DEBAND         = _T("deband");
+static const char *FILTER_NAME_LIBPLACEBO_DEBAND = _T("deband (libplacebo)");
 static const char *FILTER_NAME_NGX_TRUEHDR    = _T("NGX TrueHDR");
 #endif
 
@@ -97,6 +99,7 @@ static const auto filterList = make_array<std::pair<const TCHAR*, VppType>>(
     FILTER_NAME(WARPSHARP),
     FILTER_NAME(TWEAK),
     FILTER_NAME(DEBAND),
+    FILTER_NAME(LIBPLACEBO_DEBAND),
     FILTER_NAME_NGX(TRUEHDR)
 );
 

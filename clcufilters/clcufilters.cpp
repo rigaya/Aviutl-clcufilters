@@ -160,6 +160,15 @@ enum {
     ID_TB_RESIZE_PL_TAPER = ID_TB_RESIZE_PL_CLAMP + 5,
     ID_TB_RESIZE_PL_BLUR = ID_TB_RESIZE_PL_TAPER + 5,
     ID_TB_RESIZE_PL_ANTIRING = ID_TB_RESIZE_PL_BLUR + 5,
+
+    ID_TB_LIBPLACEBO_DEBAND_ITERATIONS = ID_TB_RESIZE_PL_ANTIRING + 5,
+    ID_TB_LIBPLACEBO_DEBAND_THRESHOLD = ID_TB_LIBPLACEBO_DEBAND_ITERATIONS + 5,
+    ID_TB_LIBPLACEBO_DEBAND_RADIUS = ID_TB_LIBPLACEBO_DEBAND_THRESHOLD + 5,
+    ID_TB_LIBPLACEBO_DEBAND_GRAIN = ID_TB_LIBPLACEBO_DEBAND_RADIUS + 5,
+    ID_LB_LIBPLACEBO_DEBAND_DITHER = ID_TB_LIBPLACEBO_DEBAND_GRAIN + 5,
+    ID_CX_LIBPLACEBO_DEBAND_DITHER,
+    ID_LB_LIBPLACEBO_DEBAND_LUT_SIZE,
+    ID_CX_LIBPLACEBO_DEBAND_LUT_SIZE,
 };
 
 #pragma pack(1)
@@ -233,7 +242,14 @@ struct CLFILTER_EXDATA {
     int resize_pl_blur;
     int resize_pl_antiring;
 
-    char reserved[576];
+    int libplacebo_deband_iterations;
+    int libplacebo_deband_threshold;
+    int libplacebo_deband_radius;
+    int libplacebo_deband_grain;
+    int libplacebo_deband_dither;
+    int libplacebo_deband_lut_size;
+
+    char reserved[552];
 };
 # pragma pack()
 static const int extra_track_data_offset = 32;
@@ -297,6 +313,12 @@ static const char *LB_TB_RESIZE_PL_CLAMP = "clamp";
 static const char *LB_TB_RESIZE_PL_TAPER = "taper";
 static const char *LB_TB_RESIZE_PL_BLUR = "blur";
 static const char *LB_TB_RESIZE_PL_ANTIRING = "antiring";
+static const char *LB_TB_LIBPLACEBO_DEBAND_ITERATIONS = "iterations";
+static const char *LB_TB_LIBPLACEBO_DEBAND_THRESHOLD = "threshold";
+static const char *LB_TB_LIBPLACEBO_DEBAND_RADIUS = "radius";
+static const char *LB_TB_LIBPLACEBO_DEBAND_GRAIN = "grain";
+static const char *LB_CX_LIBPLACEBO_DEBAND_DITHER = "dither";
+static const char *LB_CX_LIBPLACEBO_DEBAND_LUT_SIZE = "LUT size";
 #else
 static const char *LB_WND_OPENCL_UNAVAIL = "Filter disabled, OpenCL could not be used.";
 static const char *LB_WND_OPENCL_AVAIL = "OpenCL Enabled";
@@ -336,6 +358,12 @@ static const char *LB_TB_RESIZE_PL_CLAMP = "clamp";
 static const char *LB_TB_RESIZE_PL_TAPER = "taper";
 static const char *LB_TB_RESIZE_PL_BLUR = "blur";
 static const char *LB_TB_RESIZE_PL_ANTIRING = "antiring";
+static const char *LB_TB_LIBPLACEBO_DEBAND_ITERATIONS = "iterations";
+static const char *LB_TB_LIBPLACEBO_DEBAND_THRESHOLD = "threshold";
+static const char *LB_TB_LIBPLACEBO_DEBAND_RADIUS = "radius";
+static const char *LB_TB_LIBPLACEBO_DEBAND_GRAIN = "grain";
+static const char *LB_CX_LIBPLACEBO_DEBAND_DITHER = "dither";
+static const char *LB_CX_LIBPLACEBO_DEBAND_LUT_SIZE = "LUT size";
 #endif
 
 //---------------------------------------------------------------------
@@ -463,7 +491,10 @@ enum {
     CLFILTER_TRACK_DEBAND_DITHER_C,
     CLFILTER_TRACK_DEBAND_MAX,
 
-    CLFILTER_TRACK_NNEDI_FIRST = CLFILTER_TRACK_DEBAND_MAX,
+    CLFILTER_TRACK_LIBPLACEBO_DEBAND_FIRST = CLFILTER_TRACK_DEBAND_MAX,
+    CLFILTER_TRACK_LIBPLACEBO_DEBAND_MAX = CLFILTER_TRACK_LIBPLACEBO_DEBAND_FIRST,
+
+    CLFILTER_TRACK_NNEDI_FIRST = CLFILTER_TRACK_LIBPLACEBO_DEBAND_MAX,
     CLFILTER_TRACK_NNEDI_MAX = CLFILTER_TRACK_NNEDI_FIRST,
 
     CLFILTER_TRACK_NGX_TRUEHDR_FIRST = CLFILTER_TRACK_NNEDI_MAX,
@@ -556,6 +587,7 @@ const TCHAR *check_name_ja[] = {
     "warpsharp", "マスクサイズ off:13x13, on:5x5", "色差マスク",
     "色調補正",
     "バンディング低減", "ブラー処理を先に", "毎フレーム乱数を生成",
+    "バンディング低減 (libplacebo)",
     "TrueHDR"
 };
 const TCHAR *check_name_en[] = {
@@ -578,6 +610,7 @@ const TCHAR *check_name_en[] = {
     "(sharp) warpsharp", "type [off:13x13, on:5x5]", "chroma",
     "tweak",
     "deband", "blurfirst", "rand_each_frame",
+    "libplacebo-deband",
     "TrueHDR"
 };
 static_assert(_countof(check_name_ja) == _countof(check_name_en), "CHECK_N check");
@@ -648,7 +681,10 @@ enum {
     CLFILTER_CHECK_DEBAND_RAND_EACH_FRAME,
     CLFILTER_CHECK_DEBAND_MAX,
 
-    CLFILTER_CHECK_TRUEHDR_ENABLE = CLFILTER_CHECK_DEBAND_MAX,
+    CLFILTER_CHECK_LIBPLACEBO_DEBAND_ENABLE = CLFILTER_CHECK_DEBAND_MAX,
+    CLFILTER_CHECK_LIBPLACEBO_DEBAND_MAX,
+
+    CLFILTER_CHECK_TRUEHDR_ENABLE = CLFILTER_CHECK_LIBPLACEBO_DEBAND_MAX,
     CLFILTER_CHECK_TRUEHDR_MAX,
 
     CLFILTER_CHECK_MAX = CLFILTER_CHECK_TRUEHDR_MAX,
@@ -675,6 +711,7 @@ int check_default[] = {
     0, 0, 0, // warpsharp
     0, // tweak
     0, 0, 0, // deband
+    0, // libplacebo-deband
     0 // TrueHDR
 };
 //  チェックボックスの数
@@ -818,6 +855,14 @@ static void cl_exdata_set_default() {
     cl_exdata.resize_pl_taper = (int)(resample.taper * 100.0f + 0.5f);
     cl_exdata.resize_pl_blur = (int)(resample.blur + 0.5f);
     cl_exdata.resize_pl_antiring = (int)(resample.antiring * 100.0f + 0.5f);
+
+    VppLibplaceboDeband libplaceboDeband;
+    cl_exdata.libplacebo_deband_iterations = libplaceboDeband.iterations;
+    cl_exdata.libplacebo_deband_threshold = (int)(libplaceboDeband.threshold * 10.0f + 0.5f);
+    cl_exdata.libplacebo_deband_radius = (int)(libplaceboDeband.radius + 0.5f);
+    cl_exdata.libplacebo_deband_grain = (int)(libplaceboDeband.grainY + 0.5f);
+    cl_exdata.libplacebo_deband_dither = (int)libplaceboDeband.dither;
+    cl_exdata.libplacebo_deband_lut_size = libplaceboDeband.lut_size;
 }
 
 //---------------------------------------------------------------------
@@ -910,6 +955,15 @@ static CLFILTER_TRACKBAR tb_resize_pl_taper;
 static CLFILTER_TRACKBAR tb_resize_pl_blur;
 static CLFILTER_TRACKBAR tb_resize_pl_antiring;
 
+static CLFILTER_TRACKBAR tb_libplacebo_deband_iterations;
+static CLFILTER_TRACKBAR tb_libplacebo_deband_threshold;
+static CLFILTER_TRACKBAR tb_libplacebo_deband_radius;
+static CLFILTER_TRACKBAR tb_libplacebo_deband_grain;
+static HWND lb_libplacebo_deband_dither;
+static HWND cx_libplacebo_deband_dither;
+static HWND lb_libplacebo_deband_lut_size;
+static HWND cx_libplacebo_deband_lut_size;
+
 static void set_cl_exdata(const HWND hwnd, const int value) {
     if (hwnd == cx_opencl_device) {
         cl_exdata.cl_dev_id.i = value;
@@ -975,6 +1029,10 @@ static void set_cl_exdata(const HWND hwnd, const int value) {
         cl_exdata.warpsharp_blur = value;
     } else if (hwnd == cx_deband_sample) {
         cl_exdata.deband_sample = value;
+    } else if (hwnd == cx_libplacebo_deband_dither) {
+        cl_exdata.libplacebo_deband_dither = value;
+    } else if (hwnd == cx_libplacebo_deband_lut_size) {
+        cl_exdata.libplacebo_deband_lut_size = value;
     }
 }
 
@@ -1379,6 +1437,8 @@ void update_cx(FILTER *fp) {
     select_combo_item(cx_unsharp_radius,              cl_exdata.unsharp_radius);
     select_combo_item(cx_warpsharp_blur,              cl_exdata.warpsharp_blur);
     select_combo_item(cx_deband_sample,               cl_exdata.deband_sample);
+    select_combo_item(cx_libplacebo_deband_dither,    cl_exdata.libplacebo_deband_dither);
+    select_combo_item(cx_libplacebo_deband_lut_size,  cl_exdata.libplacebo_deband_lut_size);
 }
 
 static void init_filter_order_list(FILTER *fp) {
@@ -2732,6 +2792,21 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     move_group(fitler_deband.get(), y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(fitler_deband));
 
+    //libplacebo-deband
+    std::vector<CLCX_COMBOBOX> cx_list_libplacebo_deband = {
+        CLCX_COMBOBOX(cx_libplacebo_deband_dither, ID_CX_LIBPLACEBO_DEBAND_DITHER, lb_libplacebo_deband_dither, ID_LB_LIBPLACEBO_DEBAND_DITHER, LB_CX_LIBPLACEBO_DEBAND_DITHER, list_vpp_libplacebo_deband_dither_mode),
+        CLCX_COMBOBOX(cx_libplacebo_deband_lut_size, ID_CX_LIBPLACEBO_DEBAND_LUT_SIZE, lb_libplacebo_deband_lut_size, ID_LB_LIBPLACEBO_DEBAND_LUT_SIZE, LB_CX_LIBPLACEBO_DEBAND_LUT_SIZE, list_vpp_libplacebo_deband_lut_size)
+    };
+    const std::vector<CLFILTER_TRACKBAR_DATA> tb_libplacebo_deband = {
+        { &tb_libplacebo_deband_iterations, LB_TB_LIBPLACEBO_DEBAND_ITERATIONS, ID_TB_LIBPLACEBO_DEBAND_ITERATIONS, 1,  16,  1, &cl_exdata.libplacebo_deband_iterations },
+        { &tb_libplacebo_deband_threshold,  LB_TB_LIBPLACEBO_DEBAND_THRESHOLD,  ID_TB_LIBPLACEBO_DEBAND_THRESHOLD,  0, 500, 40, &cl_exdata.libplacebo_deband_threshold  },
+        { &tb_libplacebo_deband_radius,     LB_TB_LIBPLACEBO_DEBAND_RADIUS,     ID_TB_LIBPLACEBO_DEBAND_RADIUS,     1, 128, 16, &cl_exdata.libplacebo_deband_radius     },
+        { &tb_libplacebo_deband_grain,      LB_TB_LIBPLACEBO_DEBAND_GRAIN,      ID_TB_LIBPLACEBO_DEBAND_GRAIN,      0, 255,  6, &cl_exdata.libplacebo_deband_grain      }
+    };
+    auto filter_libplacebo_deband = create_group(CLFILTER_CHECK_LIBPLACEBO_DEBAND_ENABLE, CLFILTER_CHECK_LIBPLACEBO_DEBAND_MAX, CLFILTER_TRACK_LIBPLACEBO_DEBAND_FIRST, CLFILTER_TRACK_LIBPLACEBO_DEBAND_MAX, track_bar_delta_y, tb_libplacebo_deband, ADD_CX_AFTER_TRACK, cx_list_libplacebo_deband, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
+    move_group(filter_libplacebo_deband.get(), y_pos, col, col_width);
+    g_filterControls[col].push_back(std::move(filter_libplacebo_deband));
+
     //TrueHDR
     std::vector<CLCX_COMBOBOX> cx_list_ngx_truehdr = { };
     const std::vector<CLFILTER_TRACKBAR_DATA> tb_truehdr = {
@@ -2978,6 +3053,16 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp, const FILTER_PRO
     prm.vpp.deband.seed          = 1234;
     prm.vpp.deband.blurFirst     = fp->check[CLFILTER_CHECK_DEBAND_BLUR_FIRST] != 0;
     prm.vpp.deband.randEachFrame = fp->check[CLFILTER_CHECK_DEBAND_RAND_EACH_FRAME] != 0;
+
+    //libplacebo-deband
+    prm.vpp.libplacebo_deband.enable = fp->check[CLFILTER_CHECK_LIBPLACEBO_DEBAND_ENABLE] != 0;
+    prm.vpp.libplacebo_deband.iterations = cl_exdata.libplacebo_deband_iterations;
+    prm.vpp.libplacebo_deband.threshold = cl_exdata.libplacebo_deband_threshold * 0.1f;
+    prm.vpp.libplacebo_deband.radius = (float)cl_exdata.libplacebo_deband_radius;
+    prm.vpp.libplacebo_deband.grainY = (float)cl_exdata.libplacebo_deband_grain;
+    prm.vpp.libplacebo_deband.grainC = (float)cl_exdata.libplacebo_deband_grain;
+    prm.vpp.libplacebo_deband.dither = (VppLibplaceboDebandDitherMode)cl_exdata.libplacebo_deband_dither;
+    prm.vpp.libplacebo_deband.lut_size = cl_exdata.libplacebo_deband_lut_size;
 
     //TrueHDR
     prm.vppnv.ngxTrueHDR.enable       = fp->check[CLFILTER_CHECK_TRUEHDR_ENABLE] != 0;
