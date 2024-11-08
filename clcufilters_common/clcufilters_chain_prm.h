@@ -43,6 +43,7 @@ static const int FILTER_NAME_MAX_LENGTH = 1024;
 
 #if !CLFILTERS_EN
 static const char *FILTER_NAME_COLORSPACE     = _T("色空間変換");
+static const char *FILTER_NAME_LIBPLACEBO_TONEMAP = _T("トーンマッピング (libplacebo)");
 static const char *FILTER_NAME_NNEDI          = _T("nnedi");
 static const char *FILTER_NAME_NVVFX_DENOISE  = _T("ノイズ除去 (nvvfx-denoise)");
 static const char *FILTER_NAME_NVVFX_ARTIFACT_REDUCTION = _T("ノイズ除去 (nvvfx-artifact-reduction)");
@@ -61,6 +62,7 @@ static const char *FILTER_NAME_LIBPLACEBO_DEBAND = _T("バンディング低減 
 static const char *FILTER_NAME_NGX_TRUEHDR    = _T("NGX TrueHDR");
 #else
 static const char *FILTER_NAME_COLORSPACE     = _T("colorspace");
+static const char *FILTER_NAME_LIBPLACEBO_TONEMAP = _T("tonemapping (libplacebo)");
 static const char *FILTER_NAME_NNEDI          = _T("nnedi");
 static const char *FILTER_NAME_NVVFX_DENOISE  = _T("nvvfx-denoise");
 static const char *FILTER_NAME_NVVFX_ARTIFACT_REDUCTION = _T("nvvfx-artifact-reduction");
@@ -85,6 +87,7 @@ static const char *FILTER_NAME_NGX_TRUEHDR    = _T("NGX TrueHDR");
 
 static const auto filterList = make_array<std::pair<const TCHAR*, VppType>>(
     FILTER_NAME(COLORSPACE),
+    FILTER_NAME(LIBPLACEBO_TONEMAP),
     FILTER_NAME(NNEDI),
     FILTER_NAME_NVVFX(DENOISE),
     FILTER_NAME_NVVFX(ARTIFACT_REDUCTION),

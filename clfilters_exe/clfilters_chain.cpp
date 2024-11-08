@@ -211,6 +211,25 @@ RGY_ERR clFilterChain::configureOneFilter(std::unique_ptr<RGYFilterBase>& filter
         //入力フレーム情報を更新
         inputFrame = param->frameOut;
     }
+    // libplacebo-tonemap
+    if (filterType == VppType::CL_LIBPLACEBO_TONEMAP) {
+        if (!filter) {
+            //フィルタチェーンに追加
+            filter.reset(new RGYFilterLibplaceboToneMapping(m_cl));
+        }
+        std::shared_ptr<RGYFilterParamLibplaceboToneMapping> param(new RGYFilterParamLibplaceboToneMapping());
+        param->toneMapping = m_prm.vpp.libplacebo_tonemapping;
+        param->frameIn = inputFrame;
+        param->frameOut = inputFrame;
+        param->bOutOverwrite = false;
+        auto sts = filter->init(param, m_log);
+        if (sts != RGY_ERR_NONE) {
+            PrintMes(RGY_LOG_ERROR, _T("failed to init libplacebo-tonemap.\n"));
+            return sts;
+        }
+        //入力フレーム情報を更新
+        inputFrame = param->frameOut;
+    }
     // nnedi
     if (filterType == VppType::CL_NNEDI) {
         if (!filter) {

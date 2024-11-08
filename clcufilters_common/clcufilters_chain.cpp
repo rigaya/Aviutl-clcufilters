@@ -94,7 +94,8 @@ clcuFilterChain::clcuFilterChain() :
     m_frameOut(),
     m_filters(),
     m_convert_yc48_to_yuv444_16(),
-    m_convert_yuv444_16_to_yc48() {
+    m_convert_yuv444_16_to_yc48(),
+    m_sharedMessage(nullptr) {
 
 }
 

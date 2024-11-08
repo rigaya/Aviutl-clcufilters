@@ -169,6 +169,43 @@ enum {
     ID_CX_LIBPLACEBO_DEBAND_DITHER,
     ID_LB_LIBPLACEBO_DEBAND_LUT_SIZE,
     ID_CX_LIBPLACEBO_DEBAND_LUT_SIZE,
+
+    ID_LB_LIBPLACEBO_TONEMAP_SRC_CSP,
+    ID_CX_LIBPLACEBO_TONEMAP_SRC_CSP,
+    ID_LB_LIBPLACEBO_TONEMAP_DST_CSP,
+    ID_CX_LIBPLACEBO_TONEMAP_DST_CSP,
+    ID_TB_LIBPLACEBO_TONEMAP_SRC_MAX,
+    ID_TB_LIBPLACEBO_TONEMAP_SRC_MIN = ID_TB_LIBPLACEBO_TONEMAP_SRC_MAX + 5,
+    ID_TB_LIBPLACEBO_TONEMAP_DST_MAX = ID_TB_LIBPLACEBO_TONEMAP_SRC_MIN + 5,
+    ID_TB_LIBPLACEBO_TONEMAP_DST_MIN = ID_TB_LIBPLACEBO_TONEMAP_DST_MAX + 5,
+    ID_TB_LIBPLACEBO_TONEMAP_SMOOTH_PERIOD = ID_TB_LIBPLACEBO_TONEMAP_DST_MIN + 5,
+    ID_TB_LIBPLACEBO_TONEMAP_SCENE_THRESHOLD_LOW = ID_TB_LIBPLACEBO_TONEMAP_SMOOTH_PERIOD + 5,
+    ID_TB_LIBPLACEBO_TONEMAP_SCENE_THRESHOLD_HIGH = ID_TB_LIBPLACEBO_TONEMAP_SCENE_THRESHOLD_LOW + 5,
+    ID_TB_LIBPLACEBO_TONEMAP_PERCENTILE = ID_TB_LIBPLACEBO_TONEMAP_SCENE_THRESHOLD_HIGH + 5,
+    ID_TB_LIBPLACEBO_TONEMAP_BLACK_CUTOFF = ID_TB_LIBPLACEBO_TONEMAP_PERCENTILE + 5,
+    ID_LB_LIBPLACEBO_TONEMAP_GAMUT_MAPPING = ID_TB_LIBPLACEBO_TONEMAP_BLACK_CUTOFF + 5,
+    ID_CX_LIBPLACEBO_TONEMAP_GAMUT_MAPPING,
+    ID_LB_LIBPLACEBO_TONEMAP_FUNCTION,
+    ID_CX_LIBPLACEBO_TONEMAP_FUNCTION,
+    //ID_TB_LIBPLACEBO_TONEMAP_KNEE_ADAPTATION,
+    //ID_TB_LIBPLACEBO_TONEMAP_KNEE_MIN = ID_TB_LIBPLACEBO_TONEMAP_KNEE_ADAPTATION + 5,
+    //ID_TB_LIBPLACEBO_TONEMAP_KNEE_MAX = ID_TB_LIBPLACEBO_TONEMAP_KNEE_MIN + 5,
+    //ID_TB_LIBPLACEBO_TONEMAP_KNEE_DEFAULT = ID_TB_LIBPLACEBO_TONEMAP_KNEE_MAX + 5,
+    //ID_TB_LIBPLACEBO_TONEMAP_KNEE_OFFSET = ID_TB_LIBPLACEBO_TONEMAP_KNEE_DEFAULT + 5,
+    //ID_TB_LIBPLACEBO_TONEMAP_SLOPE_TUNING = ID_TB_LIBPLACEBO_TONEMAP_KNEE_OFFSET + 5,
+    //ID_TB_LIBPLACEBO_TONEMAP_SLOPE_OFFSET = ID_TB_LIBPLACEBO_TONEMAP_SLOPE_TUNING + 5,
+    //ID_TB_LIBPLACEBO_TONEMAP_SPLINE_CONTRAST = ID_TB_LIBPLACEBO_TONEMAP_SLOPE_OFFSET + 5,
+    //ID_TB_LIBPLACEBO_TONEMAP_REINHARD_CONTRAST = ID_TB_LIBPLACEBO_TONEMAP_SPLINE_CONTRAST + 5,
+    //ID_TB_LIBPLACEBO_TONEMAP_LINEAR_KNEE = ID_TB_LIBPLACEBO_TONEMAP_REINHARD_CONTRAST + 5,
+    //ID_TB_LIBPLACEBO_TONEMAP_EXPOSURE = ID_TB_LIBPLACEBO_TONEMAP_LINEAR_KNEE + 5,
+    ID_LB_LIBPLACEBO_TONEMAP_METADATA,
+    ID_CX_LIBPLACEBO_TONEMAP_METADATA,
+    ID_TB_LIBPLACEBO_TONEMAP_CONTRAST_RECOVERY = ID_CX_LIBPLACEBO_TONEMAP_METADATA + 5,
+    ID_TB_LIBPLACEBO_TONEMAP_CONTRAST_SMOOTHNESS = ID_TB_LIBPLACEBO_TONEMAP_CONTRAST_RECOVERY + 5,
+    ID_LB_LIBPLACEBO_TONEMAP_DST_PL_TRANSFER,
+    ID_CX_LIBPLACEBO_TONEMAP_DST_PL_TRANSFER,
+    ID_LB_LIBPLACEBO_TONEMAP_DST_PL_COLORPRIM,
+    ID_CX_LIBPLACEBO_TONEMAP_DST_PL_COLORPRIM,
 };
 
 #pragma pack(1)
@@ -249,7 +286,26 @@ struct CLFILTER_EXDATA {
     int libplacebo_deband_dither;
     int libplacebo_deband_lut_size;
 
-    char reserved[552];
+    int libplacebo_tonemap_src_csp;
+    int libplacebo_tonemap_dst_csp;
+    int libplacebo_tonemap_src_max;
+    int libplacebo_tonemap_src_min;
+    int libplacebo_tonemap_dst_max;
+    int libplacebo_tonemap_dst_min;
+    int libplacebo_tonemap_smooth_period;
+    int libplacebo_tonemap_scene_threshold_low;
+    int libplacebo_tonemap_scene_threshold_high;
+    int libplacebo_tonemap_percentile;
+    int libplacebo_tonemap_black_cutoff;
+    int libplacebo_tonemap_gamut_mapping;
+    int libplacebo_tonemap_function;
+    int libplacebo_tonemap_metadata;
+    int libplacebo_tonemap_contrast_recovery;
+    int libplacebo_tonemap_contrast_smoothness;
+    int libplacebo_tonemap_dst_pl_transfer;
+    int libplacebo_tonemap_dst_pl_colorprim;
+
+    char reserved[480];
 };
 # pragma pack()
 static const int extra_track_data_offset = 32;
@@ -319,6 +375,24 @@ static const char *LB_TB_LIBPLACEBO_DEBAND_RADIUS = "radius";
 static const char *LB_TB_LIBPLACEBO_DEBAND_GRAIN = "grain";
 static const char *LB_CX_LIBPLACEBO_DEBAND_DITHER = "dither";
 static const char *LB_CX_LIBPLACEBO_DEBAND_LUT_SIZE = "LUT size";
+static const char *LB_CX_LIBPLACEBO_TONEMAP_SRC_CSP = "src csp";
+static const char *LB_CX_LIBPLACEBO_TONEMAP_DST_CSP = "dst csp";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_SRC_MAX = "src max";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_SRC_MIN = "src min";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_DST_MAX = "dst max";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_DST_MIN = "dst min";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_SMOOTH_PERIOD = "smooth period";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_SCENE_THRESHOLD_LOW = "scene th_low";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_SCENE_THRESHOLD_HIGH = "scene th_high";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_PERCENTILE = "percentile";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_BLACK_CUTOFF = "black cutoff";
+static const char *LB_CX_LIBPLACEBO_TONEMAP_GAMUT_MAPPING = "gamut";
+static const char *LB_CX_LIBPLACEBO_TONEMAP_FUNCTION = "function";
+static const char *LB_CX_LIBPLACEBO_TONEMAP_METADATA = "metadata";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_CONTRAST_RECOVERY = "contrast recover";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_CONTRAST_SMOOTHNESS = "contrast smooth";
+static const char *LB_CX_LIBPLACEBO_TONEMAP_DST_PL_TRANSFER = "transfer";
+static const char *LB_CX_LIBPLACEBO_TONEMAP_DST_PL_COLORPRIM = "colorprim";
 #else
 static const char *LB_WND_OPENCL_UNAVAIL = "Filter disabled, OpenCL could not be used.";
 static const char *LB_WND_OPENCL_AVAIL = "OpenCL Enabled";
@@ -364,6 +438,24 @@ static const char *LB_TB_LIBPLACEBO_DEBAND_RADIUS = "radius";
 static const char *LB_TB_LIBPLACEBO_DEBAND_GRAIN = "grain";
 static const char *LB_CX_LIBPLACEBO_DEBAND_DITHER = "dither";
 static const char *LB_CX_LIBPLACEBO_DEBAND_LUT_SIZE = "LUT size";
+static const char *LB_CX_LIBPLACEBO_TONEMAP_SRC_CSP = "src csp";
+static const char *LB_CX_LIBPLACEBO_TONEMAP_DST_CSP = "dst csp";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_SRC_MAX = "src max";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_SRC_MIN = "src min";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_DST_MAX = "dst max";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_DST_MIN = "dst min";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_SMOOTH_PERIOD = "smooth period";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_SCENE_THRESHOLD_LOW = "scene th_low";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_SCENE_THRESHOLD_HIGH = "scene th_high";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_PERCENTILE = "percentile";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_BLACK_CUTOFF = "black cutoff";
+static const char *LB_CX_LIBPLACEBO_TONEMAP_GAMUT_MAPPING = "gamut";
+static const char *LB_CX_LIBPLACEBO_TONEMAP_FUNCTION = "function";
+static const char *LB_CX_LIBPLACEBO_TONEMAP_METADATA = "metadata";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_CONTRAST_RECOVERY = "contrast recover";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_CONTRAST_SMOOTHNESS = "contrast smooth";
+static const char *LB_CX_LIBPLACEBO_TONEMAP_DST_PL_TRANSFER = "transfer";
+static const char *LB_CX_LIBPLACEBO_TONEMAP_DST_PL_COLORPRIM = "colorprim";
 #endif
 
 //---------------------------------------------------------------------
@@ -427,7 +519,10 @@ enum {
 #endif //#if ENABLE_HDR2SDR_DESAT
     CLFILTER_TRACK_COLORSPACE_MAX,
 
-    CLFILTER_TRACK_NVVFX_DENOISE_FIRST = CLFILTER_TRACK_COLORSPACE_MAX,
+    CLFILTER_TRACK_LIBPLACEBO_TONEMAP_FIRST = CLFILTER_TRACK_COLORSPACE_MAX,
+    CLFILTER_TRACK_LIBPLACEBO_TONEMAP_MAX = CLFILTER_TRACK_LIBPLACEBO_TONEMAP_FIRST,
+
+    CLFILTER_TRACK_NVVFX_DENOISE_FIRST = CLFILTER_TRACK_LIBPLACEBO_TONEMAP_MAX,
     CLFILTER_TRACK_NVVFX_DENOISE_MAX = CLFILTER_TRACK_NVVFX_DENOISE_FIRST,
 
     CLFILTER_TRACK_NVVFX_ARTIFACT_REDUCTION_FIRST = CLFILTER_TRACK_NVVFX_DENOISE_MAX,
@@ -574,6 +669,7 @@ const TCHAR *check_name_ja[] = {
     "ファイルに出力", // log to file
     "リサイズ",
     "色空間変換", "matrix", "colorprim", "transfer", "range",
+    "tonemap (libplacebo)",
     "インタレ解除 (nnedi)",
     "ノイズ除去 (nvvfx-denoise)",
     "ノイズ除去 (nvvfx-artifact-reduction)",
@@ -597,6 +693,7 @@ const TCHAR *check_name_en[] = {
     "log to file", // log to file
     "resize",
     "colorspace", "matrix", "colorprim", "transfer", "range",
+    "libplacebo-tonemap",
     "(deint) nnedi",
     "(denoise) nvvfx-denoise",
     "(denoise) nvvfx-artifact-reduction",
@@ -638,7 +735,10 @@ enum {
     CLFILTER_CHECK_COLORSPACE_RANGE_ENABLE,
     CLFILTER_CHECK_COLORSPACE_MAX,
 
-    CLFILTER_CHECK_NNEDI_ENABLE = CLFILTER_CHECK_COLORSPACE_MAX,
+    CLFILTER_CHECK_LIBPLACEBO_TONEMAP_ENABLE = CLFILTER_CHECK_COLORSPACE_MAX,
+    CLFILTER_CHECK_LIBPLACEBO_TONEMAP_MAX,
+
+    CLFILTER_CHECK_NNEDI_ENABLE = CLFILTER_CHECK_LIBPLACEBO_TONEMAP_MAX,
     CLFILTER_CHECK_NNEDI_MAX,
 
     CLFILTER_CHECK_NVVFX_DENOISE_ENABLE = CLFILTER_CHECK_NNEDI_MAX,
@@ -698,6 +798,7 @@ int check_default[] = {
     0, // log to file
     0, // resize
     0, 0, 0, 0, 0, // colorspace
+    0, //libpalcebo-tonemap
     0, //nnedi
     0, // nvvfx-denoise
     0, // nvvfx-artifact-reduction
@@ -863,6 +964,26 @@ static void cl_exdata_set_default() {
     cl_exdata.libplacebo_deband_grain = (int)(libplaceboDeband.grainY + 0.5f);
     cl_exdata.libplacebo_deband_dither = (int)libplaceboDeband.dither;
     cl_exdata.libplacebo_deband_lut_size = libplaceboDeband.lut_size;
+
+    VppLibplaceboToneMapping libplaceboToneMapping;
+    cl_exdata.libplacebo_tonemap_src_csp = (int)libplaceboToneMapping.src_csp;
+    cl_exdata.libplacebo_tonemap_dst_csp = (int)libplaceboToneMapping.dst_csp;
+    cl_exdata.libplacebo_tonemap_src_max = (int)(libplaceboToneMapping.src_max + 0.5f);
+    cl_exdata.libplacebo_tonemap_src_min = (int)(libplaceboToneMapping.src_min + 0.5f);
+    cl_exdata.libplacebo_tonemap_dst_max = (int)(libplaceboToneMapping.dst_max + 0.5f);
+    cl_exdata.libplacebo_tonemap_dst_min = (int)(libplaceboToneMapping.dst_min + 0.5f);
+    cl_exdata.libplacebo_tonemap_smooth_period = (int)(libplaceboToneMapping.smooth_period + 0.5f);
+    cl_exdata.libplacebo_tonemap_scene_threshold_low = (int)(libplaceboToneMapping.scene_threshold_low * 10.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_scene_threshold_high = (int)(libplaceboToneMapping.scene_threshold_high * 10.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_percentile = (int)(libplaceboToneMapping.percentile * 10.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_black_cutoff = (int)(libplaceboToneMapping.black_cutoff + 0.5f);
+    cl_exdata.libplacebo_tonemap_gamut_mapping = (int)libplaceboToneMapping.gamut_mapping;
+    cl_exdata.libplacebo_tonemap_function = (int)libplaceboToneMapping.tonemapping_function;
+    cl_exdata.libplacebo_tonemap_metadata = (int)libplaceboToneMapping.metadata;
+    cl_exdata.libplacebo_tonemap_contrast_recovery = (int)(libplaceboToneMapping.contrast_recovery * 10.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_contrast_smoothness = (int)(libplaceboToneMapping.contrast_smoothness * 10.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_dst_pl_transfer = (int)libplaceboToneMapping.dst_pl_transfer;
+    cl_exdata.libplacebo_tonemap_dst_pl_colorprim = (int)libplaceboToneMapping.dst_pl_colorprim;
 }
 
 //---------------------------------------------------------------------
@@ -964,6 +1085,32 @@ static HWND cx_libplacebo_deband_dither;
 static HWND lb_libplacebo_deband_lut_size;
 static HWND cx_libplacebo_deband_lut_size;
 
+static HWND lb_libplacebo_tonemap_src_csp;
+static HWND cx_libplacebo_tonemap_src_csp;
+static HWND lb_libplacebo_tonemap_dst_csp;
+static HWND cx_libplacebo_tonemap_dst_csp;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_src_max;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_src_min;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_dst_max;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_dst_min;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_smooth_period;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_scene_threshold_low;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_scene_threshold_high;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_percentile;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_black_cutoff;
+static HWND lb_libplacebo_tonemap_gamut_mapping;
+static HWND cx_libplacebo_tonemap_gamut_mapping;
+static HWND lb_libplacebo_tonemap_function;
+static HWND cx_libplacebo_tonemap_function;
+static HWND lb_libplacebo_tonemap_metadata;
+static HWND cx_libplacebo_tonemap_metadata;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_contrast_recovery;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_contrast_smoothness;
+static HWND lb_libplacebo_tonemap_dst_pl_transfer;
+static HWND cx_libplacebo_tonemap_dst_pl_transfer;
+static HWND lb_libplacebo_tonemap_dst_pl_colorprim;
+static HWND cx_libplacebo_tonemap_dst_pl_colorprim;
+
 static void set_cl_exdata(const HWND hwnd, const int value) {
     if (hwnd == cx_opencl_device) {
         cl_exdata.cl_dev_id.i = value;
@@ -1033,6 +1180,20 @@ static void set_cl_exdata(const HWND hwnd, const int value) {
         cl_exdata.libplacebo_deband_dither = value;
     } else if (hwnd == cx_libplacebo_deband_lut_size) {
         cl_exdata.libplacebo_deband_lut_size = value;
+    } else if (hwnd == cx_libplacebo_tonemap_src_csp) {
+        cl_exdata.libplacebo_tonemap_src_csp = value;
+    } else if (hwnd == cx_libplacebo_tonemap_dst_csp) {
+        cl_exdata.libplacebo_tonemap_dst_csp = value;
+    } else if (hwnd == cx_libplacebo_tonemap_gamut_mapping) {
+        cl_exdata.libplacebo_tonemap_gamut_mapping = value;
+    } else if (hwnd == cx_libplacebo_tonemap_function) {
+        cl_exdata.libplacebo_tonemap_function = value;
+    } else if (hwnd == cx_libplacebo_tonemap_metadata) {
+        cl_exdata.libplacebo_tonemap_metadata = value;
+    } else if (hwnd == cx_libplacebo_tonemap_dst_pl_transfer) {
+        cl_exdata.libplacebo_tonemap_dst_pl_transfer = value;
+    } else if (hwnd == cx_libplacebo_tonemap_dst_pl_colorprim) {
+        cl_exdata.libplacebo_tonemap_dst_pl_colorprim = value;
     }
 }
 
@@ -1439,6 +1600,13 @@ void update_cx(FILTER *fp) {
     select_combo_item(cx_deband_sample,               cl_exdata.deband_sample);
     select_combo_item(cx_libplacebo_deband_dither,    cl_exdata.libplacebo_deband_dither);
     select_combo_item(cx_libplacebo_deband_lut_size,  cl_exdata.libplacebo_deband_lut_size);
+    select_combo_item(cx_libplacebo_tonemap_src_csp,           cl_exdata.libplacebo_tonemap_src_csp);
+    select_combo_item(cx_libplacebo_tonemap_dst_csp,           cl_exdata.libplacebo_tonemap_dst_csp);
+    select_combo_item(cx_libplacebo_tonemap_gamut_mapping,     cl_exdata.libplacebo_tonemap_gamut_mapping);
+    select_combo_item(cx_libplacebo_tonemap_function,          cl_exdata.libplacebo_tonemap_function);
+    select_combo_item(cx_libplacebo_tonemap_metadata,          cl_exdata.libplacebo_tonemap_metadata);
+    select_combo_item(cx_libplacebo_tonemap_dst_pl_transfer,   cl_exdata.libplacebo_tonemap_dst_pl_transfer);
+    select_combo_item(cx_libplacebo_tonemap_dst_pl_colorprim,  cl_exdata.libplacebo_tonemap_dst_pl_colorprim);
 }
 
 static void init_filter_order_list(FILTER *fp) {
@@ -1530,7 +1698,7 @@ static void update_cuda_enable(FILTER *fp) {
 static void update_resize_algo_params(FILTER *fp) {
     const int resize_nvvfx_superres = (RGY_VPP_RESIZE_ALGO)cl_exdata.resize_algo == RGY_VPP_RESIZE_NVVFX_SUPER_RES ? 1 : 0;
     const int resize_ngx_vsr_quality = (RGY_VPP_RESIZE_ALGO)cl_exdata.resize_algo == RGY_VPP_RESIZE_NGX_VSR ? 1 : 0;
-    const bool resize_libplacebo = isLibplaceboResizeFiter((RGY_VPP_RESIZE_ALGO)cl_exdata.resize_algo);
+    const int resize_libplacebo = isLibplaceboResizeFiter((RGY_VPP_RESIZE_ALGO)cl_exdata.resize_algo) ? 1 : 0;
     if (g_resize_nvvfx_superres != resize_nvvfx_superres) {
         set_track_bar_show_hide(CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH, resize_nvvfx_superres);
         ShowWindow(lb_nvvfx_superres_mode, resize_nvvfx_superres ? SW_SHOW : SW_HIDE);
@@ -1547,6 +1715,7 @@ static void update_resize_algo_params(FILTER *fp) {
         set_track_bar_show_hide(tb_resize_pl_taper, resize_libplacebo);
         set_track_bar_show_hide(tb_resize_pl_blur, resize_libplacebo);
         set_track_bar_show_hide(tb_resize_pl_antiring, resize_libplacebo);
+        g_resize_libplacebo = resize_libplacebo;
     }
 }
 
@@ -2091,13 +2260,13 @@ void add_combobox(HWND& hwnd_cx, int id_cx, HWND& hwnd_lb, int id_lb, const char
 }
 
 void update_filter_enable(HWND hwnd, const size_t icol_change) {
-    const int disabled_filter_y_size = 36; // チェックボックスだけの高さを加算
+    const int disabled_filter_y_size = 42; // チェックボックスだけの高さを加算
     const int cb_row_start_y_pos = 8 + 28;
     int y_pos = cb_row_start_y_pos;
     // 変更対象の列のフィルタの高さ調整
     for (auto& filterControl : g_filterControls[icol_change]) {
         // リサイズはややこしいイベントが多いので処理しない
-        if (filterControl->check_min == CLFILTER_CHECK_RESIZE_ENABLE) {
+        if (false && filterControl->check_min == CLFILTER_CHECK_RESIZE_ENABLE) {
             y_pos += filterControl->y_size; // 常にこのサイズを取る
         } else {
             // フィルタの有効/無効を確認
@@ -2121,7 +2290,7 @@ void update_filter_enable(HWND hwnd, const size_t icol_change) {
         y_pos = cb_row_start_y_pos;
         if (icol != icol_change) {
             for (auto& filterControl : g_filterControls[icol]) {
-                const int enable = filterControl->check_min == CLFILTER_CHECK_RESIZE_ENABLE
+                const int enable = (false && filterControl->check_min == CLFILTER_CHECK_RESIZE_ENABLE)
                     || SendMessage(filterControl->controls[0].hwnd, BM_GETCHECK, 0, 0);
                 y_pos += enable ? filterControl->y_size : disabled_filter_y_size;
             }
@@ -2572,7 +2741,68 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_resize(const int track_bar_delta_y,
     create_trackbars_ex(filter_controls.get(), list_track_bar_ex, hwnd, hinst, 0, cx_y_pos, track_bar_delta_y, dialog_rc);
 
     // libplacebo(resize)とNVVFXの2行目の大きいほう
-    filter_controls->y_size = std::max(offset_y, cx_y_pos);
+    filter_controls->y_size = std::max(offset_y, cx_y_pos) + 8;
+    return filter_controls;
+}
+
+std::unique_ptr<CLCU_FILTER_CONTROLS> create_libplacebo_tonemapping(const int track_bar_delta_y, const int checkbox_idx, const RECT& dialog_rc, HFONT b_font, HWND hwnd, HINSTANCE hinst) {
+    const int check_min = CLFILTER_CHECK_LIBPLACEBO_TONEMAP_ENABLE;
+
+    auto filter_controls = std::make_unique<CLCU_FILTER_CONTROLS>();
+    filter_controls->check_min = CLFILTER_CHECK_LIBPLACEBO_TONEMAP_ENABLE;
+    filter_controls->check_max = CLFILTER_CHECK_LIBPLACEBO_TONEMAP_MAX;
+    filter_controls->track_min = CLFILTER_TRACK_LIBPLACEBO_TONEMAP_FIRST;
+    filter_controls->track_max = CLFILTER_TRACK_LIBPLACEBO_TONEMAP_MAX;
+    int offset_y = 0;
+    RECT rc;
+    GetWindowRect(child_hwnd[checkbox_idx + check_min], &rc);
+    // 有効無効のボックス
+    CLCU_CONTROL control;
+    control.hwnd = child_hwnd[checkbox_idx + check_min];
+    control.id = GetDlgCtrlID(control.hwnd);
+    control.offset_x = rc.left - dialog_rc.left;
+    control.offset_y = offset_y;
+    filter_controls->controls.push_back(control);
+    offset_y += track_bar_delta_y;
+
+    int cx_y_pos = offset_y;
+
+    const std::vector<CLCX_COMBOBOX> add_cx = {
+        CLCX_COMBOBOX(cx_libplacebo_tonemap_src_csp,          ID_CX_LIBPLACEBO_TONEMAP_SRC_CSP,          lb_libplacebo_tonemap_src_csp,          ID_LB_LIBPLACEBO_TONEMAP_SRC_CSP,          LB_CX_LIBPLACEBO_TONEMAP_SRC_CSP,          list_vpp_libplacebo_tone_mapping_csp),
+        CLCX_COMBOBOX(cx_libplacebo_tonemap_dst_csp,          ID_CX_LIBPLACEBO_TONEMAP_DST_CSP,          lb_libplacebo_tonemap_dst_csp,          ID_LB_LIBPLACEBO_TONEMAP_DST_CSP,          LB_CX_LIBPLACEBO_TONEMAP_DST_CSP,          list_vpp_libplacebo_tone_mapping_csp)
+    };
+    cx_y_pos = offset_y + 2;                // すこし窮屈なので +2pix
+    offset_y += CX_HEIGHT * add_cx.size() + 4; // すこし窮屈なので +4pix
+    add_combobox(filter_controls.get(), add_cx, cx_y_pos, b_font, hwnd, hinst);
+
+    const std::vector<CLFILTER_TRACKBAR_DATA> tb_libplacebo_tonemap = {
+        { &tb_libplacebo_tonemap_src_max,              LB_TB_LIBPLACEBO_TONEMAP_SRC_MAX,              ID_TB_LIBPLACEBO_TONEMAP_SRC_MAX,              1,  2000, 1000, &cl_exdata.libplacebo_tonemap_src_max },
+        { &tb_libplacebo_tonemap_src_min,              LB_TB_LIBPLACEBO_TONEMAP_SRC_MIN,              ID_TB_LIBPLACEBO_TONEMAP_SRC_MIN,              0,  2000,    1, &cl_exdata.libplacebo_tonemap_src_min },
+        { &tb_libplacebo_tonemap_dst_max,              LB_TB_LIBPLACEBO_TONEMAP_DST_MAX,              ID_TB_LIBPLACEBO_TONEMAP_DST_MAX,              1,  2000,  203, &cl_exdata.libplacebo_tonemap_dst_max },
+        { &tb_libplacebo_tonemap_dst_min,              LB_TB_LIBPLACEBO_TONEMAP_DST_MIN,              ID_TB_LIBPLACEBO_TONEMAP_DST_MIN,              0,  2000,    1, &cl_exdata.libplacebo_tonemap_dst_min },
+        { &tb_libplacebo_tonemap_smooth_period,        LB_TB_LIBPLACEBO_TONEMAP_SMOOTH_PERIOD,        ID_TB_LIBPLACEBO_TONEMAP_SMOOTH_PERIOD,        0,  1000,   20, &cl_exdata.libplacebo_tonemap_smooth_period },
+        { &tb_libplacebo_tonemap_scene_threshold_low,  LB_TB_LIBPLACEBO_TONEMAP_SCENE_THRESHOLD_LOW,  ID_TB_LIBPLACEBO_TONEMAP_SCENE_THRESHOLD_LOW,  0,  1000,   10, &cl_exdata.libplacebo_tonemap_scene_threshold_low },
+        { &tb_libplacebo_tonemap_scene_threshold_high, LB_TB_LIBPLACEBO_TONEMAP_SCENE_THRESHOLD_HIGH, ID_TB_LIBPLACEBO_TONEMAP_SCENE_THRESHOLD_HIGH, 0,  1000,   30, &cl_exdata.libplacebo_tonemap_scene_threshold_high },
+        //{ &tb_libplacebo_tonemap_percentile,           LB_TB_LIBPLACEBO_TONEMAP_PERCENTILE,           ID_TB_LIBPLACEBO_TONEMAP_PERCENTILE,           0,  100,     1, &cl_exdata.libplacebo_tonemap_percentile },
+        { &tb_libplacebo_tonemap_black_cutoff,         LB_TB_LIBPLACEBO_TONEMAP_BLACK_CUTOFF,         ID_TB_LIBPLACEBO_TONEMAP_BLACK_CUTOFF,         0,  100,     1, &cl_exdata.libplacebo_tonemap_black_cutoff },
+        { &tb_libplacebo_tonemap_contrast_recovery,    LB_TB_LIBPLACEBO_TONEMAP_CONTRAST_RECOVERY,    ID_TB_LIBPLACEBO_TONEMAP_CONTRAST_RECOVERY,    0,  100,     3, &cl_exdata.libplacebo_tonemap_contrast_recovery },
+        { &tb_libplacebo_tonemap_contrast_smoothness,  LB_TB_LIBPLACEBO_TONEMAP_CONTRAST_SMOOTHNESS,  ID_TB_LIBPLACEBO_TONEMAP_CONTRAST_SMOOTHNESS,  0,  100,    35, &cl_exdata.libplacebo_tonemap_contrast_smoothness }
+    };
+    create_trackbars_ex(filter_controls.get(), tb_libplacebo_tonemap, hwnd, hinst, 0, offset_y, track_bar_delta_y, dialog_rc);
+
+    std::vector<CLCX_COMBOBOX> cx_list_libplacebo_tonemap = {
+        CLCX_COMBOBOX(cx_libplacebo_tonemap_gamut_mapping,    ID_CX_LIBPLACEBO_TONEMAP_GAMUT_MAPPING,    lb_libplacebo_tonemap_gamut_mapping,    ID_LB_LIBPLACEBO_TONEMAP_GAMUT_MAPPING,    LB_CX_LIBPLACEBO_TONEMAP_GAMUT_MAPPING,    list_vpp_libplacebo_tone_mapping_gamut_mapping),
+        CLCX_COMBOBOX(cx_libplacebo_tonemap_metadata,         ID_CX_LIBPLACEBO_TONEMAP_METADATA,         lb_libplacebo_tonemap_metadata,         ID_LB_LIBPLACEBO_TONEMAP_METADATA,         LB_CX_LIBPLACEBO_TONEMAP_METADATA,         list_vpp_libplacebo_tone_mapping_metadata),
+        CLCX_COMBOBOX(cx_libplacebo_tonemap_dst_pl_transfer,  ID_CX_LIBPLACEBO_TONEMAP_DST_PL_TRANSFER,  lb_libplacebo_tonemap_dst_pl_transfer,  ID_LB_LIBPLACEBO_TONEMAP_DST_PL_TRANSFER,  LB_CX_LIBPLACEBO_TONEMAP_DST_PL_TRANSFER,  list_vpp_libplacebo_tone_mapping_transfer),
+        CLCX_COMBOBOX(cx_libplacebo_tonemap_dst_pl_colorprim, ID_CX_LIBPLACEBO_TONEMAP_DST_PL_COLORPRIM, lb_libplacebo_tonemap_dst_pl_colorprim, ID_LB_LIBPLACEBO_TONEMAP_DST_PL_COLORPRIM, LB_CX_LIBPLACEBO_TONEMAP_DST_PL_COLORPRIM, list_vpp_libplacebo_tone_mapping_colorprim),
+        CLCX_COMBOBOX(cx_libplacebo_tonemap_function,         ID_CX_LIBPLACEBO_TONEMAP_FUNCTION,         lb_libplacebo_tonemap_function,         ID_LB_LIBPLACEBO_TONEMAP_FUNCTION,         LB_CX_LIBPLACEBO_TONEMAP_FUNCTION,         list_vpp_libplacebo_tone_mapping_function)
+    };
+    cx_y_pos = offset_y + 2;                // すこし窮屈なので +2pix
+    offset_y += CX_HEIGHT * cx_list_libplacebo_tonemap.size() + 4; // すこし窮屈なので +4pix
+    add_combobox(filter_controls.get(), cx_list_libplacebo_tonemap, cx_y_pos, b_font, hwnd, hinst);
+
+    offset_y += track_bar_delta_y;
+    filter_controls->y_size = offset_y;
     return filter_controls;
 }
 
@@ -2598,7 +2828,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     RECT rc, dialog_rc;
     GetWindowRect(hwnd, &dialog_rc);
 
-    const int offset_width = -16; // ウィンドウの幅を少し狭くするためのoffset
+    const int offset_width = -8; // ウィンドウの幅を少し狭くするためのoffset
     const int columns = 4;
     const int col_width = dialog_rc.right - dialog_rc.left + offset_width;
     g_col_width = col_width;
@@ -2667,6 +2897,11 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     auto filter_colorspace = create_colorspace(CLFILTER_CHECK_COLORSPACE_ENABLE, CLFILTER_CHECK_COLORSPACE_MAX, CLFILTER_TRACK_COLORSPACE_FIRST, CLFILTER_TRACK_COLORSPACE_MAX, track_bar_delta_y, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
     move_group(filter_colorspace.get(), y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(filter_colorspace));
+
+    //libplacebo-tonemap
+    auto filter_libplacebo_tonemap = create_libplacebo_tonemapping(track_bar_delta_y, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
+    move_group(filter_libplacebo_tonemap.get(), y_pos, col, col_width);
+    g_filterControls[col].push_back(std::move(filter_libplacebo_tonemap));
 
     //nnedi
     std::vector<CLCX_COMBOBOX> cx_list_nnedi = {
@@ -2952,6 +3187,27 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp, const FILTER_PRO
     prm.colorspace.hdr2sdr.desat_strength = (float)fp->track[CLFILTER_TRACK_COLORSPACE_DESAT_STRENGTH] * 0.01f;
     prm.colorspace.hdr2sdr.desat_exp      = (float)fp->track[CLFILTER_TRACK_COLORSPACE_DESAT_EXP] * 0.1f;
 #endif //#if ENABLE_HDR2SDR_DESAT
+
+    //libplacebo-tonemap
+    prm.vpp.libplacebo_tonemapping.enable = fp->check[CLFILTER_CHECK_LIBPLACEBO_TONEMAP_ENABLE] != 0;
+    prm.vpp.libplacebo_tonemapping.src_csp = (VppLibplaceboToneMappingCSP)cl_exdata.libplacebo_tonemap_src_csp;
+    prm.vpp.libplacebo_tonemapping.dst_csp = (VppLibplaceboToneMappingCSP)cl_exdata.libplacebo_tonemap_dst_csp;
+    prm.vpp.libplacebo_tonemapping.src_max = (float)cl_exdata.libplacebo_tonemap_src_max;
+    prm.vpp.libplacebo_tonemapping.src_min = (float)cl_exdata.libplacebo_tonemap_src_min;
+    prm.vpp.libplacebo_tonemapping.dst_max = (float)cl_exdata.libplacebo_tonemap_dst_max;
+    prm.vpp.libplacebo_tonemapping.dst_min = (float)cl_exdata.libplacebo_tonemap_dst_min;
+    prm.vpp.libplacebo_tonemapping.smooth_period = (float)cl_exdata.libplacebo_tonemap_smooth_period;
+    prm.vpp.libplacebo_tonemapping.scene_threshold_low = (float)cl_exdata.libplacebo_tonemap_scene_threshold_low * 0.1f;
+    prm.vpp.libplacebo_tonemapping.scene_threshold_high = (float)cl_exdata.libplacebo_tonemap_scene_threshold_high * 0.1f;
+    //prm.vpp.libplacebo_tonemapping.percentile = (float)cl_exdata.libplacebo_tonemap_percentile;
+    prm.vpp.libplacebo_tonemapping.black_cutoff = (float)cl_exdata.libplacebo_tonemap_black_cutoff;
+    prm.vpp.libplacebo_tonemapping.gamut_mapping = (VppLibplaceboToneMappingGamutMapping)cl_exdata.libplacebo_tonemap_gamut_mapping;
+    prm.vpp.libplacebo_tonemapping.tonemapping_function = (VppLibplaceboToneMappingFunction)cl_exdata.libplacebo_tonemap_function;
+    prm.vpp.libplacebo_tonemapping.metadata = (VppLibplaceboToneMappingMetadata)cl_exdata.libplacebo_tonemap_metadata;
+    prm.vpp.libplacebo_tonemapping.contrast_recovery = (float)cl_exdata.libplacebo_tonemap_contrast_recovery * 0.1f;
+    prm.vpp.libplacebo_tonemapping.contrast_smoothness = (float)cl_exdata.libplacebo_tonemap_contrast_smoothness * 0.1f;
+    prm.vpp.libplacebo_tonemapping.dst_pl_transfer = (VppLibplaceboToneMappingTransfer)cl_exdata.libplacebo_tonemap_dst_pl_transfer;
+    prm.vpp.libplacebo_tonemapping.dst_pl_colorprim = (VppLibplaceboToneMappingColorprim)cl_exdata.libplacebo_tonemap_dst_pl_colorprim;
 
     //nnedi
     prm.vpp.nnedi.enable        = fp->check[CLFILTER_CHECK_NNEDI_ENABLE] != 0;

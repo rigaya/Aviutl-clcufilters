@@ -295,6 +295,26 @@ RGY_ERR cuFilterChain::configureOneFilter(std::unique_ptr<RGYFilterBase>& filter
         //入力フレーム情報を更新
         inputFrame = param->frameOut;
     }
+    // libplacebo-tonemap
+    if (filterType == VppType::CL_LIBPLACEBO_TONEMAP) {
+        if (!filter) {
+            //フィルタチェーンに追加
+            filter.reset(new NVEncFilterLibplaceboToneMapping());
+        }
+        std::shared_ptr<NVEncFilterParamLibplaceboToneMapping> param(new NVEncFilterParamLibplaceboToneMapping());
+        param->toneMapping = m_prm.vpp.libplacebo_tonemapping;
+        param->frameIn = inputFrame;
+        param->frameOut = inputFrame;
+        param->dx11 = m_cuDevice->dx11();
+        param->bOutOverwrite = false;
+        auto sts = filter->init(param, m_log);
+        if (sts != RGY_ERR_NONE) {
+            PrintMes(RGY_LOG_ERROR, _T("failed to init libplacebo-tonemap.\n"));
+            return sts;
+        }
+        //入力フレーム情報を更新
+        inputFrame = param->frameOut;
+    }
     // nnedi
     if (filterType == VppType::CL_NNEDI) {
         if (!filter) {

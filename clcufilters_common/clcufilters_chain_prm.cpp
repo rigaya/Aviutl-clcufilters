@@ -214,6 +214,7 @@ std::vector<VppType> clFilterChainParam::getFilterChain(const bool resizeRequire
     std::vector<VppType> enabledFilterOrder;
     for (const auto filterType : allFilterOrder) {
         if (  (vpp.colorspace.enable               && filterType == VppType::CL_COLORSPACE)
+           || (vpp.libplacebo_tonemapping.enable   && filterType == VppType::CL_LIBPLACEBO_TONEMAP)
            || (vpp.nnedi.enable                    && filterType == VppType::CL_NNEDI)
            || (vppnv.nvvfxDenoise.enable           && filterType == VppType::NVVFX_DENOISE)
            || (vppnv.nvvfxArtifactReduction.enable && filterType == VppType::NVVFX_ARTIFACT_REDUCTION)
