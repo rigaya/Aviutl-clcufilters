@@ -2874,8 +2874,8 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_libplacebo_tonemapping(const int tr
     int cx_y_pos = offset_y;
 
     const std::vector<CLCX_COMBOBOX> add_cx = {
-        CLCX_COMBOBOX(cx_libplacebo_tonemap_src_csp,          ID_CX_LIBPLACEBO_TONEMAP_SRC_CSP,          lb_libplacebo_tonemap_src_csp,          ID_LB_LIBPLACEBO_TONEMAP_SRC_CSP,          LB_CX_LIBPLACEBO_TONEMAP_SRC_CSP,          list_vpp_libplacebo_tone_mapping_csp),
-        CLCX_COMBOBOX(cx_libplacebo_tonemap_dst_csp,          ID_CX_LIBPLACEBO_TONEMAP_DST_CSP,          lb_libplacebo_tonemap_dst_csp,          ID_LB_LIBPLACEBO_TONEMAP_DST_CSP,          LB_CX_LIBPLACEBO_TONEMAP_DST_CSP,          list_vpp_libplacebo_tone_mapping_csp)
+        CLCX_COMBOBOX(cx_libplacebo_tonemap_src_csp,          ID_CX_LIBPLACEBO_TONEMAP_SRC_CSP,          lb_libplacebo_tonemap_src_csp,          ID_LB_LIBPLACEBO_TONEMAP_SRC_CSP,          LB_CX_LIBPLACEBO_TONEMAP_SRC_CSP,          list_vpp_libplacebo_tone_mapping_csp + 1),
+        CLCX_COMBOBOX(cx_libplacebo_tonemap_dst_csp,          ID_CX_LIBPLACEBO_TONEMAP_DST_CSP,          lb_libplacebo_tonemap_dst_csp,          ID_LB_LIBPLACEBO_TONEMAP_DST_CSP,          LB_CX_LIBPLACEBO_TONEMAP_DST_CSP,          list_vpp_libplacebo_tone_mapping_csp + 1)
     };
     cx_y_pos = offset_y + 2;                // すこし窮屈なので +2pix
     offset_y += CX_HEIGHT * add_cx.size() + 4; // すこし窮屈なので +4pix
