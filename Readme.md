@@ -105,7 +105,7 @@ quiet以外を選択した場合、ログは[patch.aul](https://www.nicovideo.jp
         - 0 ... 弱め (default)
         - 1 ... 強め
       
-      - superres-strength=&lt;float&gt;  
+      - superres-strength
         nvvfx-superresの強さの指定。 (0 - 100)
 
   - [NGX](https://docs.nvidia.com/rtx/ngx/programming-guide/index.html)ライブラリのリサイズフィルタ
@@ -117,7 +117,7 @@ quiet以外を選択した場合、ログは[patch.aul](https://www.nicovideo.jp
     | ngx-vsr       | NVIDIA VSR (Video Super Resolution)  |  |
 
     - 追加パラメータ
-      - vsr-quality=&lt;int&gt;  
+      - vsr-quality
         ngx-vsr使用時の品質の設定。 (デフォルト=1, 1 - 4)  
         数字が大きいほど高品質。
 
@@ -223,6 +223,135 @@ quiet以外を選択した場合、ログは[patch.aul](https://www.nicovideo.jp
   - 入力ピーク  (デフォルト= 1000)  
   
   - 目標輝度  (デフォルト= 100)  
+
+---
+### tonemap (libplacebo)
+
+[libplacebo](https://code.videolan.org/videolan/libplacebo)を使用したトーンマッピングを行います。
+
+- **パラメータ**
+  - src_csp
+    入力の色空間を指定します。
+    ```
+    auto, sdr, hdr10, hlg, dovi, rgb
+    ```
+  
+  - dst_csp
+    出力の色空間を指定します。
+    ```
+    auto, sdr, hdr10, hlg, dovi, rgb
+    ```
+
+  - src_max
+    入力の最大輝度 (nits)。
+
+  - src_min
+    入力の最小輝度 (nits)。
+
+  - dst_max
+    出力の最大輝度 (nits)。
+
+  - dst_min
+    出力の最小輝度 (nits)。
+
+  - smooth_period
+    スムージング係数。デフォルト: 20.0
+
+  - scene_threshold_low
+    シーン変更検出の下限閾値 (dB)。デフォルト: 1.0
+
+  - scene_threshold_high
+    シーン変更検出の上限閾値 (dB)。デフォルト: 3.0
+
+  - percentile
+    輝度ヒストグラムの考慮するパーセンタイル。デフォルト: 99.995
+
+  - black_cutoff
+    黒レベルのカットオフ強度 (PQ%)。デフォルト: 1.0
+
+  - gamut_mapping
+    ガンママッピングモード。 (デフォルト: perceptual)
+    ```
+    clip, perceptual, softclip, relative, saturation, absolute, desaturate, darken, highlight, linear
+    ```
+
+  - tonemapping_function
+    トーンマッピング関数。 (デフォルト: bt2390)
+    ```
+    clip, st2094-40, st2094-10, bt2390, bt2446a, spline, reinhard, mobius, hable, gamma, linear, linearlight
+    ```
+
+  - tonemapping_function=st2094-40, st2094-10, splineの場合  
+  
+    - knee_adaptation (float, 0.0 - 1.0, デフォルト: 0.4)  
+      PQ空間における入力と出力の平均輝度の比率としてニーポイントを設定します。
+      - 1.0: 常に入力シーンの平均を調整された出力の平均に適応させます
+      - 0.0: シーンの輝度を一切変更しません
+    
+    - knee_min (0.0 - 0.5, デフォルト: 0.1)  
+      PQ輝度範囲の比率における最小ニーポイント。
+    
+    - knee_max (0.5 - 1.0, デフォルト: 0.8)  
+      PQ輝度範囲の比率における最大ニーポイント。
+    
+    - knee_default (knee_min - knee_max, デフォルト: 0.4)  
+      入力シーンの平均メタデータが利用できない場合に使用されるデフォルトのニーポイント。
+  
+  - tonemapping_function=bt2390の場合
+
+    - knee_offset (0.5 - 2.0, デフォルト: 1.0)  
+      ニーポイントのオフセット。
+  
+  - tonemapping_function=splineの場合
+
+    - slope_tuning (0.0 - 10.0, デフォルト: 1.5)  
+      スプライン曲線の傾きの係数。
+    
+    - slope_offset (0.0 - 1.0, デフォルト: 0.2)  
+      スプライン曲線の傾きのオフセット。
+    
+    - spline_contrast (0.0 - 1.5, デフォルト: 0.5)  
+      スプライン関数のコントラスト。高い値は中間調を保持しますが、影や高輝度部分の詳細を失う可能性があります。
+  
+  - tonemapping_function=reinhardの場合
+
+    - reinhard_contrast (0.0 - 1.0, デフォルト: 0.5)  
+      reinhard関数のディスプレイピークにおけるコントラスト係数。
+  
+  - tonemapping_function=mobius, gammaの場合
+
+    - linear_knee (0.0 - 1.0, デフォルト: 0.3)  
+  
+  - tonemapping_function=linear, linearlightの場合
+
+    - exposure (0.0 - 10.0, デフォルト: 1.0)  
+      適用される線形露出/ゲイン。
+
+  - metadata
+    トーンマッピングに使用するデータソース。
+    ```
+    any, none, hdr10, hdr10plus, cie_y
+    ```
+
+  - contrast_recovery
+    コントラスト回復強度。デフォルト: 0.3
+
+  - contrast_smoothness
+    コントラスト回復のローパスカーネルサイズ。デフォルト: 3.5
+
+  - transfer
+    出力の転送関数。```colorprim```と一緒に使用する必要があります。
+    ```
+    unknown, srgb, bt1886, linear, gamma18, gamma20, gamma22, gamma24, gamma26, gamma28,
+    prophoto, st428, pq, hlg, vlog, slog1, slog2
+    ```
+
+  - colorprim
+    出力の色域。```transfer```と一緒に使用する必要があります。
+    ```
+    unknown, bt601_525, bt601_625, bt709, bt470m, ebu_3213, bt2020, apple, adobe,
+    prophoto, cie_1931, dci_p3, display_p3, v_gamut, s_gamut, film_c, aces_ap0, aces_ap1
+    ```
 
 ---
 ### nnedi  
@@ -504,22 +633,22 @@ Non local meansを用いたノイズ除去フィルタ。
 > thresholdは、QSV/NV/VCEEncの10倍の値で指定します。
 
 - **パラメータ**
-  - iterations=&lt;int&gt;  
+  - iterations
     イテレーション数。 (デフォルト=1, 0-)
 
-  - threshold=&lt;int&gt;  
+  - threshold
     カットオフ閾値。 (デフォルト=40, 0-)
 
-  - radius=&lt;float&gt;  
+  - radius
     半径 (デフォルト=16.0, 0-)
 
-  - grain_y=&lt;float&gt;  
+  - grain_y
     輝度用の追加ノイズ。 (デフォルト=6.0, 0-)
 
-  - grain_c=&lt;float&gt;  
+  - grain_c
     色差用の追加ノイズ。 (デフォルト=grain_y, 0-)
 
-  - dither=&lt;string&gt;  
+  - dither
     ディザリングモード、8bitのみ。
     - none
     - blue_noise (default)
@@ -527,7 +656,7 @@ Non local meansを用いたノイズ除去フィルタ。
     - ordered_fixed
     - white_noise
 
-  - lut_size=&lt;int&gt;  
+  - lut_size
     ディザリング用のLUTのサイズ。 (デフォルト=64)  
     ```2, 4, 8, 16, 32, 64, 128, 256 ```
 
@@ -538,16 +667,16 @@ RTX Video SDKを使用したAIベースのSDR→HDR変換を行う。出力はco
 Turing以降のGPUかつ、Windows x64版で550.58以降のドライバが必要。
 
 - **パラメータ**
-  - contrast=&lt;int&gt;  (デフォルト=100, 0 - 200)  
+  - contrast(デフォルト=100, 0 - 200)  
     明暗のコントラスト比の調整。
 
-  - saturation=&lt;int&gt;  (デフォルト=100, 0 - 200)  
+  - saturation(デフォルト=100, 0 - 200)  
     色の濃さの調整。
 
-  - middlegray=&lt;int&gt;  (デフォルト=50, 10 - 100)  
+  - middlegray(デフォルト=50, 10 - 100)  
     平均の明るさの調整。
 
-  - maxluminance=&lt;int&gt;  (デフォルト=1000, 400 - 2000)  
+  - maxluminance(デフォルト=1000, 400 - 2000)  
     最大輝度(nits)の指定。
 
 ---
