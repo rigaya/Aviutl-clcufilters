@@ -42,11 +42,26 @@ struct CLFILTER_TRACKBAR_DATA {
     int *ex_data_pos;
 };
 
+enum CLCU_CONTROL_SHOW_HIDE_TYPE {
+    SH_UNKNOWN,
+    SH_RESIZE_ALGO,
+    SH_LIBPLACEBO_TONEMAP_FUNC
+};
+
+struct CLCU_CONTROL_SHOW_HIDE {
+    CLCU_CONTROL_SHOW_HIDE_TYPE type;
+    std::vector<int> enable_list; // コントルールが表示モードになるオプションの値のリスト
+
+    CLCU_CONTROL_SHOW_HIDE() : type(SH_UNKNOWN), enable_list() {};
+    CLCU_CONTROL_SHOW_HIDE(CLCU_CONTROL_SHOW_HIDE_TYPE type_, std::vector<int> enable_list_) : type(type_), enable_list(enable_list_) {};
+};
+
 struct CLCU_CONTROL {
     int id;
     HWND hwnd;
     int offset_x;
     int offset_y;
+    std::vector<CLCU_CONTROL_SHOW_HIDE> show_hide_flags;
 };
 
 class CLCU_FILTER_CONTROLS {
@@ -71,7 +86,14 @@ public:
         controls.push_back(control);
     }
 
-    void show_hide() const {
+    bool has_hwnd(HWND hwnd) const {
+        for (const auto& control : controls) {
+            if (control.hwnd == hwnd) return true;
+        }
+        return false;
+    }
+
+    virtual void show_hide(const std::vector<std::pair<CLCU_CONTROL_SHOW_HIDE_TYPE, int>>& show_hide_flags) const {
         if (controls.size() == 0) {
             return;
         }
@@ -79,7 +101,17 @@ public:
         const int enable = SendMessage(controls[0].hwnd, BM_GETCHECK, 0, 0);
         // 最初のチェックボックスを除いて表示/非表示を切り替え
         for (size_t i = 1; i < controls.size(); i++) {
-            ShowWindow(controls[i].hwnd, enable ? SW_SHOW : SW_HIDE);
+            bool control_enable = !!enable;
+            if (controls[i].show_hide_flags.size() > 0) {
+                for (const auto& show_hide_flag : show_hide_flags) {
+                    auto it_sh_flag = std::find_if(controls[i].show_hide_flags.begin(), controls[i].show_hide_flags.end(), [show_hide_flag](const CLCU_CONTROL_SHOW_HIDE &sh_flag) { return sh_flag.type == show_hide_flag.first; });
+                    if (it_sh_flag != controls[i].show_hide_flags.end()) {
+                        control_enable = (std::find(it_sh_flag->enable_list.begin(), it_sh_flag->enable_list.end(), show_hide_flag.second) != it_sh_flag->enable_list.end());
+                        break;
+                    }
+                }
+            }
+            ShowWindow(controls[i].hwnd, control_enable ? SW_SHOW : SW_HIDE);
         }
     }
 
