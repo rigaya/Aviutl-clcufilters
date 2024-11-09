@@ -37,6 +37,9 @@
     <ClInclude Include="clcufilters_auf.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="clcufilters_control.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="clcufilters.rc">

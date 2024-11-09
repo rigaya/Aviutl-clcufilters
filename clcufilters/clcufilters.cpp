@@ -39,6 +39,7 @@
 #include "clcufilters_version.h"
 #include "clcufilters_shared.h"
 #include "clcufilters_auf.h"
+#include "clcufilters_control.h"
 #include "clcufilters.h"
 
 void init_device_list();
@@ -50,22 +51,6 @@ static_assert(sizeof(PIXEL_YC) == SIZE_PIXEL_YC);
 
 #define ENABLE_FIELD (0)
 #define ENABLE_HDR2SDR_DESAT (0)
-
-struct CLCU_CONTROL {
-    int id;
-    HWND hwnd;
-    int offset_x;
-    int offset_y;
-};
-
-struct CLCU_FILTER_CONTROLS {
-    int y_size;
-    std::vector<CLCU_CONTROL> controls;
-    int check_min;
-    int check_max;
-    int track_min;
-    int track_max;
-};
 
 enum {
     ID_LB_RESIZE_RES = ID_TX_RESIZE_RES_ADD+1,
@@ -187,17 +172,7 @@ enum {
     ID_CX_LIBPLACEBO_TONEMAP_GAMUT_MAPPING,
     ID_LB_LIBPLACEBO_TONEMAP_FUNCTION,
     ID_CX_LIBPLACEBO_TONEMAP_FUNCTION,
-    //ID_TB_LIBPLACEBO_TONEMAP_KNEE_ADAPTATION,
-    //ID_TB_LIBPLACEBO_TONEMAP_KNEE_MIN = ID_TB_LIBPLACEBO_TONEMAP_KNEE_ADAPTATION + 5,
-    //ID_TB_LIBPLACEBO_TONEMAP_KNEE_MAX = ID_TB_LIBPLACEBO_TONEMAP_KNEE_MIN + 5,
-    //ID_TB_LIBPLACEBO_TONEMAP_KNEE_DEFAULT = ID_TB_LIBPLACEBO_TONEMAP_KNEE_MAX + 5,
-    //ID_TB_LIBPLACEBO_TONEMAP_KNEE_OFFSET = ID_TB_LIBPLACEBO_TONEMAP_KNEE_DEFAULT + 5,
-    //ID_TB_LIBPLACEBO_TONEMAP_SLOPE_TUNING = ID_TB_LIBPLACEBO_TONEMAP_KNEE_OFFSET + 5,
-    //ID_TB_LIBPLACEBO_TONEMAP_SLOPE_OFFSET = ID_TB_LIBPLACEBO_TONEMAP_SLOPE_TUNING + 5,
-    //ID_TB_LIBPLACEBO_TONEMAP_SPLINE_CONTRAST = ID_TB_LIBPLACEBO_TONEMAP_SLOPE_OFFSET + 5,
-    //ID_TB_LIBPLACEBO_TONEMAP_REINHARD_CONTRAST = ID_TB_LIBPLACEBO_TONEMAP_SPLINE_CONTRAST + 5,
-    //ID_TB_LIBPLACEBO_TONEMAP_LINEAR_KNEE = ID_TB_LIBPLACEBO_TONEMAP_REINHARD_CONTRAST + 5,
-    //ID_TB_LIBPLACEBO_TONEMAP_EXPOSURE = ID_TB_LIBPLACEBO_TONEMAP_LINEAR_KNEE + 5,
+
     ID_LB_LIBPLACEBO_TONEMAP_METADATA,
     ID_CX_LIBPLACEBO_TONEMAP_METADATA,
     ID_TB_LIBPLACEBO_TONEMAP_CONTRAST_RECOVERY = ID_CX_LIBPLACEBO_TONEMAP_METADATA + 5,
@@ -206,28 +181,21 @@ enum {
     ID_CX_LIBPLACEBO_TONEMAP_DST_PL_TRANSFER,
     ID_LB_LIBPLACEBO_TONEMAP_DST_PL_COLORPRIM,
     ID_CX_LIBPLACEBO_TONEMAP_DST_PL_COLORPRIM,
+
+    ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_ADAPTATION,
+    ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_MIN = ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_ADAPTATION + 5,
+    ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_MAX = ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_MIN + 5,
+    ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_DEFAULT = ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_MAX + 5,
+    ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_OFFSET = ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_DEFAULT + 5,
+    ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_SLOPE_TUNING = ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_OFFSET + 5,
+    ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_SLOPE_OFFSET = ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_SLOPE_TUNING + 5,
+    ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_SPLINE_CONTRAST = ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_SLOPE_OFFSET + 5,
+    ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_REINHARD_CONTRAST = ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_SPLINE_CONTRAST + 5,
+    ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_LINEAR_KNEE = ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_REINHARD_CONTRAST + 5,
+    ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_EXPOSURE = ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_LINEAR_KNEE + 5,
 };
 
 #pragma pack(1)
-
-struct CLFILTER_TRACKBAR {
-    int id;
-    HWND label;
-    HWND trackbar;
-    HWND bt_left;
-    HWND bt_right;
-    HWND bt_text;
-};
-
-struct CLFILTER_TRACKBAR_DATA {
-    CLFILTER_TRACKBAR *tb;
-    const char *labelText;
-    int label_id;
-    int val_min;
-    int val_max;
-    int val_default;
-    int *ex_data_pos;
-};
 
 struct CLFILTER_EXDATA {
     CL_PLATFORM_DEVICE cl_dev_id;
@@ -305,7 +273,19 @@ struct CLFILTER_EXDATA {
     int libplacebo_tonemap_dst_pl_transfer;
     int libplacebo_tonemap_dst_pl_colorprim;
 
-    char reserved[480];
+    int libplacebo_tonemap_tone_const_knee_adaptation; // For st2094-40, st2094-10, spline
+    int libplacebo_tonemap_tone_const_knee_min;        // For st2094-40, st2094-10, spline
+    int libplacebo_tonemap_tone_const_knee_max;        // For st2094-40, st2094-10, spline
+    int libplacebo_tonemap_tone_const_knee_default;    // For st2094-40, st2094-10, spline
+    int libplacebo_tonemap_tone_const_knee_offset;     // For bt2390
+    int libplacebo_tonemap_tone_const_slope_tuning;    // For spline
+    int libplacebo_tonemap_tone_const_slope_offset;    // For spline
+    int libplacebo_tonemap_tone_const_spline_contrast; // For spline
+    int libplacebo_tonemap_tone_const_reinhard_contrast; // For reinhard
+    int libplacebo_tonemap_tone_const_linear_knee;     // For mobius, gamma
+    int libplacebo_tonemap_tone_const_exposure;        // For linear, linearlight
+
+    char reserved[436];
 };
 # pragma pack()
 static const int extra_track_data_offset = 32;
@@ -322,6 +302,7 @@ static std::unique_ptr<clcuFiltersAuf> g_clfiltersAuf;
 static int g_cuda_device_nvvfx_support = -1;
 static int g_resize_nvvfx_superres = -1;
 static int g_resize_ngx_vsr_quality = -1;
+static int g_libplacebo_tonemap_function = -1;
 static int g_resize_libplacebo = -1;
 static std::vector<CLFILTER_TRACKBAR_DATA> g_trackBars;
 static HBRUSH g_hbrBackground = NULL;
@@ -393,6 +374,17 @@ static const char *LB_TB_LIBPLACEBO_TONEMAP_CONTRAST_RECOVERY = "contrast recove
 static const char *LB_TB_LIBPLACEBO_TONEMAP_CONTRAST_SMOOTHNESS = "contrast smooth";
 static const char *LB_CX_LIBPLACEBO_TONEMAP_DST_PL_TRANSFER = "transfer";
 static const char *LB_CX_LIBPLACEBO_TONEMAP_DST_PL_COLORPRIM = "colorprim";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_ADAPTATION = "knee adaptation";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_MIN = "knee min";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_MAX = "knee max";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_DEFAULT = "knee default";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_OFFSET = "knee offset";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_SLOPE_TUNING = "slope tuning";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_SLOPE_OFFSET = "slope offset";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_SPLINE_CONTRAST = "spline contrast";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_REINHARD_CONTRAST = "reinhard contrast";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_LINEAR_KNEE = "linear knee";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_EXPOSURE = "exposure";
 #else
 static const char *LB_WND_OPENCL_UNAVAIL = "Filter disabled, OpenCL could not be used.";
 static const char *LB_WND_OPENCL_AVAIL = "OpenCL Enabled";
@@ -456,6 +448,17 @@ static const char *LB_TB_LIBPLACEBO_TONEMAP_CONTRAST_RECOVERY = "contrast recove
 static const char *LB_TB_LIBPLACEBO_TONEMAP_CONTRAST_SMOOTHNESS = "contrast smooth";
 static const char *LB_CX_LIBPLACEBO_TONEMAP_DST_PL_TRANSFER = "transfer";
 static const char *LB_CX_LIBPLACEBO_TONEMAP_DST_PL_COLORPRIM = "colorprim";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_ADAPTATION = "knee adaptation";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_MIN = "knee min";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_MAX = "knee max";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_DEFAULT = "knee default";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_OFFSET = "knee offset";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_SLOPE_TUNING = "slope tuning";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_SLOPE_OFFSET = "slope offset";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_SPLINE_CONTRAST = "spline contrast";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_REINHARD_CONTRAST = "reinhard contrast";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_LINEAR_KNEE = "linear knee";
+static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_EXPOSURE = "exposure";
 #endif
 
 //---------------------------------------------------------------------
@@ -984,6 +987,18 @@ static void cl_exdata_set_default() {
     cl_exdata.libplacebo_tonemap_contrast_smoothness = (int)(libplaceboToneMapping.contrast_smoothness * 10.0f + 0.5f);
     cl_exdata.libplacebo_tonemap_dst_pl_transfer = (int)libplaceboToneMapping.dst_pl_transfer;
     cl_exdata.libplacebo_tonemap_dst_pl_colorprim = (int)libplaceboToneMapping.dst_pl_colorprim;
+
+    cl_exdata.libplacebo_tonemap_tone_const_knee_adaptation = (int)(libplaceboToneMapping.tone_constants.st2094.knee_adaptation * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_knee_min = (int)(libplaceboToneMapping.tone_constants.st2094.knee_min * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_knee_max = (int)(libplaceboToneMapping.tone_constants.st2094.knee_max * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_knee_default = (int)(libplaceboToneMapping.tone_constants.st2094.knee_default * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_knee_offset = (int)(libplaceboToneMapping.tone_constants.bt2390.knee_offset * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_slope_tuning = (int)(libplaceboToneMapping.tone_constants.spline.slope_tuning * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_slope_offset = (int)(libplaceboToneMapping.tone_constants.spline.slope_offset * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_spline_contrast = (int)(libplaceboToneMapping.tone_constants.spline.spline_contrast * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_reinhard_contrast = (int)(libplaceboToneMapping.tone_constants.reinhard.contrast * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_linear_knee = (int)(libplaceboToneMapping.tone_constants.mobius.linear_knee * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_exposure = (int)(libplaceboToneMapping.tone_constants.linear.exposure * 100.0f + 0.5f);
 }
 
 //---------------------------------------------------------------------
@@ -1110,6 +1125,18 @@ static HWND lb_libplacebo_tonemap_dst_pl_transfer;
 static HWND cx_libplacebo_tonemap_dst_pl_transfer;
 static HWND lb_libplacebo_tonemap_dst_pl_colorprim;
 static HWND cx_libplacebo_tonemap_dst_pl_colorprim;
+
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_tone_const_knee_adaptation;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_tone_const_knee_min;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_tone_const_knee_max;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_tone_const_knee_default;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_tone_const_knee_offset;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_tone_const_slope_tuning;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_tone_const_slope_offset;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_tone_const_spline_contrast;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_tone_const_reinhard_contrast;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_tone_const_linear_knee;
+static CLFILTER_TRACKBAR tb_libplacebo_tonemap_tone_const_exposure;
 
 static void set_cl_exdata(const HWND hwnd, const int value) {
     if (hwnd == cx_opencl_device) {
@@ -1534,20 +1561,6 @@ void set_track_bar_enable(int track_bar, bool enable) {
         EnableWindow(child_hwnd[track_bar * 5 + j + 1], enable);
     }
 }
-void set_track_bar_ex_enable(const CLFILTER_TRACKBAR& tb, bool enable) {
-    EnableWindow(tb.label, enable);
-    EnableWindow(tb.trackbar, enable);
-    EnableWindow(tb.bt_left, enable);
-    EnableWindow(tb.bt_right, enable);
-    EnableWindow(tb.bt_text, enable);
-}
-void set_track_bar_show_hide(const CLFILTER_TRACKBAR& tb, bool show) {
-    ShowWindow(tb.label,    show ? SW_SHOW : SW_HIDE);
-    ShowWindow(tb.trackbar, show ? SW_SHOW : SW_HIDE);
-    ShowWindow(tb.bt_left,  show ? SW_SHOW : SW_HIDE);
-    ShowWindow(tb.bt_right, show ? SW_SHOW : SW_HIDE);
-    ShowWindow(tb.bt_text,  show ? SW_SHOW : SW_HIDE);
-}
 void set_check_box_enable(int check_box, bool enable) {
     const int checkbox_idx = 1 + 5 * CLFILTER_TRACK_MAX;
     EnableWindow(child_hwnd[checkbox_idx + check_box], enable);
@@ -1681,10 +1694,10 @@ static void update_cuda_enable(FILTER *fp) {
         }
 
         set_check_box_enable(CLFILTER_CHECK_TRUEHDR_ENABLE, cudaNvvfxSupport);
-        set_track_bar_ex_enable(tb_ngx_truehdr_contrast, cudaNvvfxSupport);
-        set_track_bar_ex_enable(tb_ngx_truehdr_saturation, cudaNvvfxSupport);
-        set_track_bar_ex_enable(tb_ngx_truehdr_middlegray, cudaNvvfxSupport);
-        set_track_bar_ex_enable(tb_ngx_truehdr_maxluminance, cudaNvvfxSupport);
+        tb_ngx_truehdr_contrast.show_hide(cudaNvvfxSupport);
+        tb_ngx_truehdr_saturation.show_hide(cudaNvvfxSupport);
+        tb_ngx_truehdr_middlegray.show_hide(cudaNvvfxSupport);
+        tb_ngx_truehdr_maxluminance.show_hide(cudaNvvfxSupport);
         if (!cudaNvvfxSupport) {
             fp->check[CLFILTER_CHECK_TRUEHDR_ENABLE] = FALSE;
             SendMessage(child_hwnd[checkbox_idx + CLFILTER_CHECK_TRUEHDR_ENABLE], BM_SETCHECK, BST_UNCHECKED, 0);
@@ -1711,11 +1724,33 @@ static void update_resize_algo_params(FILTER *fp) {
         g_resize_ngx_vsr_quality = resize_ngx_vsr_quality;
     }
     if (g_resize_libplacebo != resize_libplacebo) {
-        set_track_bar_show_hide(tb_resize_pl_clamp, resize_libplacebo);
-        set_track_bar_show_hide(tb_resize_pl_taper, resize_libplacebo);
-        set_track_bar_show_hide(tb_resize_pl_blur, resize_libplacebo);
-        set_track_bar_show_hide(tb_resize_pl_antiring, resize_libplacebo);
+        tb_resize_pl_clamp.show_hide(resize_libplacebo);
+        tb_resize_pl_taper.show_hide(resize_libplacebo);
+        tb_resize_pl_blur.show_hide(resize_libplacebo);
+        tb_resize_pl_antiring.show_hide(resize_libplacebo);
         g_resize_libplacebo = resize_libplacebo;
+    }
+}
+
+//tonemap関連の表示/非表示切り替え
+static void update_tonemap_params() {
+    const auto tonemap_libplacebo = (VppLibplaceboToneMappingFunction)cl_exdata.libplacebo_tonemap_function;
+    if ((VppLibplaceboToneMappingFunction)g_libplacebo_tonemap_function != tonemap_libplacebo) {
+        const bool eneable_st2094 = tonemap_libplacebo == VppLibplaceboToneMappingFunction::st2094_40
+            || tonemap_libplacebo == VppLibplaceboToneMappingFunction::st2094_10
+            || tonemap_libplacebo == VppLibplaceboToneMappingFunction::spline;
+        tb_libplacebo_tonemap_tone_const_knee_adaptation.show_hide(eneable_st2094);
+        tb_libplacebo_tonemap_tone_const_knee_min.show_hide(eneable_st2094);
+        tb_libplacebo_tonemap_tone_const_knee_max.show_hide(eneable_st2094);
+        tb_libplacebo_tonemap_tone_const_knee_default.show_hide(eneable_st2094);
+        tb_libplacebo_tonemap_tone_const_slope_tuning.show_hide(tonemap_libplacebo == VppLibplaceboToneMappingFunction::spline);
+        tb_libplacebo_tonemap_tone_const_slope_offset.show_hide(tonemap_libplacebo == VppLibplaceboToneMappingFunction::spline);
+        tb_libplacebo_tonemap_tone_const_spline_contrast.show_hide(tonemap_libplacebo == VppLibplaceboToneMappingFunction::spline);
+        tb_libplacebo_tonemap_tone_const_knee_offset.show_hide(tonemap_libplacebo == VppLibplaceboToneMappingFunction::bt2390);
+        tb_libplacebo_tonemap_tone_const_reinhard_contrast.show_hide(tonemap_libplacebo == VppLibplaceboToneMappingFunction::reinhard);
+        tb_libplacebo_tonemap_tone_const_linear_knee.show_hide(tonemap_libplacebo == VppLibplaceboToneMappingFunction::mobius || tonemap_libplacebo == VppLibplaceboToneMappingFunction::gamma);
+        tb_libplacebo_tonemap_tone_const_exposure.show_hide(tonemap_libplacebo == VppLibplaceboToneMappingFunction::linear || tonemap_libplacebo == VppLibplaceboToneMappingFunction::linearlight);
+        g_libplacebo_tonemap_function = cl_exdata.libplacebo_tonemap_function;
     }
 }
 
@@ -1803,7 +1838,7 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
                 bool targetFound = false;
                 for (size_t icol = 0; !targetFound && icol < g_filterControls.size(); icol++) {
                     for (auto& filterControl : g_filterControls[icol]) {
-                        if (filterControl->check_min == targetID) {
+                        if (filterControl->first_check_idx() == targetID) {
                             update_filter_enable(hwnd, icol);
                             targetFound = true;
                             break;
@@ -1811,17 +1846,21 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
                     }
                 }
             }
+            update_cuda_enable(fp);
+            update_resize_algo_params(fp);
+            update_tonemap_params();
         }
         break;
     case WM_FILTER_UPDATE: // フィルタ更新
     case WM_FILTER_SAVE_END: // セーブ終了
         update_cx(fp);
         init_filter_order_list(fp);
-        update_cuda_enable(fp);
-        update_resize_algo_params(fp);
         for (size_t icol = 0; icol < g_filterControls.size(); icol++) {
             update_filter_enable(hwnd, icol);
         }
+        update_cuda_enable(fp);
+        update_resize_algo_params(fp);
+        update_tonemap_params();
         break;
     case WM_NOTIFY: {
         if (auto trackbar = get_trackbar_data(wparam); trackbar != nullptr) {
@@ -2243,13 +2282,6 @@ void move_track_bar(int& y_pos, int col, int col_width, int track_min, int track
     }
 }
 
-void move_group(const CLCU_FILTER_CONTROLS *filter_controls, int& y_pos, const int col, const int col_width) {
-    for (auto& control : filter_controls->controls) {
-        SetWindowPos(control.hwnd, HWND_TOP, col * col_width + control.offset_x, y_pos + control.offset_y, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
-    }
-    y_pos += filter_controls->y_size;
-}
-
 void add_combobox(HWND& hwnd_cx, int id_cx, HWND& hwnd_lb, int id_lb, const char *lb_str, HFONT b_font, HWND hwnd, HINSTANCE hinst, const CX_DESC *cx_items, int cx_item_limit = INT_MAX) {
     hwnd_lb = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, 0, 0, 58, 24, hwnd, (HMENU)id_lb, hinst, NULL);
     SendMessage(hwnd_lb, WM_SETFONT, (WPARAM)b_font, 0);
@@ -2260,28 +2292,12 @@ void add_combobox(HWND& hwnd_cx, int id_cx, HWND& hwnd_lb, int id_lb, const char
 }
 
 void update_filter_enable(HWND hwnd, const size_t icol_change) {
-    const int disabled_filter_y_size = 42; // チェックボックスだけの高さを加算
     const int cb_row_start_y_pos = 8 + 28;
     int y_pos = cb_row_start_y_pos;
     // 変更対象の列のフィルタの高さ調整
     for (auto& filterControl : g_filterControls[icol_change]) {
-        // リサイズはややこしいイベントが多いので処理しない
-        if (false && filterControl->check_min == CLFILTER_CHECK_RESIZE_ENABLE) {
-            y_pos += filterControl->y_size; // 常にこのサイズを取る
-        } else {
-            // フィルタの有効/無効を確認
-            const int enable = SendMessage(filterControl->controls[0].hwnd, BM_GETCHECK, 0, 0);
-            // 最初のチェックボックスを除いて表示/非表示を切り替え
-            for (size_t i = 1; i < filterControl->controls.size(); i++) {
-                ShowWindow(filterControl->controls[i].hwnd, enable ? SW_SHOW : SW_HIDE);
-            }
-            move_group(filterControl.get(), y_pos, icol_change, g_col_width);
-            if (!enable) {
-                // move_groupではy_posにfilterControl->y_sizeが加算されるため、ここで減算、その後チェックボックスだけの高さを加算
-                y_pos -= filterControl->y_size;
-                y_pos += disabled_filter_y_size;
-            }
-        }
+        filterControl->show_hide();
+        filterControl->move_group(y_pos, icol_change, g_col_width);
     }
 
     // 変更対象意外の列の高さを計算
@@ -2290,9 +2306,7 @@ void update_filter_enable(HWND hwnd, const size_t icol_change) {
         y_pos = cb_row_start_y_pos;
         if (icol != icol_change) {
             for (auto& filterControl : g_filterControls[icol]) {
-                const int enable = (false && filterControl->check_min == CLFILTER_CHECK_RESIZE_ENABLE)
-                    || SendMessage(filterControl->controls[0].hwnd, BM_GETCHECK, 0, 0);
-                y_pos += enable ? filterControl->y_size : disabled_filter_y_size;
+                y_pos += filterControl->y_actual_size();
             }
         }
         y_pos_max = std::max(y_pos_max, y_pos);
@@ -2325,13 +2339,13 @@ void add_combobox(CLCU_FILTER_CONTROLS *filter_controls, const std::vector<CLCX_
         control.id = cx.id_lb;
         control.offset_x = 10 + AVIUTL_1_10_OFFSET;
         control.offset_y = cx_y_pos;
-        filter_controls->controls.push_back(control);
+        filter_controls->add_control(control);
 
         control.hwnd = cx.hwnd_cx;
         control.id = cx.id_cx;
         control.offset_x = 68 + AVIUTL_1_10_OFFSET;
         control.offset_y = cx_y_pos;
-        filter_controls->controls.push_back(control);
+        filter_controls->add_control(control);
 
         cx_y_pos += CX_HEIGHT;
     }
@@ -2346,7 +2360,7 @@ void add_checkboxs_excpet_key(CLCU_FILTER_CONTROLS *filter_controls, int& offset
         control.id = GetDlgCtrlID(control.hwnd);
         control.offset_x = rc.left - dialog_rc.left + 10;
         control.offset_y = offset_y;
-        filter_controls->controls.push_back(control);
+        filter_controls->add_control(control);
     }
 }
 
@@ -2360,7 +2374,7 @@ void add_trackbars(CLCU_FILTER_CONTROLS *filter_controls, int& offset_y, int tra
             control.id = GetDlgCtrlID(control.hwnd);
             control.offset_x = rc.left - dialog_rc.left;
             control.offset_y = offset_y;
-            filter_controls->controls.push_back(control);
+            filter_controls->add_control(control);
         }
     }
 }
@@ -2379,7 +2393,7 @@ void create_trackbars_ex(CLCU_FILTER_CONTROLS *filter_controls, const std::vecto
             control.id = control_id++;
             control.offset_x = rc.left - dialog_rc.left;
             control.offset_y = offset_y;
-            filter_controls->controls.push_back(control);
+            filter_controls->add_control(control);
         }
         offset_y += track_bar_delta_y;
     }
@@ -2387,11 +2401,7 @@ void create_trackbars_ex(CLCU_FILTER_CONTROLS *filter_controls, const std::vecto
 
 std::unique_ptr<CLCU_FILTER_CONTROLS> create_group(int check_min, int check_max, int track_min, int track_max, const int track_bar_delta_y, const std::vector<CLFILTER_TRACKBAR_DATA>& list_track_bar_ex,
     const AddCXMode add_cx_mode, const std::vector<CLCX_COMBOBOX>& add_cx, const int checkbox_idx, const RECT& dialog_rc, HFONT b_font, HWND hwnd, HINSTANCE hinst) {
-    auto filter_controls = std::make_unique<CLCU_FILTER_CONTROLS>();
-    filter_controls->check_min = check_min;
-    filter_controls->check_max = check_max;
-    filter_controls->track_min = track_min;
-    filter_controls->track_max = track_max;
+    auto filter_controls = std::make_unique<CLCU_FILTER_CONTROLS>(check_min, check_max, track_min, track_max);
     int offset_y = 0;
     int cx_y_pos = 0;
 
@@ -2403,7 +2413,7 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_group(int check_min, int check_max,
     control.id = GetDlgCtrlID(control.hwnd);
     control.offset_x = rc.left - dialog_rc.left;
     control.offset_y = offset_y;
-    filter_controls->controls.push_back(control);
+    filter_controls->add_control(control);
     offset_y += track_bar_delta_y;
 
     if (add_cx.size() > 0 && add_cx_mode == ADD_CX_FIRST) {
@@ -2431,7 +2441,7 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_group(int check_min, int check_max,
         add_combobox(filter_controls.get(), add_cx, cx_y_pos, b_font, hwnd, hinst);
     }
     offset_y += track_bar_delta_y;
-    filter_controls->y_size = offset_y;
+    filter_controls->set_y_size(offset_y);
     return filter_controls;
 }
 
@@ -2551,7 +2561,7 @@ void add_combobox_from_to(
     control.hwnd = hwnd_cx_from;
     control.id = id_cx_from;
     control.offset_x = 98 + AVIUTL_1_10_OFFSET;
-    filter_controls->controls.push_back(control);
+    filter_controls->add_control(control);
     // label (from->to)
     hwnd_lb_from_to = CreateWindow("static", "", SS_SIMPLE | WS_CHILD | WS_VISIBLE, 192 + AVIUTL_1_10_OFFSET, offset_y, 10, 24, hwnd, (HMENU)id_lb_from_to, hinst, NULL);
     SendMessage(hwnd_lb_from_to, WM_SETFONT, (WPARAM)b_font, 0);
@@ -2559,7 +2569,7 @@ void add_combobox_from_to(
     control.hwnd = hwnd_lb_from_to;
     control.id = id_lb_from_to;
     control.offset_x = 192 + AVIUTL_1_10_OFFSET;
-    filter_controls->controls.push_back(control);
+    filter_controls->add_control(control);
     // to
     hwnd_cx_to = CreateWindow("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 208 + AVIUTL_1_10_OFFSET, offset_y, 90, 100, hwnd, (HMENU)id_cx_to, hinst, NULL);
     SendMessage(hwnd_cx_to, WM_SETFONT, (WPARAM)b_font, 0);
@@ -2567,17 +2577,13 @@ void add_combobox_from_to(
     control.hwnd = hwnd_cx_to;
     control.id = id_cx_to;
     control.offset_x = 208 + AVIUTL_1_10_OFFSET;
-    filter_controls->controls.push_back(control);
+    filter_controls->add_control(control);
 
     offset_y += CX_HEIGHT;
 }
 
 std::unique_ptr<CLCU_FILTER_CONTROLS> create_colorspace(int check_min, int check_max, int track_min, int track_max, const int track_bar_delta_y, const int checkbox_idx, const RECT& dialog_rc, HFONT b_font, HWND hwnd, HINSTANCE hinst) {
-    auto filter_controls = std::make_unique<CLCU_FILTER_CONTROLS>();
-    filter_controls->check_min = check_min;
-    filter_controls->check_max = check_max;
-    filter_controls->track_min = track_min;
-    filter_controls->track_max = track_max;
+    auto filter_controls = std::make_unique<CLCU_FILTER_CONTROLS>(check_min, check_max, track_min, track_max);
     int offset_y = 0;
     RECT rc;
     GetWindowRect(child_hwnd[checkbox_idx + check_min], &rc);
@@ -2587,7 +2593,7 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_colorspace(int check_min, int check
     control.id = GetDlgCtrlID(control.hwnd);
     control.offset_x = rc.left - dialog_rc.left;
     control.offset_y = offset_y;
-    filter_controls->controls.push_back(control);
+    filter_controls->add_control(control);
     offset_y += track_bar_delta_y;
 
     int cx_y_pos = offset_y;
@@ -2619,16 +2625,12 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_colorspace(int check_min, int check
     add_trackbars(filter_controls.get(), offset_y, track_min, track_max, track_bar_delta_y, dialog_rc);
 
     offset_y += track_bar_delta_y;
-    filter_controls->y_size = offset_y;
+    filter_controls->set_y_size(offset_y);
     return filter_controls;
 }
 
 std::unique_ptr<CLCU_FILTER_CONTROLS> create_resize(const int track_bar_delta_y, const int checkbox_idx, const RECT& dialog_rc, HFONT b_font, HWND hwnd, HINSTANCE hinst, FILTER *fp) {
-    auto filter_controls = std::make_unique<CLCU_FILTER_CONTROLS>();
-    filter_controls->check_min = CLFILTER_CHECK_RESIZE_ENABLE;
-    filter_controls->check_max = CLFILTER_CHECK_RESIZE_ENABLE;
-    filter_controls->track_min = -1;
-    filter_controls->track_max = -1;
+    auto filter_controls = std::make_unique<CLCU_FILTER_CONTROLS>(CLFILTER_CHECK_RESIZE_ENABLE, CLFILTER_CHECK_RESIZE_ENABLE, -1, -1);
     int offset_y = 0;
 
     RECT rc;
@@ -2639,7 +2641,7 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_resize(const int track_bar_delta_y,
     control.id = GetDlgCtrlID(control.hwnd);
     control.offset_x = rc.left - dialog_rc.left;
     control.offset_y = offset_y;
-    filter_controls->controls.push_back(control);
+    filter_controls->add_control(control);
     offset_y += track_bar_delta_y;
 
     control.id = ID_LB_RESIZE_RES;
@@ -2649,28 +2651,28 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_resize(const int track_bar_delta_y,
     SendMessage(lb_proc_mode, WM_SETFONT, (WPARAM)b_font, 0);
     SendMessage(lb_proc_mode, WM_SETTEXT, 0, (LPARAM)LB_CX_RESIZE_SIZE);
     control.hwnd = lb_proc_mode;
-    filter_controls->controls.push_back(control);
+    filter_controls->add_control(control);
 
     control.id = ID_CX_RESIZE_RES;
     control.offset_x = 68;
     cx_resize_res = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, control.offset_x, control.offset_y, 145, 100, hwnd, (HMENU)ID_CX_RESIZE_RES, hinst, NULL);
     SendMessage(cx_resize_res, WM_SETFONT, (WPARAM)b_font, 0);
     control.hwnd = cx_resize_res;
-    filter_controls->controls.push_back(control);
+    filter_controls->add_control(control);
 
     control.id = ID_BT_RESIZE_RES_ADD;
     control.offset_x = 214;
     bt_resize_res_add = CreateWindow("BUTTON", LB_BT_RESIZE_ADD, WS_CHILD|WS_VISIBLE|WS_GROUP|WS_TABSTOP|BS_PUSHBUTTON|BS_VCENTER, control.offset_x, control.offset_y, 32, 22, hwnd, (HMENU)ID_BT_RESIZE_RES_ADD, hinst, NULL);
     SendMessage(bt_resize_res_add, WM_SETFONT, (WPARAM)b_font, 0);
     control.hwnd = bt_resize_res_add;
-    filter_controls->controls.push_back(control);
+    filter_controls->add_control(control);
 
     control.id = ID_BT_RESIZE_RES_DEL;
     control.offset_x = 246;
     bt_resize_res_del = CreateWindow("BUTTON", LB_BT_RESIZE_DELETE, WS_CHILD|WS_VISIBLE|WS_GROUP|WS_TABSTOP|BS_PUSHBUTTON|BS_VCENTER, control.offset_x, control.offset_y, 32, 22, hwnd, (HMENU)ID_BT_RESIZE_RES_DEL, hinst, NULL);
     SendMessage(bt_resize_res_del, WM_SETFONT, (WPARAM)b_font, 0);
     control.hwnd = bt_resize_res_del;
-    filter_controls->controls.push_back(control);
+    filter_controls->add_control(control);
 
     control.id = ID_CX_RESIZE_ALGO;
     control.offset_x = 68;
@@ -2678,7 +2680,7 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_resize(const int track_bar_delta_y,
     cx_resize_algo = CreateWindow("COMBOBOX", "", WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL, control.offset_x, control.offset_y, 210, 160, hwnd, (HMENU)ID_CX_RESIZE_ALGO, hinst, NULL);
     SendMessage(cx_resize_algo, WM_SETFONT, (WPARAM)b_font, 0);
     control.hwnd = cx_resize_algo;
-    filter_controls->controls.push_back(control);
+    filter_controls->add_control(control);
 
     update_cx_resize_res_items(fp);
     set_resize_algo_items(cl_exdata.cl_dev_id.s.platform == CLCU_PLATFORM_CUDA);
@@ -2692,7 +2694,7 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_resize(const int track_bar_delta_y,
     SendMessage(lb_resize_ngx_vsr_quality, WM_SETFONT, (WPARAM)b_font, 0);
     SendMessage(lb_resize_ngx_vsr_quality, WM_SETTEXT, 0, (LPARAM)LB_CX_RESIZE_NGX_VSR_QUALITY);
     control.hwnd = lb_resize_ngx_vsr_quality;
-    filter_controls->controls.push_back(control);
+    filter_controls->add_control(control);
 
     control.id = ID_CX_RESIZE_NGX_VSR_QUALITY;
     control.offset_x = 68;
@@ -2703,7 +2705,7 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_resize(const int track_bar_delta_y,
     set_combo_item(cx_resize_ngx_vsr_quality, "3", 3);
     set_combo_item(cx_resize_ngx_vsr_quality, "4 - slow", 4);
     control.hwnd = cx_resize_ngx_vsr_quality;
-    filter_controls->controls.push_back(control);
+    filter_controls->add_control(control);
 
     // NVVFXはNGXに重ねて同じ位置から2行
     control.id = ID_LB_NVVFX_SUPRERES_MODE;
@@ -2712,7 +2714,7 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_resize(const int track_bar_delta_y,
     SendMessage(lb_nvvfx_superres_mode, WM_SETFONT, (WPARAM)b_font, 0);
     SendMessage(lb_nvvfx_superres_mode, WM_SETTEXT, 0, (LPARAM)LB_CX_NVVFX_SUPRERES_MODE);
     control.hwnd = lb_nvvfx_superres_mode;
-    filter_controls->controls.push_back(control);
+    filter_controls->add_control(control);
 
     control.id = ID_CX_NVVFX_SUPRERES_MODE;
     control.offset_x = 68;
@@ -2721,7 +2723,7 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_resize(const int track_bar_delta_y,
     set_combo_item(cx_nvvfx_superres_mode, "0 - light", 0);
     set_combo_item(cx_nvvfx_superres_mode, "1 - strong", 1);
     control.hwnd = cx_nvvfx_superres_mode;
-    filter_controls->controls.push_back(control);
+    filter_controls->add_control(control);
 
     // NVVFXの2行目
     offset_y = track_bar_delta_y * 4 + 8;
@@ -2741,18 +2743,14 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_resize(const int track_bar_delta_y,
     create_trackbars_ex(filter_controls.get(), list_track_bar_ex, hwnd, hinst, 0, cx_y_pos, track_bar_delta_y, dialog_rc);
 
     // libplacebo(resize)とNVVFXの2行目の大きいほう
-    filter_controls->y_size = std::max(offset_y, cx_y_pos) + 8;
+    filter_controls->set_y_size(std::max(offset_y, cx_y_pos) + 8);
     return filter_controls;
 }
 
 std::unique_ptr<CLCU_FILTER_CONTROLS> create_libplacebo_tonemapping(const int track_bar_delta_y, const int checkbox_idx, const RECT& dialog_rc, HFONT b_font, HWND hwnd, HINSTANCE hinst) {
     const int check_min = CLFILTER_CHECK_LIBPLACEBO_TONEMAP_ENABLE;
 
-    auto filter_controls = std::make_unique<CLCU_FILTER_CONTROLS>();
-    filter_controls->check_min = CLFILTER_CHECK_LIBPLACEBO_TONEMAP_ENABLE;
-    filter_controls->check_max = CLFILTER_CHECK_LIBPLACEBO_TONEMAP_MAX;
-    filter_controls->track_min = CLFILTER_TRACK_LIBPLACEBO_TONEMAP_FIRST;
-    filter_controls->track_max = CLFILTER_TRACK_LIBPLACEBO_TONEMAP_MAX;
+    auto filter_controls = std::make_unique<CLCU_FILTER_CONTROLS>(CLFILTER_CHECK_LIBPLACEBO_TONEMAP_ENABLE, CLFILTER_CHECK_LIBPLACEBO_TONEMAP_MAX, CLFILTER_TRACK_LIBPLACEBO_TONEMAP_FIRST, CLFILTER_TRACK_LIBPLACEBO_TONEMAP_MAX);
     int offset_y = 0;
     RECT rc;
     GetWindowRect(child_hwnd[checkbox_idx + check_min], &rc);
@@ -2762,7 +2760,7 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_libplacebo_tonemapping(const int tr
     control.id = GetDlgCtrlID(control.hwnd);
     control.offset_x = rc.left - dialog_rc.left;
     control.offset_y = offset_y;
-    filter_controls->controls.push_back(control);
+    filter_controls->add_control(control);
     offset_y += track_bar_delta_y;
 
     int cx_y_pos = offset_y;
@@ -2801,8 +2799,59 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_libplacebo_tonemapping(const int tr
     offset_y += CX_HEIGHT * cx_list_libplacebo_tonemap.size() + 4; // すこし窮屈なので +4pix
     add_combobox(filter_controls.get(), cx_list_libplacebo_tonemap, cx_y_pos, b_font, hwnd, hinst);
 
+    //tonemap_functionによって変化するトラックバー
+    const int tone_const_param_y = offset_y;
+
+    // st2094 & spline
+    const std::vector<CLFILTER_TRACKBAR_DATA> tb_libplacebo_tonemap_tone_const_knee = {
+        // st2094
+        { &tb_libplacebo_tonemap_tone_const_knee_adaptation, LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_ADAPTATION, ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_ADAPTATION, 0, 100, 40, &cl_exdata.libplacebo_tonemap_tone_const_knee_adaptation },
+        { &tb_libplacebo_tonemap_tone_const_knee_min,        LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_MIN,        ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_MIN,        0,  50, 10, &cl_exdata.libplacebo_tonemap_tone_const_knee_min },
+        { &tb_libplacebo_tonemap_tone_const_knee_max,        LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_MAX,        ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_MAX,       50, 100, 80, &cl_exdata.libplacebo_tonemap_tone_const_knee_max },
+        { &tb_libplacebo_tonemap_tone_const_knee_default,    LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_DEFAULT,    ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_DEFAULT,    0, 100, 40, &cl_exdata.libplacebo_tonemap_tone_const_knee_default },
+        // spline
+        { &tb_libplacebo_tonemap_tone_const_slope_tuning,       LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_SLOPE_TUNING,       ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_SLOPE_TUNING,       0, 1000, 150, &cl_exdata.libplacebo_tonemap_tone_const_slope_tuning },
+        { &tb_libplacebo_tonemap_tone_const_slope_offset,       LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_SLOPE_OFFSET,       ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_SLOPE_OFFSET,       0,  100,  20, &cl_exdata.libplacebo_tonemap_tone_const_slope_offset },
+        { &tb_libplacebo_tonemap_tone_const_spline_contrast,    LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_SPLINE_CONTRAST,    ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_SPLINE_CONTRAST,    0,  150,  50, &cl_exdata.libplacebo_tonemap_tone_const_spline_contrast }
+    };
+    cx_y_pos = tone_const_param_y;
+    create_trackbars_ex(filter_controls.get(), tb_libplacebo_tonemap_tone_const_knee, hwnd, hinst, 0, cx_y_pos, track_bar_delta_y, dialog_rc);
+    offset_y = std::max(offset_y, cx_y_pos);
+
+    // For bt2390
+    const std::vector<CLFILTER_TRACKBAR_DATA> tb_libplacebo_tonemap_bt2390 = {
+        { &tb_libplacebo_tonemap_tone_const_knee_offset, LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_OFFSET, ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_KNEE_OFFSET, 50, 200, 100, &cl_exdata.libplacebo_tonemap_tone_const_knee_offset }
+    };
+    cx_y_pos = tone_const_param_y;
+    create_trackbars_ex(filter_controls.get(), tb_libplacebo_tonemap_bt2390, hwnd, hinst, 0, cx_y_pos, track_bar_delta_y, dialog_rc);
+    offset_y = std::max(offset_y, cx_y_pos);
+
+    // For reinhard
+    const std::vector<CLFILTER_TRACKBAR_DATA> tb_libplacebo_tonemap_reinhard = {
+        { &tb_libplacebo_tonemap_tone_const_reinhard_contrast, LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_REINHARD_CONTRAST, ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_REINHARD_CONTRAST, 0, 100, 50, &cl_exdata.libplacebo_tonemap_tone_const_reinhard_contrast }
+    };
+    cx_y_pos = tone_const_param_y;
+    create_trackbars_ex(filter_controls.get(), tb_libplacebo_tonemap_reinhard, hwnd, hinst, 0, cx_y_pos, track_bar_delta_y, dialog_rc);
+    offset_y = std::max(offset_y, cx_y_pos);
+
+    // For mobius
+    const std::vector<CLFILTER_TRACKBAR_DATA> tb_libplacebo_tonemap_mobius = {
+        { &tb_libplacebo_tonemap_tone_const_linear_knee, LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_LINEAR_KNEE, ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_LINEAR_KNEE, 0, 100, 30, &cl_exdata.libplacebo_tonemap_tone_const_linear_knee }
+    };
+    cx_y_pos = tone_const_param_y;
+    create_trackbars_ex(filter_controls.get(), tb_libplacebo_tonemap_mobius, hwnd, hinst, 0, cx_y_pos, track_bar_delta_y, dialog_rc);
+    offset_y = std::max(offset_y, cx_y_pos);
+
+    // For linear
+    const std::vector<CLFILTER_TRACKBAR_DATA> tb_libplacebo_tonemap_linear = {
+        { &tb_libplacebo_tonemap_tone_const_exposure, LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_EXPOSURE, ID_TB_LIBPLACEBO_TONEMAP_TONE_CONST_EXPOSURE, 0, 1000, 100, &cl_exdata.libplacebo_tonemap_tone_const_exposure }
+    };
+    cx_y_pos = tone_const_param_y;
+    create_trackbars_ex(filter_controls.get(), tb_libplacebo_tonemap_linear, hwnd, hinst, 0, cx_y_pos, track_bar_delta_y, dialog_rc);
+    offset_y = std::max(offset_y, cx_y_pos);
+
     offset_y += track_bar_delta_y;
-    filter_controls->y_size = offset_y;
+    filter_controls->set_y_size(offset_y);
     return filter_controls;
 }
 
@@ -2890,17 +2939,17 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     int col = 0;
     int y_pos = cb_row_start_y_pos;
     auto filter_resize = create_resize(track_bar_delta_y, checkbox_idx, dialog_rc, b_font, hwnd, hinst, fp);
-    move_group(filter_resize.get(), y_pos, col, col_width);
+    filter_resize->move_group(y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(filter_resize));
 
     //colorspace
     auto filter_colorspace = create_colorspace(CLFILTER_CHECK_COLORSPACE_ENABLE, CLFILTER_CHECK_COLORSPACE_MAX, CLFILTER_TRACK_COLORSPACE_FIRST, CLFILTER_TRACK_COLORSPACE_MAX, track_bar_delta_y, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
-    move_group(filter_colorspace.get(), y_pos, col, col_width);
+    filter_colorspace->move_group(y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(filter_colorspace));
 
     //libplacebo-tonemap
     auto filter_libplacebo_tonemap = create_libplacebo_tonemapping(track_bar_delta_y, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
-    move_group(filter_libplacebo_tonemap.get(), y_pos, col, col_width);
+    filter_libplacebo_tonemap->move_group(y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(filter_libplacebo_tonemap));
 
     //nnedi
@@ -2913,7 +2962,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
         CLCX_COMBOBOX(cx_nnedi_errortype, ID_CX_NNEDI_ERRORTYPE, lb_nnedi_errortype, ID_LB_NNEDI_ERRORTYPE, LB_CX_NNEDI_ERRORTYPE, list_vpp_nnedi_error_type)
     };
     auto filter_nnedi = create_group(CLFILTER_CHECK_NNEDI_ENABLE, CLFILTER_CHECK_NNEDI_MAX, CLFILTER_TRACK_NNEDI_FIRST, CLFILTER_TRACK_NNEDI_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_nnedi, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
-    move_group(filter_nnedi.get(), y_pos, col, col_width);
+    filter_nnedi->move_group(y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(filter_nnedi));
 
     y_pos_max = std::max(y_pos_max, y_pos);
@@ -2931,7 +2980,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
         CLCX_COMBOBOX(cx_nvvfx_denoise_strength, ID_CX_NVVFX_DENOISE_STRENGTH, lb_nvvfx_denoise_strength, ID_LB_NVVFX_DENOISE_STRENGTH, LB_CX_NVVFX_DENOISE_STRENGTH, list_vpp_nvvfx_denoise_strength)
     };
     auto filter_nvvfx_denoise = create_group(CLFILTER_CHECK_NVVFX_DENOISE_ENABLE, CLFILTER_CHECK_NVVFX_DENOISE_MAX, CLFILTER_TRACK_NVVFX_DENOISE_FIRST, CLFILTER_TRACK_NVVFX_DENOISE_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_nvvfx_denoise, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
-    move_group(filter_nvvfx_denoise.get(), y_pos, col, col_width);
+    filter_nvvfx_denoise->move_group(y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(filter_nvvfx_denoise));
 
     //nvvfx-artifact-reduction
@@ -2944,7 +2993,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
         CLCX_COMBOBOX(cx_nvvfx_artifact_reduction_mode, ID_CX_NVVFX_ARTIFACT_REDUCTION_MODE, lb_nvvfx_artifact_reduction_mode, ID_LB_NVVFX_ARTIFACT_REDUCTION_MODE, LB_CX_NVVFX_ARTIFACT_REDUCTION_MODE, list_vpp_nvvfx_artifact_reduction_mode)
     };
     auto filter_nvvfx_artifact_reduction = create_group(CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE, CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_MAX, CLFILTER_TRACK_NVVFX_ARTIFACT_REDUCTION_FIRST, CLFILTER_TRACK_NVVFX_ARTIFACT_REDUCTION_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_nvvfx_artifact_reduction, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
-    move_group(filter_nvvfx_artifact_reduction.get(), y_pos, col, col_width);
+    filter_nvvfx_artifact_reduction->move_group(y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(filter_nvvfx_artifact_reduction));
 
     //denoise-dct
@@ -2953,7 +3002,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
         CLCX_COMBOBOX(cx_denoise_dct_block_size, ID_CX_DENOISE_DCT_BLOCK_SIZE, lb_denoise_dct_block_size, ID_LB_DENOISE_DCT_BLOCK_SIZE, LB_CX_DENOISE_DCT_BLOCK_SIZE, list_vpp_denoise_dct_block_size)
     };
     auto filter_denoise_dct = create_group(CLFILTER_CHECK_DENOISE_DCT_ENABLE, CLFILTER_CHECK_DENOISE_DCT_MAX, CLFILTER_TRACK_DENOISE_DCT_FIRST, CLFILTER_TRACK_DENOISE_DCT_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_denoise_dct, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
-    move_group(filter_denoise_dct.get(), y_pos, col, col_width);
+    filter_denoise_dct->move_group(y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(filter_denoise_dct));
 
     //smooth
@@ -2961,7 +3010,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
         CLCX_COMBOBOX(cx_smooth_quality, ID_CX_SMOOTH_QUALITY, lb_smooth_quality, ID_LB_SMOOTH_QUALITY, LB_CX_SMOOTH_QUALITY, list_vpp_smooth_quality)
     };
     auto filter_smooth = create_group(CLFILTER_CHECK_SMOOTH_ENABLE, CLFILTER_CHECK_SMOOTH_MAX, CLFILTER_TRACK_SMOOTH_FIRST, CLFILTER_TRACK_SMOOTH_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_smooth, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
-    move_group(filter_smooth.get(), y_pos, col, col_width);
+    filter_smooth->move_group(y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(filter_smooth));
 
     //knn
@@ -2969,7 +3018,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
         CLCX_COMBOBOX(cx_knn_radius, ID_CX_KNN_RADIUS, lb_knn_radius, ID_LB_KNN_RADIUS, LB_CX_KNN_RADIUS, list_vpp_raduis)
     };
     auto filter_knn = create_group(CLFILTER_CHECK_KNN_ENABLE, CLFILTER_CHECK_KNN_MAX, CLFILTER_TRACK_KNN_FIRST, CLFILTER_TRACK_KNN_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_knn, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
-    move_group(filter_knn.get(), y_pos, col, col_width);
+    filter_knn->move_group(y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(filter_knn));
 
     //nlmeans
@@ -2978,13 +3027,13 @@ void init_dialog(HWND hwnd, FILTER *fp) {
         CLCX_COMBOBOX(cx_nlmeans_search, ID_CX_DENOISE_NLMEANS_SEARCH, lb_nlmeans_search, ID_LB_DENOISE_NLMEANS_SEARCH, LB_CX_DENOISE_NLMEANS_SEARCH, list_vpp_nlmeans_block_size)
     };
     auto filter_nlmeans = create_group(CLFILTER_CHECK_NLMEANS_ENABLE, CLFILTER_CHECK_NLMEANS_MAX, CLFILTER_TRACK_NLMEANS_FIRST, CLFILTER_TRACK_NLMEANS_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_nlmeans, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
-    move_group(filter_nlmeans.get(), y_pos, col, col_width);
+    filter_nlmeans->move_group(y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(filter_nlmeans));
 
     //pmd
     std::vector<CLCX_COMBOBOX> cx_list_pmd = { };
     auto filter_pmd = create_group(CLFILTER_CHECK_PMD_ENABLE, CLFILTER_CHECK_PMD_MAX, CLFILTER_TRACK_PMD_FIRST, CLFILTER_TRACK_PMD_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_pmd, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
-    move_group(filter_pmd.get(), y_pos, col, col_width);
+    filter_pmd->move_group(y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(filter_pmd));
 
     y_pos_max = std::max(y_pos_max, y_pos);
@@ -2996,13 +3045,13 @@ void init_dialog(HWND hwnd, FILTER *fp) {
         CLCX_COMBOBOX(cx_unsharp_radius, ID_CX_UNSHARP_RADIUS, lb_unsharp_radius, ID_LB_UNSHARP_RADIUS, LB_CX_UNSHARP_RADIUS, list_vpp_raduis)
     };
     auto filter_unsharp = create_group(CLFILTER_CHECK_UNSHARP_ENABLE, CLFILTER_CHECK_UNSHARP_MAX, CLFILTER_TRACK_UNSHARP_FIRST, CLFILTER_TRACK_UNSHARP_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_unsharp, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
-    move_group(filter_unsharp.get(), y_pos, col, col_width);
+    filter_unsharp->move_group(y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(filter_unsharp));
 
     //エッジレベル調整
     std::vector<CLCX_COMBOBOX> cx_list_edgelevel = { };
     auto filter_edgelevel = create_group(CLFILTER_CHECK_EDGELEVEL_ENABLE, CLFILTER_CHECK_EDGELEVEL_MAX, CLFILTER_TRACK_EDGELEVEL_FIRST, CLFILTER_TRACK_EDGELEVEL_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_edgelevel, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
-    move_group(filter_edgelevel.get(), y_pos, col, col_width);
+    filter_edgelevel->move_group(y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(filter_edgelevel));
 
     //warpsharp
@@ -3010,13 +3059,13 @@ void init_dialog(HWND hwnd, FILTER *fp) {
         CLCX_COMBOBOX(cx_warpsharp_blur, ID_CX_WARPSHARP_BLUR, lb_warpsharp_blur, ID_LB_WARPSHARP_BLUR, LB_CX_WARPSHARP_BLUR, list_vpp_1_to_10)
     };
     auto filter_warpsharp = create_group(CLFILTER_CHECK_WARPSHARP_ENABLE, CLFILTER_CHECK_WARPSHARP_MAX, CLFILTER_TRACK_WARPSHARP_FIRST, CLFILTER_TRACK_WARPSHARP_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_warpsharp, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
-    move_group(filter_warpsharp.get(), y_pos, col, col_width);
+    filter_warpsharp->move_group(y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(filter_warpsharp));
 
     //tweak
     std::vector<CLCX_COMBOBOX> cx_list_tweak = { };
     auto filter_tweak = create_group(CLFILTER_CHECK_TWEAK_ENABLE, CLFILTER_CHECK_TWEAK_MAX, CLFILTER_TRACK_TWEAK_FIRST, CLFILTER_TRACK_TWEAK_MAX, track_bar_delta_y, {}, ADD_CX_FIRST, cx_list_tweak, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
-    move_group(filter_tweak.get(), y_pos, col, col_width);
+    filter_tweak->move_group(y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(filter_tweak));
 
     //バンディング
@@ -3024,7 +3073,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
         CLCX_COMBOBOX(cx_deband_sample, ID_CX_DEBAND_SAMPLE, lb_deband_sample, ID_LB_DEBAND_SAMPLE, LB_CX_DEBAND_SAMPLE, list_vpp_deband_sample)
     };
     auto fitler_deband = create_group(CLFILTER_CHECK_DEBAND_ENABLE, CLFILTER_CHECK_DEBAND_MAX, CLFILTER_TRACK_DEBAND_FIRST, CLFILTER_TRACK_DEBAND_MAX, track_bar_delta_y, {}, ADD_CX_AFTER_TRACK, cx_list_deband, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
-    move_group(fitler_deband.get(), y_pos, col, col_width);
+    fitler_deband->move_group(y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(fitler_deband));
 
     //libplacebo-deband
@@ -3039,7 +3088,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
         { &tb_libplacebo_deband_grain,      LB_TB_LIBPLACEBO_DEBAND_GRAIN,      ID_TB_LIBPLACEBO_DEBAND_GRAIN,      0, 255,  6, &cl_exdata.libplacebo_deband_grain      }
     };
     auto filter_libplacebo_deband = create_group(CLFILTER_CHECK_LIBPLACEBO_DEBAND_ENABLE, CLFILTER_CHECK_LIBPLACEBO_DEBAND_MAX, CLFILTER_TRACK_LIBPLACEBO_DEBAND_FIRST, CLFILTER_TRACK_LIBPLACEBO_DEBAND_MAX, track_bar_delta_y, tb_libplacebo_deband, ADD_CX_AFTER_TRACK, cx_list_libplacebo_deband, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
-    move_group(filter_libplacebo_deband.get(), y_pos, col, col_width);
+    filter_libplacebo_deband->move_group(y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(filter_libplacebo_deband));
 
     //TrueHDR
@@ -3051,7 +3100,7 @@ void init_dialog(HWND hwnd, FILTER *fp) {
         { &tb_ngx_truehdr_maxluminance, LB_TB_TRUEHDR_MAXLUMINANCE, ID_TB_NGX_TRUEHDR_MAXLUMINANCE, 400, 2000, 1000, &cl_exdata.ngx_truehdr_maxluminance }
     };
     auto filter_ngx_truhdr = create_group(CLFILTER_CHECK_TRUEHDR_ENABLE, CLFILTER_CHECK_TRUEHDR_MAX, CLFILTER_TRACK_NGX_TRUEHDR_FIRST, CLFILTER_TRACK_NGX_TRUEHDR_MAX, track_bar_delta_y, tb_truehdr, ADD_CX_AFTER_TRACK, cx_list_ngx_truehdr, checkbox_idx, dialog_rc, b_font, hwnd, hinst);
-    move_group(filter_ngx_truhdr.get(), y_pos, col, col_width);
+    filter_ngx_truhdr->move_group(y_pos, col, col_width);
     g_filterControls[col].push_back(std::move(filter_ngx_truhdr));
     
     y_pos_max = std::max(y_pos_max, y_pos);
@@ -3208,6 +3257,18 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp, const FILTER_PRO
     prm.vpp.libplacebo_tonemapping.contrast_smoothness = (float)cl_exdata.libplacebo_tonemap_contrast_smoothness * 0.1f;
     prm.vpp.libplacebo_tonemapping.dst_pl_transfer = (VppLibplaceboToneMappingTransfer)cl_exdata.libplacebo_tonemap_dst_pl_transfer;
     prm.vpp.libplacebo_tonemapping.dst_pl_colorprim = (VppLibplaceboToneMappingColorprim)cl_exdata.libplacebo_tonemap_dst_pl_colorprim;
+
+    prm.vpp.libplacebo_tonemapping.tone_constants.st2094.knee_adaptation = cl_exdata.libplacebo_tonemap_tone_const_knee_adaptation * 0.01f;
+    prm.vpp.libplacebo_tonemapping.tone_constants.st2094.knee_min = cl_exdata.libplacebo_tonemap_tone_const_knee_min * 0.01f;
+    prm.vpp.libplacebo_tonemapping.tone_constants.st2094.knee_max = cl_exdata.libplacebo_tonemap_tone_const_knee_max * 0.01f;
+    prm.vpp.libplacebo_tonemapping.tone_constants.st2094.knee_default = cl_exdata.libplacebo_tonemap_tone_const_knee_default * 0.01f;
+    prm.vpp.libplacebo_tonemapping.tone_constants.bt2390.knee_offset = cl_exdata.libplacebo_tonemap_tone_const_knee_offset * 0.01f;
+    prm.vpp.libplacebo_tonemapping.tone_constants.spline.slope_tuning = cl_exdata.libplacebo_tonemap_tone_const_slope_tuning * 0.01f;
+    prm.vpp.libplacebo_tonemapping.tone_constants.spline.slope_offset = cl_exdata.libplacebo_tonemap_tone_const_slope_offset * 0.01f;
+    prm.vpp.libplacebo_tonemapping.tone_constants.spline.spline_contrast = cl_exdata.libplacebo_tonemap_tone_const_spline_contrast * 0.01f;
+    prm.vpp.libplacebo_tonemapping.tone_constants.reinhard.contrast = cl_exdata.libplacebo_tonemap_tone_const_reinhard_contrast * 0.01f;
+    prm.vpp.libplacebo_tonemapping.tone_constants.mobius.linear_knee = cl_exdata.libplacebo_tonemap_tone_const_linear_knee * 0.01f;
+    prm.vpp.libplacebo_tonemapping.tone_constants.linear.exposure = cl_exdata.libplacebo_tonemap_tone_const_exposure * 0.01f;
 
     //nnedi
     prm.vpp.nnedi.enable        = fp->check[CLFILTER_CHECK_NNEDI_ENABLE] != 0;

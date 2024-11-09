@@ -325,6 +325,7 @@
   <ItemGroup>
     <ClInclude Include="clcufilters.h" />
     <ClInclude Include="clcufilters_auf.h" />
+    <ClInclude Include="clcufilters_control.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="clcufilters.rc" />
