@@ -2615,7 +2615,11 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_colorspace(int check_min, int check
 
     int cx_y_pos = offset_y;
 
-    // checkbox
+    // checkboxを小さくして配置する
+    for (int i = check_min + 1; i < check_max; i++) {
+        GetWindowRect(child_hwnd[checkbox_idx + i], &rc);
+        SetWindowPos(child_hwnd[checkbox_idx + i], HWND_TOP, 0, 0, 75, rc.bottom - rc.top, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOZORDER);
+    }
     add_checkboxs_excpet_key(filter_controls.get(), offset_y, checkbox_idx, check_min, check_max, track_bar_delta_y, dialog_rc);
 
     add_combobox_from_to(filter_controls.get(), cx_colorspace_colormatrix_from, ID_CX_COLORSPACE_COLORMATRIX_FROM, cx_colorspace_colormatrix_to, ID_CX_COLORSPACE_COLORMATRIX_TO,
