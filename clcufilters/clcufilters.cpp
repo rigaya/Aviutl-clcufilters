@@ -320,6 +320,7 @@ static int g_resize_libplacebo = -1;
 static std::vector<CLFILTER_TRACKBAR_DATA> g_trackBars;
 static HBRUSH g_hbrBackground = NULL;
 static std::array<std::vector<std::unique_ptr<CLCU_FILTER_CONTROLS>>, FILTER_ROW> g_filterControls;
+static int g_stgWindowShowingError = 0;
 
 //---------------------------------------------------------------------
 //        ラベル
@@ -2810,7 +2811,7 @@ std::unique_ptr<CLCU_FILTER_CONTROLS> create_libplacebo_tonemapping(const int tr
         { &tb_libplacebo_tonemap_src_min,              LB_TB_LIBPLACEBO_TONEMAP_SRC_MIN,              ID_TB_LIBPLACEBO_TONEMAP_SRC_MIN,              0,  2000,    1, &cl_exdata.libplacebo_tonemap_src_min },
         { &tb_libplacebo_tonemap_dst_max,              LB_TB_LIBPLACEBO_TONEMAP_DST_MAX,              ID_TB_LIBPLACEBO_TONEMAP_DST_MAX,              1,  2000,  203, &cl_exdata.libplacebo_tonemap_dst_max },
         { &tb_libplacebo_tonemap_dst_min,              LB_TB_LIBPLACEBO_TONEMAP_DST_MIN,              ID_TB_LIBPLACEBO_TONEMAP_DST_MIN,              0,  2000,    1, &cl_exdata.libplacebo_tonemap_dst_min },
-        { &tb_libplacebo_tonemap_smooth_period,        LB_TB_LIBPLACEBO_TONEMAP_SMOOTH_PERIOD,        ID_TB_LIBPLACEBO_TONEMAP_SMOOTH_PERIOD,        0,  1000,   20, &cl_exdata.libplacebo_tonemap_smooth_period },
+        { &tb_libplacebo_tonemap_smooth_period,        LB_TB_LIBPLACEBO_TONEMAP_SMOOTH_PERIOD,        ID_TB_LIBPLACEBO_TONEMAP_SMOOTH_PERIOD,        1,  1000,   20, &cl_exdata.libplacebo_tonemap_smooth_period },
         { &tb_libplacebo_tonemap_scene_threshold_low,  LB_TB_LIBPLACEBO_TONEMAP_SCENE_THRESHOLD_LOW,  ID_TB_LIBPLACEBO_TONEMAP_SCENE_THRESHOLD_LOW,  0,  1000,   10, &cl_exdata.libplacebo_tonemap_scene_threshold_low },
         { &tb_libplacebo_tonemap_scene_threshold_high, LB_TB_LIBPLACEBO_TONEMAP_SCENE_THRESHOLD_HIGH, ID_TB_LIBPLACEBO_TONEMAP_SCENE_THRESHOLD_HIGH, 0,  1000,   30, &cl_exdata.libplacebo_tonemap_scene_threshold_high },
         //{ &tb_libplacebo_tonemap_percentile,           LB_TB_LIBPLACEBO_TONEMAP_PERCENTILE,           ID_TB_LIBPLACEBO_TONEMAP_PERCENTILE,           0,  100,     1, &cl_exdata.libplacebo_tonemap_percentile },
@@ -3882,9 +3883,17 @@ BOOL clcuFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_
             mes += LB_PROCESS_ABORT;
             mes += " : ";
         }
-        mes += message->data;
+        mes += str_replace(str_replace(message->data, "\r\n", ""), "\n", "");
         SendMessage(fp->hwnd, WM_SETTEXT, 0, (LPARAM)mes.c_str());
+        g_stgWindowShowingError = 1;
         return FALSE;
+    } else if (g_stgWindowShowingError) {
+        std::string mes = AUF_FULL_NAME;
+        mes += ": ";
+        const auto dev = g_clfiltersAufDevices->findDevice(cl_exdata.cl_dev_id.s.platform, cl_exdata.cl_dev_id.s.device);
+        mes += (dev) ? tchar_to_string(dev->devName) : LB_WND_OPENCL_AVAIL;
+        SendMessage(fp->hwnd, WM_SETTEXT, 0, (LPARAM)mes.c_str());
+        g_stgWindowShowingError = 0;
     }
     // 共有メモリからコピー
     mt_frame_copy_data copyPrm;
