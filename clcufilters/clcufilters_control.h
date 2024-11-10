@@ -102,7 +102,7 @@ public:
         // 最初のチェックボックスを除いて表示/非表示を切り替え
         for (size_t i = 1; i < controls.size(); i++) {
             bool control_enable = !!enable;
-            if (controls[i].show_hide_flags.size() > 0) {
+            if (control_enable && controls[i].show_hide_flags.size() > 0) {
                 for (const auto& show_hide_flag : show_hide_flags) {
                     auto it_sh_flag = std::find_if(controls[i].show_hide_flags.begin(), controls[i].show_hide_flags.end(), [show_hide_flag](const CLCU_CONTROL_SHOW_HIDE &sh_flag) { return sh_flag.type == show_hide_flag.first; });
                     if (it_sh_flag != controls[i].show_hide_flags.end()) {
