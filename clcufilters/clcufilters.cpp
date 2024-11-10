@@ -51,6 +51,7 @@ void update_cx(FILTER *fp);
 void update_filter_enable(HWND hwnd, const size_t icol);
 void cl_exdata_set_default();
 void load_stg_file(HWND hwnd, FILTER *fp);
+void load_default_stg(HWND hwnd, FILTER *fp);
 void save_stg_file(FILTER *fp);
 
 static_assert(sizeof(PIXEL_YC) == SIZE_PIXEL_YC);
@@ -80,6 +81,8 @@ enum {
     ID_BT_STG_SAVE,
     ID_LB_STG_LOAD,
     ID_BT_STG_LOAD,
+    ID_LB_DEFAULT_LOAD,
+    ID_BT_DEFAULT_LOAD,
 
     ID_LB_FILTER_ORDER,
     ID_LS_FILTER_ORDER,
@@ -335,6 +338,8 @@ static const char *LB_CX_OPENCL_DEVICE = "デバイス選択";
 static const char *LB_CX_LOG_LEVEL = "ログ出力";
 static const char *LB_BT_STG_SAVE = "設定保存";
 static const char *LB_BT_STG_LOAD = "設定ロード";
+static const char *LB_BT_DEFAULT_LOAD = "デフォルトに戻す";
+static const char *LB_CONFIRM_DEFAULT = "設定をデフォルトに戻してよろしいですか?";
 static const char *LB_CX_FILTER_ORDER = "フィルタ順序";
 static const char *LB_CX_RESIZE_SIZE = "サイズ";
 static const char *LB_BT_RESIZE_ADD = "追加";
@@ -414,6 +419,8 @@ static const char *LB_CX_OPENCL_DEVICE = "Device";
 static const char *LB_CX_LOG_LEVEL = "Log";
 static const char *LB_BT_STG_SAVE = "Save Stg";
 static const char *LB_BT_STG_LOAD = "Load Stg";
+static const char *LB_BT_DEFAULT_LOAD = "Load Default";
+static const char *LB_CONFIRM_DEFAULT = "Load Defaut Settings ?";
 static const char *LB_CX_FILTER_ORDER = "Filter Order";
 static const char *LB_CX_RESIZE_SIZE = "Size";
 static const char *LB_BT_RESIZE_ADD = "Add";
@@ -929,6 +936,7 @@ static HWND lb_log_level;
 static HWND cx_log_level;
 static HWND bt_stg_save;
 static HWND bt_stg_load;
+static HWND bt_stg_default;
 static HWND cx_resize_res;
 static HWND bt_resize_res_add;
 static HWND bt_resize_res_del;
@@ -1879,6 +1887,9 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
             break;
         case ID_BT_STG_LOAD: // 設定ファイル読み込み
             load_stg_file(hwnd, fp);
+            break;
+        case ID_BT_DEFAULT_LOAD: // 設定ファイル読み込み
+            load_default_stg(hwnd, fp);
             break;
         case ID_BT_STG_SAVE: // 設定ファイル保存
             save_stg_file(fp);
@@ -2970,11 +2981,14 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     SendMessage(bt_opencl_info, WM_SETFONT, (WPARAM)b_font, 0);
 
     //設定保存/ロードボタンを追加
-    bt_stg_save = CreateWindow("BUTTON", LB_BT_STG_SAVE, WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, 380, cb_opencl_platform_y, 64, 22, hwnd, (HMENU)ID_BT_STG_SAVE, hinst, NULL);
+    bt_stg_save = CreateWindow("BUTTON", LB_BT_STG_SAVE, WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, 388, cb_opencl_platform_y, 80, 22, hwnd, (HMENU)ID_BT_STG_SAVE, hinst, NULL);
     SendMessage(bt_stg_save, WM_SETFONT, (WPARAM)b_font, 0);
 
-    bt_stg_load = CreateWindow("BUTTON", LB_BT_STG_LOAD, WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, 452, cb_opencl_platform_y, 64, 22, hwnd, (HMENU)ID_BT_STG_LOAD, hinst, NULL);
+    bt_stg_load = CreateWindow("BUTTON", LB_BT_STG_LOAD, WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, 476, cb_opencl_platform_y, 80, 22, hwnd, (HMENU)ID_BT_STG_LOAD, hinst, NULL);
     SendMessage(bt_stg_load, WM_SETFONT, (WPARAM)b_font, 0);
+
+    bt_stg_default = CreateWindow("BUTTON", LB_BT_DEFAULT_LOAD, WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, 560, cb_opencl_platform_y, 80, 22, hwnd, (HMENU)ID_BT_DEFAULT_LOAD, hinst, NULL);
+    SendMessage(bt_stg_default, WM_SETFONT, (WPARAM)b_font, 0);
 
     //checkboxの移動
     const int checkbox_idx = 1+5*CLFILTER_TRACK_MAX;
@@ -3667,6 +3681,24 @@ void cl_exdata_set_default() {
     cl_exdata.csp_from = VideoVUIInfo();
     cl_exdata.csp_to = VideoVUIInfo();
     cl_exdata.hdr2sdr = HDR2SDR_DISABLED;
+}
+
+void load_default_stg(HWND hwnd, FILTER *fp) {
+    // メッセージボックスで確認
+    if (IDYES != MessageBox(hwnd, LB_CONFIRM_DEFAULT, "Default", MB_YESNO | MB_ICONQUESTION)) {
+        return;
+    }
+
+    clFilterChainParam prm;
+    func_set_param_from_prm(fp, prm);
+    cl_exdata_set_prm(prm);
+
+    update_cx(fp);
+    set_filter_order();
+    for (size_t icol = 0; icol < g_filterControls.size(); icol++) {
+        update_filter_enable(hwnd, icol);
+    }
+    fp->exfunc->filter_window_update(fp);
 }
 
 void load_stg_file(HWND hwnd, FILTER *fp) {
