@@ -327,6 +327,7 @@ static std::array<std::vector<std::unique_ptr<CLCU_FILTER_CONTROLS>>, FILTER_ROW
 #if !CLFILTERS_EN
 static const char *LB_SAVE_STG_FAILED = "設定ファイルの保存に失敗しました。";
 static const char *LB_LOAD_STG_FAILED = "設定ファイルの読み込みに失敗しました。";
+static const char *LB_PROCESS_ABORT = "プロセスが異常終了しました。";
 static const char *LB_WND_OPENCL_UNAVAIL = "フィルタは無効です: OpenCLを使用できません。";
 static const char *LB_WND_OPENCL_AVAIL = "OpenCL 有効";
 static const char *LB_CX_OPENCL_DEVICE = "デバイス選択";
@@ -405,6 +406,7 @@ static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_EXPOSURE = "exposure";
 #else
 static const char *LB_SAVE_STG_FAILED = "Failed to save to stg file.";
 static const char *LB_LOAD_STG_FAILED = "Failed to load stg file."
+static const char *LB_PROCESS_ABORT = "Process Aborted!";
 static const char *LB_WND_OPENCL_UNAVAIL = "Filter disabled, OpenCL could not be used.";
 static const char *LB_WND_OPENCL_AVAIL = "OpenCL Enabled";
 static const char *LB_CX_OPENCL_DEVICE = "Device";
@@ -3860,19 +3862,26 @@ BOOL clcuFiltersAuf::funcProc(const clFilterChainParam& prm, FILTER *fp, FILTER_
     SetEvent(m_eventMesStart.get());
 
     // プロセス側の処理終了を待機
+    bool processAlive = true;
     while (WaitForSingleObject(m_eventMesEnd.get(), 100) == WAIT_TIMEOUT) {
         // exeの生存を確認
         if (!m_process->processAlive()) {
-            return FALSE;
+            processAlive = false;
+            break;
         }
     }
     // エラーの確認
-    if (message->ret != TRUE) {
+    if (!processAlive || message->ret != TRUE) {
         std::string mes = AUF_FULL_NAME;
         mes += ": ";
         const auto dev = g_clfiltersAufDevices->findDevice(cl_exdata.cl_dev_id.s.platform, cl_exdata.cl_dev_id.s.device);
         mes += (dev) ? tchar_to_string(dev->devName) : LB_WND_OPENCL_AVAIL;
         mes += ": ";
+        if (!processAlive) {
+            mes += ": ";
+            mes += LB_PROCESS_ABORT;
+            mes += " : ";
+        }
         mes += message->data;
         SendMessage(fp->hwnd, WM_SETTEXT, 0, (LPARAM)mes.c_str());
         return FALSE;
