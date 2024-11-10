@@ -33,6 +33,8 @@
 #include <algorithm>
 #include <vector>
 #include <cstdint>
+#include <iostream>
+#include <fstream>
 
 #define DEFINE_GLOBAL
 #include "filter.h"
@@ -47,11 +49,16 @@ void init_device_list();
 void init_dialog(HWND hwnd, FILTER *fp);
 void update_cx(FILTER *fp);
 void update_filter_enable(HWND hwnd, const size_t icol);
+void cl_exdata_set_default();
+void load_stg_file(HWND hwnd, FILTER *fp);
+void save_stg_file(FILTER *fp);
 
 static_assert(sizeof(PIXEL_YC) == SIZE_PIXEL_YC);
 
 #define ENABLE_FIELD (0)
 #define ENABLE_HDR2SDR_DESAT (0)
+
+#define CLCU_STG_FILTER  "設定ファイル (*.ini)\0*.stg\0" "全てのファイル (*.*)\0*.*\0"
 
 enum {
     ID_LB_RESIZE_RES = ID_TX_RESIZE_RES_ADD+1,
@@ -68,6 +75,11 @@ enum {
 
     ID_LB_LOG_LEVEL,
     ID_CX_LOG_LEVEL,
+
+    ID_LB_STG_SAVE,
+    ID_BT_STG_SAVE,
+    ID_LB_STG_LOAD,
+    ID_BT_STG_LOAD,
 
     ID_LB_FILTER_ORDER,
     ID_LS_FILTER_ORDER,
@@ -313,10 +325,14 @@ static std::array<std::vector<std::unique_ptr<CLCU_FILTER_CONTROLS>>, FILTER_ROW
 //        ラベル
 //---------------------------------------------------------------------
 #if !CLFILTERS_EN
+static const char *LB_SAVE_STG_FAILED = "設定ファイルの保存に失敗しました。";
+static const char *LB_LOAD_STG_FAILED = "設定ファイルの読み込みに失敗しました。";
 static const char *LB_WND_OPENCL_UNAVAIL = "フィルタは無効です: OpenCLを使用できません。";
 static const char *LB_WND_OPENCL_AVAIL = "OpenCL 有効";
 static const char *LB_CX_OPENCL_DEVICE = "デバイス選択";
 static const char *LB_CX_LOG_LEVEL = "ログ出力";
+static const char *LB_BT_STG_SAVE = "設定保存";
+static const char *LB_BT_STG_LOAD = "設定ロード";
 static const char *LB_CX_FILTER_ORDER = "フィルタ順序";
 static const char *LB_CX_RESIZE_SIZE = "サイズ";
 static const char *LB_BT_RESIZE_ADD = "追加";
@@ -387,10 +403,14 @@ static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_REINHARD_CONTRAST = "rein
 static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_LINEAR_KNEE = "linear knee";
 static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_EXPOSURE = "exposure";
 #else
+static const char *LB_SAVE_STG_FAILED = "Failed to save to stg file.";
+static const char *LB_LOAD_STG_FAILED = "Failed to load stg file."
 static const char *LB_WND_OPENCL_UNAVAIL = "Filter disabled, OpenCL could not be used.";
 static const char *LB_WND_OPENCL_AVAIL = "OpenCL Enabled";
 static const char *LB_CX_OPENCL_DEVICE = "Device";
 static const char *LB_CX_LOG_LEVEL = "Log";
+static const char *LB_BT_STG_SAVE = "Save Stg";
+static const char *LB_BT_STG_LOAD = "Load Stg";
 static const char *LB_CX_FILTER_ORDER = "Filter Order";
 static const char *LB_CX_RESIZE_SIZE = "Size";
 static const char *LB_BT_RESIZE_ADD = "Add";
@@ -892,116 +912,6 @@ BOOL func_update(FILTER* fp, int status) {
     return TRUE;
 }
 
-static void cl_exdata_set_default() {
-    cl_exdata.cl_dev_id.i = 0;
-    cl_exdata.log_level = RGY_LOG_QUIET;
-
-    cl_exdata.resize_idx = 0;
-    cl_exdata.resize_algo = RGY_VPP_RESIZE_SPLINE36;
-
-    cl_exdata.resize_ngx_vsr_quality = FILTER_DEFAULT_NGX_VSR_QUALITY;
-
-    cl_exdata.csp_from = VideoVUIInfo();
-    cl_exdata.csp_to = VideoVUIInfo();
-    cl_exdata.hdr2sdr = HDR2SDR_DISABLED;
-
-    VppNnedi nnedi;
-    cl_exdata.nnedi_field = VPP_NNEDI_FIELD_USE_TOP;
-    cl_exdata.nnedi_nns = nnedi.nns;
-    cl_exdata.nnedi_nsize = nnedi.nsize;
-    cl_exdata.nnedi_quality = nnedi.quality;
-    cl_exdata.nnedi_prescreen = nnedi.pre_screen;
-    cl_exdata.nnedi_errortype = nnedi.errortype;
-
-    VppNvvfxDenoise nvvfxdenoise;
-    cl_exdata.nvvfx_denoise_strength = (int)(nvvfxdenoise.strength + 0.5);
-
-    VppNvvfxArtifactReduction nvvfxArtifactReduction;
-    cl_exdata.nvvfx_artifact_reduction_mode = nvvfxArtifactReduction.mode;
-
-    VppNvvfxSuperRes nvvfxSuperRes;
-    cl_exdata.nvvfx_superres_mode = nvvfxSuperRes.mode;
-    cl_exdata.nvvfx_superres_strength = (int)(nvvfxSuperRes.strength * 100.0f + 0.5f);
-
-    VppDenoiseDct dct;
-    cl_exdata.denoise_dct_step = dct.step;
-    cl_exdata.denoise_dct_block_size = dct.block_size;
-
-    VppSmooth smooth;
-    cl_exdata.smooth_quality = smooth.quality;
-
-    VppKnn knn;
-    cl_exdata.knn_radius = knn.radius;
-
-    VppNLMeans nlmeans;
-    cl_exdata.nlmeans_patch = nlmeans.patchSize;
-    cl_exdata.nlmeans_search = nlmeans.searchSize;
-
-    VppPmd pmd;
-    cl_exdata.pmd_apply_count = pmd.applyCount;
-
-    VppUnsharp unsharp;
-    cl_exdata.unsharp_radius = unsharp.radius;
-
-    VppWarpsharp warpsharp;
-    cl_exdata.warpsharp_blur = warpsharp.blur;
-
-    VppDeband deband;
-    cl_exdata.deband_sample = deband.sample;
-
-    VppNGXTrueHDR ngxTrueHDR;
-    cl_exdata.ngx_truehdr_contrast = ngxTrueHDR.contrast;
-    cl_exdata.ngx_truehdr_saturation = ngxTrueHDR.saturation;
-    cl_exdata.ngx_truehdr_middlegray = ngxTrueHDR.middleGray;
-    cl_exdata.ngx_truehdr_maxluminance = ngxTrueHDR.maxLuminance;
-
-    VppLibplaceboResample resample;
-    cl_exdata.resize_pl_clamp = (int)(resample.clamp_ * 100.0f + 0.5f);
-    cl_exdata.resize_pl_taper = (int)(resample.taper * 100.0f + 0.5f);
-    cl_exdata.resize_pl_blur = (int)(resample.blur + 0.5f);
-    cl_exdata.resize_pl_antiring = (int)(resample.antiring * 100.0f + 0.5f);
-
-    VppLibplaceboDeband libplaceboDeband;
-    cl_exdata.libplacebo_deband_iterations = libplaceboDeband.iterations;
-    cl_exdata.libplacebo_deband_threshold = (int)(libplaceboDeband.threshold * 10.0f + 0.5f);
-    cl_exdata.libplacebo_deband_radius = (int)(libplaceboDeband.radius + 0.5f);
-    cl_exdata.libplacebo_deband_grain = (int)(libplaceboDeband.grainY + 0.5f);
-    cl_exdata.libplacebo_deband_dither = (int)libplaceboDeband.dither;
-    cl_exdata.libplacebo_deband_lut_size = libplaceboDeband.lut_size;
-
-    VppLibplaceboToneMapping libplaceboToneMapping;
-    cl_exdata.libplacebo_tonemap_src_csp = (int)libplaceboToneMapping.src_csp;
-    cl_exdata.libplacebo_tonemap_dst_csp = (int)libplaceboToneMapping.dst_csp;
-    cl_exdata.libplacebo_tonemap_src_max = (int)(libplaceboToneMapping.src_max + 0.5f);
-    cl_exdata.libplacebo_tonemap_src_min = (int)(libplaceboToneMapping.src_min + 0.5f);
-    cl_exdata.libplacebo_tonemap_dst_max = (int)(libplaceboToneMapping.dst_max + 0.5f);
-    cl_exdata.libplacebo_tonemap_dst_min = (int)(libplaceboToneMapping.dst_min + 0.5f);
-    cl_exdata.libplacebo_tonemap_smooth_period = (int)(libplaceboToneMapping.smooth_period + 0.5f);
-    cl_exdata.libplacebo_tonemap_scene_threshold_low = (int)(libplaceboToneMapping.scene_threshold_low * 10.0f + 0.5f);
-    cl_exdata.libplacebo_tonemap_scene_threshold_high = (int)(libplaceboToneMapping.scene_threshold_high * 10.0f + 0.5f);
-    cl_exdata.libplacebo_tonemap_percentile = (int)(libplaceboToneMapping.percentile * 10.0f + 0.5f);
-    cl_exdata.libplacebo_tonemap_black_cutoff = (int)(libplaceboToneMapping.black_cutoff + 0.5f);
-    cl_exdata.libplacebo_tonemap_gamut_mapping = (int)libplaceboToneMapping.gamut_mapping;
-    cl_exdata.libplacebo_tonemap_function = (int)libplaceboToneMapping.tonemapping_function;
-    cl_exdata.libplacebo_tonemap_metadata = (int)libplaceboToneMapping.metadata;
-    cl_exdata.libplacebo_tonemap_contrast_recovery = (int)(libplaceboToneMapping.contrast_recovery * 10.0f + 0.5f);
-    cl_exdata.libplacebo_tonemap_contrast_smoothness = (int)(libplaceboToneMapping.contrast_smoothness * 10.0f + 0.5f);
-    cl_exdata.libplacebo_tonemap_dst_pl_transfer = (int)libplaceboToneMapping.dst_pl_transfer;
-    cl_exdata.libplacebo_tonemap_dst_pl_colorprim = (int)libplaceboToneMapping.dst_pl_colorprim;
-
-    cl_exdata.libplacebo_tonemap_tone_const_knee_adaptation = (int)(libplaceboToneMapping.tone_constants.st2094.knee_adaptation * 100.0f + 0.5f);
-    cl_exdata.libplacebo_tonemap_tone_const_knee_min = (int)(libplaceboToneMapping.tone_constants.st2094.knee_min * 100.0f + 0.5f);
-    cl_exdata.libplacebo_tonemap_tone_const_knee_max = (int)(libplaceboToneMapping.tone_constants.st2094.knee_max * 100.0f + 0.5f);
-    cl_exdata.libplacebo_tonemap_tone_const_knee_default = (int)(libplaceboToneMapping.tone_constants.st2094.knee_default * 100.0f + 0.5f);
-    cl_exdata.libplacebo_tonemap_tone_const_knee_offset = (int)(libplaceboToneMapping.tone_constants.bt2390.knee_offset * 100.0f + 0.5f);
-    cl_exdata.libplacebo_tonemap_tone_const_slope_tuning = (int)(libplaceboToneMapping.tone_constants.spline.slope_tuning * 100.0f + 0.5f);
-    cl_exdata.libplacebo_tonemap_tone_const_slope_offset = (int)(libplaceboToneMapping.tone_constants.spline.slope_offset * 100.0f + 0.5f);
-    cl_exdata.libplacebo_tonemap_tone_const_spline_contrast = (int)(libplaceboToneMapping.tone_constants.spline.spline_contrast * 100.0f + 0.5f);
-    cl_exdata.libplacebo_tonemap_tone_const_reinhard_contrast = (int)(libplaceboToneMapping.tone_constants.reinhard.contrast * 100.0f + 0.5f);
-    cl_exdata.libplacebo_tonemap_tone_const_linear_knee = (int)(libplaceboToneMapping.tone_constants.mobius.linear_knee * 100.0f + 0.5f);
-    cl_exdata.libplacebo_tonemap_tone_const_exposure = (int)(libplaceboToneMapping.tone_constants.linear.exposure * 100.0f + 0.5f);
-}
-
 //---------------------------------------------------------------------
 //        設定画面処理
 //---------------------------------------------------------------------
@@ -1014,6 +924,8 @@ static HWND cx_opencl_device;
 static HWND bt_opencl_info;
 static HWND lb_log_level;
 static HWND cx_log_level;
+static HWND bt_stg_save;
+static HWND bt_stg_load;
 static HWND cx_resize_res;
 static HWND bt_resize_res_add;
 static HWND bt_resize_res_del;
@@ -1961,6 +1873,12 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void*, 
             break;
         case ID_BT_OPENCL_INFO:
             out_opencl_info(fp);
+            break;
+        case ID_BT_STG_LOAD: // 設定ファイル読み込み
+            load_stg_file(hwnd, fp);
+            break;
+        case ID_BT_STG_SAVE: // 設定ファイル保存
+            save_stg_file(fp);
             break;
         case ID_LS_FILTER_ORDER:
             set_filter_order();
@@ -3044,6 +2962,13 @@ void init_dialog(HWND hwnd, FILTER *fp) {
     bt_opencl_info = CreateWindow("BUTTON", "clinfo", WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, 318, cb_opencl_platform_y, 48, 22, hwnd, (HMENU)ID_BT_OPENCL_INFO, hinst, NULL);
     SendMessage(bt_opencl_info, WM_SETFONT, (WPARAM)b_font, 0);
 
+    //設定保存/ロードボタンを追加
+    bt_stg_save = CreateWindow("BUTTON", LB_BT_STG_SAVE, WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, 380, cb_opencl_platform_y, 64, 22, hwnd, (HMENU)ID_BT_STG_SAVE, hinst, NULL);
+    SendMessage(bt_stg_save, WM_SETFONT, (WPARAM)b_font, 0);
+
+    bt_stg_load = CreateWindow("BUTTON", LB_BT_STG_LOAD, WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP | BS_PUSHBUTTON | BS_VCENTER, 452, cb_opencl_platform_y, 64, 22, hwnd, (HMENU)ID_BT_STG_LOAD, hinst, NULL);
+    SendMessage(bt_stg_load, WM_SETFONT, (WPARAM)b_font, 0);
+
     //checkboxの移動
     const int checkbox_idx = 1+5*CLFILTER_TRACK_MAX;
 #if ENABLE_FIELD
@@ -3324,8 +3249,8 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp, const FILTER_PRO
     prm.hModule = fp->dll_hinst;
     prm.log_level   = cl_exdata.log_level;
     prm.log_to_file = fp->check[CLFILTER_CHECK_LOG_TO_FILE] != 0;
-    prm.outWidth    = (fp->check[CLFILTER_CHECK_RESIZE_ENABLE]) ? resize_res[cl_exdata.resize_idx].first  : fpip->w;
-    prm.outHeight   = (fp->check[CLFILTER_CHECK_RESIZE_ENABLE]) ? resize_res[cl_exdata.resize_idx].second : fpip->h;
+    prm.outWidth    = (fp->check[CLFILTER_CHECK_RESIZE_ENABLE]) ? resize_res[cl_exdata.resize_idx].first  : (fpip ? fpip->w : 0);
+    prm.outHeight   = (fp->check[CLFILTER_CHECK_RESIZE_ENABLE]) ? resize_res[cl_exdata.resize_idx].second : (fpip ? fpip->h : 0);
 
     const bool isCUDADevice = (cl_exdata.cl_dev_id.s.platform == CLCU_PLATFORM_CUDA);
 
@@ -3512,6 +3437,280 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp, const FILTER_PRO
     prm.vppnv.ngxTrueHDR.maxLuminance = cl_exdata.ngx_truehdr_maxluminance;
 
     return prm;
+}
+
+static void cl_exdata_set_prm(const clFilterChainParam& prm) {
+    std::fill(std::begin(cl_exdata.filterOrder), std::end(cl_exdata.filterOrder), VppType::VPP_NONE);
+    for (size_t i = 0; i < prm.vpp.filterOrder.size(); i++) {
+        cl_exdata.filterOrder[i] = prm.vpp.filterOrder[i];
+    }
+
+    if (prm.vpp.colorspace.convs.size() > 0) {
+        const auto &conv = prm.vpp.colorspace.convs[0];
+        cl_exdata.csp_from.matrix = conv.from.matrix;
+        cl_exdata.csp_from.colorprim = conv.from.colorprim;
+        cl_exdata.csp_from.transfer = conv.from.transfer;
+        cl_exdata.csp_from.colorrange = conv.from.colorrange;
+        cl_exdata.csp_to.matrix = conv.to.matrix;
+        cl_exdata.csp_to.colorprim = conv.to.colorprim;
+        cl_exdata.csp_to.transfer = conv.to.transfer;
+        cl_exdata.csp_to.colorrange = conv.to.colorrange;
+    }
+    cl_exdata.hdr2sdr = prm.vpp.colorspace.hdr2sdr.tonemap;
+
+    cl_exdata.resize_algo = prm.vpp.resize_algo;
+    cl_exdata.resize_idx = 0;
+    if (prm.outWidth > 0 && prm.outHeight > 0) {
+        auto it_resize = std::find_if(resize_res.begin(), resize_res.end(), [&](const auto &res) {
+            return res.first == prm.outWidth && res.second == prm.outHeight;
+            });
+        if (it_resize != resize_res.end()) {
+            cl_exdata.resize_idx = it_resize - resize_res.begin();
+        }
+    }
+
+    cl_exdata.resize_ngx_vsr_quality = prm.vppnv.ngxVSR.quality;
+
+    //cl_exdata.csp_from = VideoVUIInfo();
+    //cl_exdata.csp_to = VideoVUIInfo();
+    //cl_exdata.hdr2sdr = HDR2SDR_DISABLED;
+
+    cl_exdata.nnedi_field = VPP_NNEDI_FIELD_USE_TOP;
+    cl_exdata.nnedi_nns = prm.vpp.nnedi.nns;
+    cl_exdata.nnedi_nsize = prm.vpp.nnedi.nsize;
+    cl_exdata.nnedi_quality = prm.vpp.nnedi.quality;
+    cl_exdata.nnedi_prescreen = prm.vpp.nnedi.pre_screen;
+    cl_exdata.nnedi_errortype = prm.vpp.nnedi.errortype;
+
+    cl_exdata.nvvfx_denoise_strength = (int)(prm.vppnv.nvvfxDenoise.strength + 0.5);
+
+    cl_exdata.nvvfx_artifact_reduction_mode = prm.vppnv.nvvfxArtifactReduction.mode;
+
+    cl_exdata.nvvfx_superres_mode = prm.vppnv.nvvfxSuperRes.mode;
+    cl_exdata.nvvfx_superres_strength = (int)(prm.vppnv.nvvfxSuperRes.strength * 100.0f + 0.5f);
+
+    cl_exdata.denoise_dct_step = prm.vpp.dct.step;
+    cl_exdata.denoise_dct_block_size = prm.vpp.dct.block_size;
+
+    cl_exdata.smooth_quality = prm.vpp.smooth.quality;
+
+    cl_exdata.knn_radius = prm.vpp.knn.radius;
+
+    cl_exdata.nlmeans_patch = prm.vpp.nlmeans.patchSize;
+    cl_exdata.nlmeans_search = prm.vpp.nlmeans.searchSize;
+
+    cl_exdata.pmd_apply_count = prm.vpp.pmd.applyCount;
+
+    cl_exdata.unsharp_radius = prm.vpp.unsharp.radius;
+
+    cl_exdata.warpsharp_blur = prm.vpp.warpsharp.blur;
+
+    cl_exdata.deband_sample = prm.vpp.deband.sample;
+
+    cl_exdata.ngx_truehdr_contrast = prm.vppnv.ngxTrueHDR.contrast;
+    cl_exdata.ngx_truehdr_saturation = prm.vppnv.ngxTrueHDR.saturation;
+    cl_exdata.ngx_truehdr_middlegray = prm.vppnv.ngxTrueHDR.middleGray;
+    cl_exdata.ngx_truehdr_maxluminance = prm.vppnv.ngxTrueHDR.maxLuminance;
+
+    cl_exdata.resize_pl_clamp = (int)(prm.vpp.resize_libplacebo.clamp_ * 100.0f + 0.5f);
+    cl_exdata.resize_pl_taper = (int)(prm.vpp.resize_libplacebo.taper * 100.0f + 0.5f);
+    cl_exdata.resize_pl_blur = (int)(prm.vpp.resize_libplacebo.blur + 0.5f);
+    cl_exdata.resize_pl_antiring = (int)(prm.vpp.resize_libplacebo.antiring * 100.0f + 0.5f);
+
+    cl_exdata.libplacebo_deband_iterations = prm.vpp.libplacebo_deband.iterations;
+    cl_exdata.libplacebo_deband_threshold = (int)(prm.vpp.libplacebo_deband.threshold * 10.0f + 0.5f);
+    cl_exdata.libplacebo_deband_radius = (int)(prm.vpp.libplacebo_deband.radius + 0.5f);
+    cl_exdata.libplacebo_deband_grain = (int)(prm.vpp.libplacebo_deband.grainY + 0.5f);
+    cl_exdata.libplacebo_deband_dither = (int)prm.vpp.libplacebo_deband.dither;
+    cl_exdata.libplacebo_deband_lut_size = prm.vpp.libplacebo_deband.lut_size;
+
+    cl_exdata.libplacebo_tonemap_src_csp = (int)prm.vpp.libplacebo_tonemapping.src_csp;
+    cl_exdata.libplacebo_tonemap_dst_csp = (int)prm.vpp.libplacebo_tonemapping.dst_csp;
+    cl_exdata.libplacebo_tonemap_src_max = (int)(prm.vpp.libplacebo_tonemapping.src_max + 0.5f);
+    cl_exdata.libplacebo_tonemap_src_min = (int)(prm.vpp.libplacebo_tonemapping.src_min + 0.5f);
+    cl_exdata.libplacebo_tonemap_dst_max = (int)(prm.vpp.libplacebo_tonemapping.dst_max + 0.5f);
+    cl_exdata.libplacebo_tonemap_dst_min = (int)(prm.vpp.libplacebo_tonemapping.dst_min + 0.5f);
+    cl_exdata.libplacebo_tonemap_smooth_period = (int)(prm.vpp.libplacebo_tonemapping.smooth_period + 0.5f);
+    cl_exdata.libplacebo_tonemap_scene_threshold_low = (int)(prm.vpp.libplacebo_tonemapping.scene_threshold_low * 10.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_scene_threshold_high = (int)(prm.vpp.libplacebo_tonemapping.scene_threshold_high * 10.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_percentile = (int)(prm.vpp.libplacebo_tonemapping.percentile * 10.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_black_cutoff = (int)(prm.vpp.libplacebo_tonemapping.black_cutoff + 0.5f);
+    cl_exdata.libplacebo_tonemap_gamut_mapping = (int)prm.vpp.libplacebo_tonemapping.gamut_mapping;
+    cl_exdata.libplacebo_tonemap_function = (int)prm.vpp.libplacebo_tonemapping.tonemapping_function;
+    cl_exdata.libplacebo_tonemap_metadata = (int)prm.vpp.libplacebo_tonemapping.metadata;
+    cl_exdata.libplacebo_tonemap_contrast_recovery = (int)(prm.vpp.libplacebo_tonemapping.contrast_recovery * 10.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_contrast_smoothness = (int)(prm.vpp.libplacebo_tonemapping.contrast_smoothness * 10.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_dst_pl_transfer = (int)prm.vpp.libplacebo_tonemapping.dst_pl_transfer;
+    cl_exdata.libplacebo_tonemap_dst_pl_colorprim = (int)prm.vpp.libplacebo_tonemapping.dst_pl_colorprim;
+
+    cl_exdata.libplacebo_tonemap_tone_const_knee_adaptation = (int)(prm.vpp.libplacebo_tonemapping.tone_constants.st2094.knee_adaptation * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_knee_min = (int)(prm.vpp.libplacebo_tonemapping.tone_constants.st2094.knee_min * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_knee_max = (int)(prm.vpp.libplacebo_tonemapping.tone_constants.st2094.knee_max * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_knee_default = (int)(prm.vpp.libplacebo_tonemapping.tone_constants.st2094.knee_default * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_knee_offset = (int)(prm.vpp.libplacebo_tonemapping.tone_constants.bt2390.knee_offset * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_slope_tuning = (int)(prm.vpp.libplacebo_tonemapping.tone_constants.spline.slope_tuning * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_slope_offset = (int)(prm.vpp.libplacebo_tonemapping.tone_constants.spline.slope_offset * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_spline_contrast = (int)(prm.vpp.libplacebo_tonemapping.tone_constants.spline.spline_contrast * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_reinhard_contrast = (int)(prm.vpp.libplacebo_tonemapping.tone_constants.reinhard.contrast * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_linear_knee = (int)(prm.vpp.libplacebo_tonemapping.tone_constants.mobius.linear_knee * 100.0f + 0.5f);
+    cl_exdata.libplacebo_tonemap_tone_const_exposure = (int)(prm.vpp.libplacebo_tonemapping.tone_constants.linear.exposure * 100.0f + 0.5f);
+}
+
+void func_set_param_from_prm(FILTER *fp, const clFilterChainParam &prm) {
+    fp->check[CLFILTER_CHECK_LOG_TO_FILE] = prm.log_to_file ? 1 : 0;
+
+    // 出力サイズ
+    fp->check[CLFILTER_CHECK_RESIZE_ENABLE] = 0;
+    if (prm.outWidth > 0 && prm.outHeight > 0) {
+        auto it_resize = std::find_if(resize_res.begin(), resize_res.end(), [&](const auto &res) {
+            return res.first == prm.outWidth && res.second == prm.outHeight;
+            });
+        if (it_resize != resize_res.end()) {
+            fp->check[CLFILTER_CHECK_RESIZE_ENABLE] = 1;
+        }
+    }
+
+    fp->check[CLFILTER_CHECK_COLORSPACE_ENABLE] = prm.vpp.colorspace.enable ? 1 : 0;
+    if (prm.vpp.colorspace.convs.size() > 0) {
+        const auto &conv = prm.vpp.colorspace.convs[0];
+        fp->check[CLFILTER_CHECK_COLORSPACE_MATRIX_ENABLE]    = conv.to.matrix     != conv.from.matrix     ? 1 : 0;
+        fp->check[CLFILTER_CHECK_COLORSPACE_COLORPRIM_ENABLE] = conv.to.colorprim  != conv.from.colorprim  ? 1 : 0;
+        fp->check[CLFILTER_CHECK_COLORSPACE_TRANSFER_ENABLE]  = conv.to.transfer   != conv.from.transfer   ? 1 : 0;
+        fp->check[CLFILTER_CHECK_COLORSPACE_RANGE_ENABLE]     = conv.to.colorrange != conv.from.colorrange ? 1 : 0;
+    }
+    fp->track[CLFILTER_TRACK_COLORSPACE_SOURCE_PEAK] = (int)(prm.vpp.colorspace.hdr2sdr.hdr_source_peak + 0.5);
+    fp->track[CLFILTER_TRACK_COLORSPACE_LDR_NITS] = (int)(prm.vpp.colorspace.hdr2sdr.ldr_nits + 0.5);
+
+    fp->check[CLFILTER_CHECK_LIBPLACEBO_TONEMAP_ENABLE] = prm.vpp.libplacebo_tonemapping.enable ? 1 : 0;
+
+    fp->check[CLFILTER_CHECK_NNEDI_ENABLE] = prm.vpp.nnedi.enable ? 1 : 0;
+
+    fp->track[CLFILTER_TRACK_RESIZE_NVVFX_SUPRERES_STRENGTH] = (int)(prm.vppnv.nvvfxSuperRes.strength * 100.0f + 0.5f);
+
+    fp->check[CLFILTER_CHECK_NVVFX_DENOISE_ENABLE] = prm.vppnv.nvvfxDenoise.enable ? 1 : 0;
+    fp->check[CLFILTER_CHECK_NVVFX_ARTIFACT_REDUCTION_ENABLE] = prm.vppnv.nvvfxArtifactReduction.enable ? 1 : 0;
+
+    fp->check[CLFILTER_CHECK_DENOISE_DCT_ENABLE] = prm.vpp.dct.enable ? 1 : 0;
+    fp->track[CLFILTER_TRACK_DENOISE_DCT_SIGMA] = (int)(prm.vpp.dct.sigma * 10.0f + 0.5f);
+
+    fp->check[CLFILTER_CHECK_SMOOTH_ENABLE] = prm.vpp.smooth.enable ? 1 : 0;
+    fp->track[CLFILTER_TRACK_SMOOTH_QP] = prm.vpp.smooth.qp;
+
+    fp->check[CLFILTER_CHECK_KNN_ENABLE] = prm.vpp.knn.enable ? 1 : 0;
+    fp->track[CLFILTER_TRACK_KNN_STRENGTH] = (int)(prm.vpp.knn.strength * 100.0f + 0.5f);
+    fp->track[CLFILTER_TRACK_KNN_LERP] = (int)(prm.vpp.knn.lerpC * 100.0f + 0.5f);
+    fp->track[CLFILTER_TRACK_KNN_TH_LERP] = (int)(prm.vpp.knn.lerp_threshold * 100.0f + 0.5f);
+
+    fp->check[CLFILTER_CHECK_NLMEANS_ENABLE] = prm.vpp.nlmeans.enable ? 1 : 0;
+    fp->track[CLFILTER_TRACK_NLMEANS_SIGMA] = (int)(prm.vpp.nlmeans.sigma * 1000.0f + 0.5f);
+    fp->track[CLFILTER_TRACK_NLMEANS_H] = (int)(prm.vpp.nlmeans.h * 1000.0f + 0.5f);
+
+    fp->check[CLFILTER_CHECK_PMD_ENABLE] = prm.vpp.pmd.enable ? 1 : 0;
+    fp->track[CLFILTER_TRACK_PMD_STRENGTH] = (int)(prm.vpp.pmd.strength + 0.5f);
+    fp->track[CLFILTER_TRACK_PMD_THRESHOLD] = (int)(prm.vpp.pmd.threshold + 0.5f);
+
+    fp->check[CLFILTER_CHECK_UNSHARP_ENABLE] = prm.vpp.unsharp.enable ? 1 : 0;
+    fp->track[CLFILTER_TRACK_UNSHARP_WEIGHT] = (int)(prm.vpp.unsharp.weight * 10.0f + 0.5f);
+    fp->track[CLFILTER_TRACK_UNSHARP_THRESHOLD] = (int)(prm.vpp.unsharp.threshold + 0.5f);
+
+    fp->check[CLFILTER_CHECK_EDGELEVEL_ENABLE] = prm.vpp.edgelevel.enable ? 1 : 0;
+    fp->track[CLFILTER_TRACK_EDGELEVEL_STRENGTH] = (int)(prm.vpp.edgelevel.strength + 0.5f);
+    fp->track[CLFILTER_TRACK_EDGELEVEL_THRESHOLD] = (int)(prm.vpp.edgelevel.threshold + 0.5f);
+    fp->track[CLFILTER_TRACK_EDGELEVEL_BLACK] = (int)(prm.vpp.edgelevel.black + 0.5f);
+    fp->track[CLFILTER_TRACK_EDGELEVEL_WHITE] = (int)(prm.vpp.edgelevel.white + 0.5f);
+
+    fp->check[CLFILTER_CHECK_WARPSHARP_ENABLE] = prm.vpp.warpsharp.enable ? 1 : 0;
+    fp->track[CLFILTER_TRACK_WARPSHARP_THRESHOLD] = (int)(prm.vpp.warpsharp.threshold + 0.5f);
+    fp->check[CLFILTER_CHECK_WARPSHARP_SMALL_BLUR] = prm.vpp.warpsharp.type ? 1 : 0;
+    fp->track[CLFILTER_TRACK_WARPSHARP_DEPTH] = (int)(prm.vpp.warpsharp.depth + 0.5f);
+    fp->check[CLFILTER_CHECK_WARPSHARP_CHROMA_MASK] = prm.vpp.warpsharp.chroma ? 1 : 0;
+
+    fp->check[CLFILTER_CHECK_TWEAK_ENABLE] = prm.vpp.tweak.enable ? 1 : 0;
+    fp->track[CLFILTER_TRACK_TWEAK_BRIGHTNESS] = (int)(prm.vpp.tweak.brightness * 100.0f + 0.5f);
+    fp->track[CLFILTER_TRACK_TWEAK_CONTRAST] = (int)(prm.vpp.tweak.contrast * 100.0f + 0.5f);
+    fp->track[CLFILTER_TRACK_TWEAK_GAMMA] = (int)(prm.vpp.tweak.gamma * 100.0f + 0.5f);
+    fp->track[CLFILTER_TRACK_TWEAK_SATURATION] = (int)(prm.vpp.tweak.saturation * 100.0f + 0.5f);
+    fp->track[CLFILTER_TRACK_TWEAK_HUE] = (int)(prm.vpp.tweak.hue + 0.5f);
+
+    fp->check[CLFILTER_CHECK_DEBAND_ENABLE] = prm.vpp.deband.enable ? 1 : 0;
+    fp->track[CLFILTER_TRACK_DEBAND_RANGE] = prm.vpp.deband.range;
+    fp->track[CLFILTER_TRACK_DEBAND_Y] = prm.vpp.deband.threY;
+    fp->track[CLFILTER_TRACK_DEBAND_C] = prm.vpp.deband.threCb;
+    fp->track[CLFILTER_TRACK_DEBAND_C] = prm.vpp.deband.threCr;
+    fp->track[CLFILTER_TRACK_DEBAND_DITHER_Y] = prm.vpp.deband.ditherY;
+    fp->track[CLFILTER_TRACK_DEBAND_DITHER_C] = prm.vpp.deband.ditherC;
+    fp->check[CLFILTER_CHECK_DEBAND_BLUR_FIRST] = prm.vpp.deband.blurFirst ? 1 : 0;
+    fp->check[CLFILTER_CHECK_DEBAND_RAND_EACH_FRAME] = prm.vpp.deband.randEachFrame ? 1 : 0;
+
+    fp->check[CLFILTER_CHECK_LIBPLACEBO_DEBAND_ENABLE] = prm.vpp.libplacebo_deband.enable ? 1 : 0;
+
+    fp->check[CLFILTER_CHECK_TRUEHDR_ENABLE] = prm.vppnv.ngxTrueHDR.enable ? 1 : 0;
+}
+
+void cl_exdata_set_default() {
+    clFilterChainParam defaultParam;
+    cl_exdata_set_prm(defaultParam);
+
+    cl_exdata.cl_dev_id.i = 0;
+    cl_exdata.log_level = RGY_LOG_QUIET;
+
+    cl_exdata.resize_idx = 0;
+    cl_exdata.resize_algo = RGY_VPP_RESIZE_SPLINE36;
+
+    cl_exdata.csp_from = VideoVUIInfo();
+    cl_exdata.csp_to = VideoVUIInfo();
+    cl_exdata.hdr2sdr = HDR2SDR_DISABLED;
+}
+
+void load_stg_file(HWND hwnd, FILTER *fp) {
+    char filename[MAX_PATH] = { 0 };
+    // ロードファイル名取得
+    BOOL res = fp->exfunc->dlg_get_load_name(filename, (LPSTR)CLCU_STG_FILTER, NULL);
+    if (res == FALSE) // キャンセル
+        return;
+
+    // filenameの設定ファイルを開き、std::stringに読み込む
+    std::ifstream ifs(filename, std::ios::binary);
+    if (!ifs.is_open()) {
+        MessageBox(NULL, LB_LOAD_STG_FAILED, "Error", MB_OK | MB_ICONERROR);
+        return;
+    }
+    std::string str((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+    ifs.close();
+
+    // str の内容を prm に読み込む
+    clFilterChainParam prm;
+    prm.setPrmFromCmd(str);
+
+    func_set_param_from_prm(fp, prm);
+    cl_exdata_set_prm(prm);
+
+    update_cx(fp);
+    set_filter_order();
+    for (size_t icol = 0; icol < g_filterControls.size(); icol++) {
+        update_filter_enable(hwnd, icol);
+    }
+    fp->exfunc->filter_window_update(fp);
+}
+
+void save_stg_file(FILTER *fp) {
+    char filename[MAX_PATH];
+    strcpy_s(filename, "clcufilter.stg");
+    BOOL res = fp->exfunc->dlg_get_save_name(filename, (LPSTR)CLCU_STG_FILTER, filename);
+    if (res == FALSE) // キャンセル
+        return;
+
+    const auto prm = func_proc_get_param(fp, nullptr);
+    const auto prm_cmd = prm.genCmd();
+
+    // prm_cmd を filename のファイルに書き込む
+    FILE *fp_stg = NULL;
+    if (0 == fopen_s(&fp_stg, filename, "w")) {
+        fprintf(fp_stg, "%s", prm_cmd.c_str());
+        fclose(fp_stg);
+    } else {
+        MessageBox(NULL, LB_SAVE_STG_FAILED, "Error", MB_OK | MB_ICONERROR);
+    }
 }
 
 BOOL func_proc(FILTER *fp, FILTER_PROC_INFO *fpip) {
