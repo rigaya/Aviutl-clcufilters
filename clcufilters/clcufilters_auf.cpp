@@ -81,7 +81,7 @@ std::vector<clcuFiltersAufDevInfo> clcuFiltersAufDevices::createDeviceList(const
                 if (sscanf_s(devstr.substr(0, ccstr).c_str(), "%d.%d", &cudaver.first, &cudaver.second) != 2) {
                     continue;
                 }
-                platform_dev_list.push_back(clcuFiltersAufDevInfo(pd, cudaver, devstr.substr(ccstr + 1)));
+                platform_dev_list.push_back(clcuFiltersAufDevInfo(pd, cudaver, trim(devstr.substr(ccstr + 1))));
             }
         }
     }
