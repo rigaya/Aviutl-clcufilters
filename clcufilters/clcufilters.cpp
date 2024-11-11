@@ -411,7 +411,7 @@ static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_LINEAR_KNEE = "linear kne
 static const char *LB_TB_LIBPLACEBO_TONEMAP_TONE_CONST_EXPOSURE = "exposure";
 #else
 static const char *LB_SAVE_STG_FAILED = "Failed to save to stg file.";
-static const char *LB_LOAD_STG_FAILED = "Failed to load stg file."
+static const char *LB_LOAD_STG_FAILED = "Failed to load stg file.";
 static const char *LB_PROCESS_ABORT = "Process Aborted!";
 static const char *LB_WND_OPENCL_UNAVAIL = "Filter disabled, OpenCL could not be used.";
 static const char *LB_WND_OPENCL_AVAIL = "OpenCL Enabled";
