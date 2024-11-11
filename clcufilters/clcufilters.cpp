@@ -324,7 +324,6 @@ static std::vector<CLFILTER_TRACKBAR_DATA> g_trackBars;
 static HBRUSH g_hbrBackground = NULL;
 static std::array<std::vector<std::unique_ptr<CLCU_FILTER_CONTROLS>>, FILTER_ROW> g_filterControls;
 static int g_stgWindowShowingError = 0;
-static bool g_controlsMoving = false; // コントロールの移動中のフラグを立てる
 
 //---------------------------------------------------------------------
 //        ラベル
@@ -1709,23 +1708,25 @@ BOOL proc_trackbar_ex(const CLFILTER_TRACKBAR_DATA *trackbar, const int ctrlID, 
             SendMessage(trackbar->tb->bt_text, EM_GETSEL, (WPARAM)&start, (LPARAM)&end);
             // テキストボックスの内容が変更されたとき
             char buffer[256] = { 0 };
+            bool valueChanged = false;
             int value = 0;
             GetWindowText(trackbar->tb->bt_text, buffer, sizeof(buffer));
             if (sscanf_s(buffer, "%d", &value) == 1) {
                 const int pos = clamp(value, trackbar->val_min, trackbar->val_max);
                 SendMessage(trackbar->tb->trackbar, TBM_SETPOS, TRUE, pos);
+                valueChanged = *(trackbar->ex_data_pos) != pos;
                 *(trackbar->ex_data_pos) = pos;
             }
             // カーソル位置を復元
             SendMessage(trackbar->tb->bt_text, EM_SETSEL, start, end);
-            // update_filter_enableによるコントロールの移動中にもここに来るが、そのときは画像処理を更新しない
-            if (g_controlsMoving) return FALSE;
-            return TRUE; //TRUEを返すと画像処理が更新される
+            // 移動、あるいは再表示しただけで、ここが呼ばれることがあるので、値が変わっているかを確認してから再描画する
+            return (valueChanged) ? TRUE : FALSE; //TRUEを返すと画像処理が更新される
         } else if (HIWORD(wparam) == EN_KILLFOCUS) {
             // 現在のカーソル位置を取得
             DWORD start, end;
             SendMessage(trackbar->tb->bt_text, EM_GETSEL, (WPARAM)&start, (LPARAM)&end);
             char buffer[256] = { 0 };
+            bool valueChanged = false;
             int org_value = 0;
             if (strlen(buffer) == 0) {
                 // 空白の場合、元の値に戻す
@@ -1737,11 +1738,12 @@ BOOL proc_trackbar_ex(const CLFILTER_TRACKBAR_DATA *trackbar, const int ctrlID, 
                 if (pos != org_value) {
                     SetWindowText(trackbar->tb->bt_text, strsprintf("%d", pos).c_str());
                 }
+                valueChanged = *(trackbar->ex_data_pos) != pos;
                 *(trackbar->ex_data_pos) = pos;
             }
             // カーソル位置を復元
             SendMessage(trackbar->tb->bt_text, EM_SETSEL, start, end);
-            return TRUE; //TRUEを返すと画像処理が更新される
+            return (valueChanged) ? TRUE : FALSE; //TRUEを返すと画像処理が更新される
         }
     }
     return FALSE;
@@ -2319,7 +2321,6 @@ void add_combobox(HWND& hwnd_cx, int id_cx, HWND& hwnd_lb, int id_lb, const char
 }
 
 void update_filter_enable(HWND hwnd, const size_t icol_change) {
-    g_controlsMoving = true; // コントロールの移動中のフラグを立てる
     const int cb_row_start_y_pos = 8 + 28;
     int y_pos = cb_row_start_y_pos;
     // オン/オフ切り替え対象の情報を取得
@@ -2348,7 +2349,6 @@ void update_filter_enable(HWND hwnd, const size_t icol_change) {
     y_pos_max = std::max(y_pos_max, g_min_height);
     const int columns = (int)g_filterControls.size() + 1;
     SetWindowPos(hwnd, HWND_TOP, 0, 0, g_col_width * columns, y_pos_max + 36 /*狭くなりすぎるので調整*/, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOZORDER);
-    g_controlsMoving = false; // コントロールの移動中のフラグを戻す
 }
 
 struct CLCX_COMBOBOX {
