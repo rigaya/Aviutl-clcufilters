@@ -170,8 +170,15 @@ RGY_ERR clFilterChain::initDevice(const clcuFilterDeviceParam *param) {
             break;
         }
     }
-
-    platform->setDev(platform->devs()[std::max(deviceID, 0)], nullptr, m_dx11->GetDevice());
+    if (m_dx11) {
+        if (platform->createDeviceListD3D11(CL_DEVICE_TYPE_GPU, m_dx11->GetDevice()) != RGY_ERR_NONE) {
+            PrintMes(RGY_LOG_WARN, _T("Failed to create OpenCL device list from DX11 device.\n"));
+            m_dx11.reset();
+        }
+    }
+    if (!m_dx11) {
+        platform->setDev(platform->devs()[std::max(deviceID, 0)], nullptr, m_dx11->GetDevice());
+    }
     m_cl = std::make_shared<RGYOpenCLContext>(platform, m_log);
     if (m_cl->createContext(0) != RGY_ERR_NONE) {
         PrintMes(RGY_LOG_ERROR, _T("Failed to create OpenCL context.\n"));
