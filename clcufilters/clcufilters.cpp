@@ -231,7 +231,7 @@ struct CLFILTER_EXDATA {
     VppNnediErrorType nnedi_errortype;
 
     int knn_radius;
-    int pmd_apply_count;
+    int reserved;
     int smooth_quality;
     int unsharp_radius;
     int warpsharp_blur;
@@ -3399,7 +3399,7 @@ static clFilterChainParam func_proc_get_param(const FILTER *fp, const FILTER_PRO
 
     //pmd
     prm.vpp.pmd.enable         = fp->check[CLFILTER_CHECK_PMD_ENABLE] != 0;
-    prm.vpp.pmd.applyCount     = cl_exdata.pmd_apply_count;
+    prm.vpp.pmd.applyCount     = fp->track[CLFILTER_TRACK_PMD_APPLY_COUNT];
     prm.vpp.pmd.strength       = (float)fp->track[CLFILTER_TRACK_PMD_STRENGTH];
     prm.vpp.pmd.threshold      = (float)fp->track[CLFILTER_TRACK_PMD_THRESHOLD];
 
@@ -3525,8 +3525,6 @@ static void cl_exdata_set_prm(const clFilterChainParam& prm) {
     cl_exdata.nlmeans_patch = prm.vpp.nlmeans.patchSize;
     cl_exdata.nlmeans_search = prm.vpp.nlmeans.searchSize;
 
-    cl_exdata.pmd_apply_count = prm.vpp.pmd.applyCount;
-
     cl_exdata.unsharp_radius = prm.vpp.unsharp.radius;
 
     cl_exdata.warpsharp_blur = prm.vpp.warpsharp.blur;
@@ -3632,6 +3630,7 @@ void func_set_param_from_prm(FILTER *fp, const clFilterChainParam &prm) {
     fp->track[CLFILTER_TRACK_NLMEANS_H] = (int)(prm.vpp.nlmeans.h * 1000.0f + 0.5f);
 
     fp->check[CLFILTER_CHECK_PMD_ENABLE] = prm.vpp.pmd.enable ? 1 : 0;
+    fp->track[CLFILTER_TRACK_PMD_APPLY_COUNT] = prm.vpp.pmd.applyCount;
     fp->track[CLFILTER_TRACK_PMD_STRENGTH] = (int)(prm.vpp.pmd.strength + 0.5f);
     fp->track[CLFILTER_TRACK_PMD_THRESHOLD] = (int)(prm.vpp.pmd.threshold + 0.5f);
 
