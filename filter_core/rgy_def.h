@@ -498,6 +498,50 @@ const CX_DESC list_dovi_profile[] = {
     { NULL, 0 }
 };
 
+const CX_DESC list_dovi_profile_parse[] = {
+    { _T("unset"), RGY_DOVI_PROFILE_UNSET },
+    { _T("copy"),  RGY_DOVI_PROFILE_COPY },
+    { _T("5.0"),   RGY_DOVI_PROFILE_50 },
+    { _T("5"),     RGY_DOVI_PROFILE_50 },
+    { _T("8.1"),   RGY_DOVI_PROFILE_81 },
+    { _T("8.2"),   RGY_DOVI_PROFILE_82 },
+    { _T("8.4"),   RGY_DOVI_PROFILE_84 },
+    { NULL, 0 }
+};
+
+struct RGYDOVIRpuActiveAreaOffsets {
+    bool enable;
+    uint16_t left, top, right, bottom;
+
+    RGYDOVIRpuActiveAreaOffsets() : enable(false), left(0), top(0), right(0), bottom(0) {};
+    bool operator==(const RGYDOVIRpuActiveAreaOffsets &x) const {
+        return enable == x.enable
+            && left == x.left
+            && top == x.top
+            && right == x.right
+            && bottom == x.bottom;
+    }
+    bool operator!=(const RGYDOVIRpuActiveAreaOffsets &x) const {
+        return !(*this == x);
+    }
+};
+
+class RGYDOVIRpuConvertParam {
+public:
+    bool convertProfile;
+    bool removeMapping;
+    RGYDOVIRpuActiveAreaOffsets activeAreaOffsets;
+    RGYDOVIRpuConvertParam() : convertProfile(true), removeMapping(false), activeAreaOffsets() {};
+    virtual ~RGYDOVIRpuConvertParam() {};
+    bool operator==(const RGYDOVIRpuConvertParam &x) const {
+        return convertProfile == x.convertProfile
+            && removeMapping == x.removeMapping
+            && activeAreaOffsets == x.activeAreaOffsets;
+    }
+    bool operator!=(const RGYDOVIRpuConvertParam &x) const {
+        return !(*this == x);
+    }
+};
 
 // 1st luma line > |X   X ...    |3 4 X ...     X が輝度ピクセル位置
 //                 |             |1 2           1-6 are possible chroma positions
