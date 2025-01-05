@@ -1427,6 +1427,16 @@ RGY_ERR NVEncFilterLibplaceboToneMapping::setLibplaceboParam(const NVEncFilterPa
 #if PL_API_VER >= 349 
         m_tonemap.peakDetectParams->black_cutoff = prm->toneMapping.black_cutoff;
 #endif
+        m_tonemap.sigmoidParams = std::make_unique<pl_sigmoid_params>(m_pl->p_sigmoid_default_params());
+        m_tonemap.ditherParams = std::make_unique<pl_dither_params>(m_pl->p_dither_default_params());
+        m_tonemap.renderParams = std::make_unique<pl_render_params>(m_pl->p_render_default_params());
+        m_tonemap.renderParams->color_map_params = m_tonemap.colorMapParams.get();
+        m_tonemap.renderParams->peak_detect_params = (prm->toneMapping.dynamic_peak_detection) ? m_tonemap.peakDetectParams.get() : nullptr;
+        m_tonemap.renderParams->sigmoid_params = m_tonemap.sigmoidParams.get();
+        m_tonemap.renderParams->dither_params = m_tonemap.ditherParams.get();
+        m_tonemap.renderParams->cone_params = nullptr;
+        m_tonemap.renderParams->color_adjustment = nullptr;
+        m_tonemap.renderParams->deband_params = nullptr;
 
         if (!ENABLE_LIBDOVI) {
             if (prm->toneMapping.use_dovi > 0) {

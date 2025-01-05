@@ -45,8 +45,11 @@ RGYLibplaceboLoader::RGYLibplaceboLoader() :
     m_pl_color_space_srgb(nullptr),
     m_pl_color_space_hdr10(nullptr),
     m_pl_hdr_metadata_empty(nullptr),
+    m_pl_render_default_params(nullptr),
     m_pl_peak_detect_default_params(nullptr),
     m_pl_color_map_default_params(nullptr),
+    m_pl_sigmoid_default_params(nullptr),
+    m_pl_dither_default_params(nullptr),
 #if ENABLE_D3D11
     m_pl_d3d11_create(nullptr),
     m_pl_d3d11_destroy(nullptr),
@@ -119,8 +122,11 @@ bool RGYLibplaceboLoader::load() {
     if (!loadFunc("pl_color_space_srgb", (void**)&m_pl_color_space_srgb)) return false;
     if (!loadFunc("pl_color_space_hdr10", (void**)&m_pl_color_space_hdr10)) return false;
     if (!loadFunc("pl_hdr_metadata_empty", (void**)&m_pl_hdr_metadata_empty)) return false;
+    if (!loadFunc("pl_render_default_params", (void**)&m_pl_render_default_params)) return false;
     if (!loadFunc("pl_peak_detect_default_params", (void**)&m_pl_peak_detect_default_params)) return false;
     if (!loadFunc("pl_color_map_default_params", (void**)&m_pl_color_map_default_params)) return false;
+    if (!loadFunc("pl_sigmoid_default_params", (void**)&m_pl_sigmoid_default_params)) return false;
+    if (!loadFunc("pl_dither_default_params", (void**)&m_pl_dither_default_params)) return false;
 
     // 新しいメンバ変数の関数ポインタを取得して格納するコードを追加
 #if ENABLE_D3D11
