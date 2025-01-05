@@ -86,6 +86,7 @@ RGYLibplaceboLoader::RGYLibplaceboLoader() :
     m_pl_find_filter_config(nullptr),
     m_pl_hdr_rescale(nullptr),
     m_pl_lut_parse_cube(nullptr),
+    m_pl_find_tone_map_function(nullptr),
     m_pl_find_gamut_map_function(nullptr),
     m_pl_raw_primaries_get(nullptr),
     m_pl_raw_primaries_merge(nullptr),
@@ -171,6 +172,7 @@ bool RGYLibplaceboLoader::load() {
 
     if (!loadFunc("pl_hdr_rescale", (void**)&m_pl_hdr_rescale)) return false;
     if (!loadFunc("pl_lut_parse_cube", (void**)&m_pl_lut_parse_cube)) return false;
+    if (!loadFunc("pl_find_tone_map_function", (void**)&m_pl_find_tone_map_function)) return false;
     if (!loadFunc("pl_find_gamut_map_function", (void**)&m_pl_find_gamut_map_function)) return false;
     if (!loadFunc("pl_raw_primaries_get", (void**)&m_pl_raw_primaries_get)) return false;
     if (!loadFunc("pl_raw_primaries_merge", (void**)&m_pl_raw_primaries_merge)) return false;

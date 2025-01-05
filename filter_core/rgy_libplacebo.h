@@ -117,6 +117,7 @@ private:
     decltype(&pl_hdr_rescale) m_pl_hdr_rescale;
 
     decltype(&pl_lut_parse_cube) m_pl_lut_parse_cube;
+    decltype(&pl_find_tone_map_function) m_pl_find_tone_map_function;
     decltype(&pl_find_gamut_map_function) m_pl_find_gamut_map_function;
     decltype(&pl_raw_primaries_get) m_pl_raw_primaries_get;
     decltype(&pl_raw_primaries_merge) m_pl_raw_primaries_merge;
@@ -182,6 +183,7 @@ public:
     auto p_find_filter_config() const { return m_pl_find_filter_config; }
     auto p_hdr_rescale() const { return m_pl_hdr_rescale; }
     auto p_lut_parse_cube() const { return m_pl_lut_parse_cube; }
+    auto p_find_tone_map_function() const { return m_pl_find_tone_map_function; }
     auto p_find_gamut_map_function() const { return m_pl_find_gamut_map_function; }
     auto p_raw_primaries_get() const { return m_pl_raw_primaries_get; }
     auto p_raw_primaries_merge() const { return m_pl_raw_primaries_merge; }

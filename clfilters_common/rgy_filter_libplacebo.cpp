@@ -1775,6 +1775,11 @@ RGY_ERR RGYFilterLibplaceboToneMapping::setLibplaceboParam(const RGYFilterParam 
             m_tonemap.plCspDst.hdr.min_luma = prm->toneMapping.dst_min;
         }
         m_tonemap.colorMapParams = std::make_unique<pl_color_map_params>(m_pl->p_color_map_default_params());
+        m_tonemap.colorMapParams->tone_mapping_function = m_pl->p_find_tone_map_function()(tchar_to_string(get_cx_desc(list_vpp_libplacebo_tone_mapping_function, (int)prm->toneMapping.tonemapping_function)).c_str());
+        if (!m_tonemap.colorMapParams->tone_mapping_function) {
+            AddMessage(RGY_LOG_ERROR, _T("Invalid tone mapping function.\n"));
+            return RGY_ERR_INVALID_PARAM;
+        }
         m_tonemap.colorMapParams->tone_constants.knee_adaptation = prm->toneMapping.tone_constants.st2094.knee_adaptation;
         m_tonemap.colorMapParams->tone_constants.knee_minimum = prm->toneMapping.tone_constants.st2094.knee_min;
         m_tonemap.colorMapParams->tone_constants.knee_maximum = prm->toneMapping.tone_constants.st2094.knee_max;
