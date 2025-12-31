@@ -1,6 +1,8 @@
-﻿# clcufilters
+﻿# clcufilters は、Aviutl用のGPUフィルタしたが、更新を終了しました。
 
-clcufilters.auf は、Aviutl用のGPUフィルタです。複数のフィルタ処理をGPU上で連続して行うことで、フィルタをそれぞれ実行するのと比べてCPU - GPU間のデータ転送を削減でき、高速化が期待できます。
+---
+
+複数のフィルタ処理をGPU上で連続して行うことで、フィルタをそれぞれ実行するのと比べてCPU - GPU間のデータ転送を削減でき、高速化が期待できます。
 
 処理本体は別プロセスで行うつくりとなっており、NVIDIA GPUではcufilters.exeによりCUDAでフィルタ処理を、それ以外(Intel/AMD)のGPUではclfilters.exeによりOpenCLでフィルタ処理を行います。
 
